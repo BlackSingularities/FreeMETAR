@@ -11,6 +11,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
+import androidx.compose.material.icons.automirrored.outlined.TrendingDown
+import androidx.compose.material.icons.outlined.Air
+import androidx.compose.material.icons.outlined.Height
+import androidx.compose.material.icons.outlined.LocalGasStation
+import androidx.compose.material.icons.outlined.Route
+import androidx.compose.material.icons.outlined.SwapHoriz
+import androidx.compose.material.icons.outlined.Translate
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.freemetar.app.MainViewModel
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -44,13 +57,22 @@ import com.freemetar.app.ui.theme.TextLo
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-private enum class Tool(val label: String) { WIND("Wiatr"), DENSITY("Wys. gęst."), DESCENT("Zniżanie"), FUEL("Paliwo"), UNITS("Jednostki"), DECODE("Dekoder") }
+private enum class Tool(val label: String, val icon: ImageVector) {
+    ROUTE("Trasa", Icons.Outlined.Route),
+    WIND("Wiatr", Icons.Outlined.Air),
+    DENSITY("Wys. gęst.", Icons.Outlined.Height),
+    DESCENT("Zniżanie", Icons.AutoMirrored.Outlined.TrendingDown),
+    FUEL("Paliwo", Icons.Outlined.LocalGasStation),
+    UNITS("Jednostki", Icons.Outlined.SwapHoriz),
+    DECODE("Dekoder", Icons.Outlined.Translate),
+    CHEAT("Ściąga", Icons.AutoMirrored.Outlined.MenuBook),
+}
 
 @Composable
-fun ToolsScreen() {
-    var tool by rememberSaveable { mutableStateOf(Tool.WIND) }
+fun ToolsScreen(vm: MainViewModel) {
+    var tool by rememberSaveable { mutableStateOf(Tool.ROUTE) }
     LazyColumn(
-        Modifier.fillMaxSize().statusBarsPadding(),
+        Modifier.fillMaxSize().statusBarsPadding().widthIn(max = 760.dp),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -59,12 +81,14 @@ fun ToolsScreen() {
             androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(Tool.entries.size) { i ->
                     val t = Tool.entries[i]
-                    FilterChip(selected = tool == t, onClick = { tool = t }, label = { Text(t.label) })
+                    FilterChip(selected = tool == t, onClick = { tool = t }, label = { Text(t.label) }, leadingIcon = { Icon(t.icon, null, modifier = Modifier.size(18.dp)) })
                 }
             }
         }
         item {
             when (tool) {
+                Tool.ROUTE -> RouteTool(vm)
+                Tool.CHEAT -> CheatSheet()
                 Tool.WIND -> WindTool()
                 Tool.DENSITY -> DensityTool()
                 Tool.DESCENT -> DescentTool()
@@ -77,7 +101,7 @@ fun ToolsScreen() {
 }
 
 @Composable
-private fun NumField(label: String, value: String, modifier: Modifier = Modifier, onChange: (String) -> Unit) {
+internal fun NumField(label: String, value: String, modifier: Modifier = Modifier, onChange: (String) -> Unit) {
     OutlinedTextField(
         value = value, onValueChange = onChange, label = { Text(label) }, singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -85,7 +109,7 @@ private fun NumField(label: String, value: String, modifier: Modifier = Modifier
     )
 }
 
-private fun String.num() = replace(',', '.').toDoubleOrNull()
+internal fun String.num() = replace(',', '.').toDoubleOrNull()
 
 @Composable
 private fun WindTool() {
@@ -93,7 +117,7 @@ private fun WindTool() {
     var spd by rememberSaveable { mutableStateOf("15") }
     var gust by rememberSaveable { mutableStateOf("") }
     var rwy by rememberSaveable { mutableStateOf("29") }
-    SectionCard("Składowe wiatru") {
+    SectionCard("Składowe wiatru", icon = Icons.Outlined.Air) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             NumField("Kierunek °", dir, Modifier.weight(1f)) { dir = it }
             NumField("Prędkość kt", spd, Modifier.weight(1f)) { spd = it }
@@ -125,7 +149,7 @@ private fun DensityTool() {
     var qnh by rememberSaveable { mutableStateOf("1013") }
     var oat by rememberSaveable { mutableStateOf("25") }
     var ias by rememberSaveable { mutableStateOf("110") }
-    SectionCard("Wysokość gęstościowa i TAS") {
+    SectionCard("Wysokość gęstościowa i TAS", icon = Icons.Outlined.Height) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             NumField("Wysokość ft", elev, Modifier.weight(1f)) { elev = it }
             NumField("QNH hPa", qnh, Modifier.weight(1f)) { qnh = it }
@@ -158,7 +182,7 @@ private fun DescentTool() {
     var to by rememberSaveable { mutableStateOf("3000") }
     var gs by rememberSaveable { mutableStateOf("420") }
     var angle by rememberSaveable { mutableStateOf("3") }
-    SectionCard("Planowanie zniżania (TOD)") {
+    SectionCard("Planowanie zniżania (TOD)", icon = Icons.AutoMirrored.Outlined.TrendingDown) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             NumField("Z wysokości ft", from, Modifier.weight(1f)) { from = it }
             NumField("Do wysokości ft", to, Modifier.weight(1f)) { to = it }
@@ -188,7 +212,7 @@ private fun FuelTool() {
     var gs by rememberSaveable { mutableStateOf("120") }
     var burn by rememberSaveable { mutableStateOf("30") }
     var reserve by rememberSaveable { mutableStateOf("45") }
-    SectionCard("Paliwo i czas lotu") {
+    SectionCard("Paliwo i czas lotu", icon = Icons.Outlined.LocalGasStation) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             NumField("Dystans NM", dist, Modifier.weight(1f)) { dist = it }
             NumField("GS kt", gs, Modifier.weight(1f)) { gs = it }
@@ -218,7 +242,7 @@ private fun FuelTool() {
 private fun UnitsTool() {
     var v by rememberSaveable { mutableStateOf("1013") }
     val x = v.num()
-    SectionCard("Przelicznik jednostek") {
+    SectionCard("Przelicznik jednostek", icon = Icons.Outlined.SwapHoriz) {
         NumField("Wartość", v, Modifier.fillMaxWidth()) { v = it }
         Spacer(Modifier.size(10.dp))
         if (x != null) {
@@ -247,7 +271,7 @@ private fun UnitsTool() {
 @Composable
 private fun DecodeTool() {
     var raw by rememberSaveable { mutableStateOf("EPWA 171030Z 24012G24KT 210V280 9999 -SHRA FEW012 BKN025CB 12/09 Q1008 TEMPO 4000 TSRA") }
-    SectionCard("Dekoder METAR/TAF") {
+    SectionCard("Dekoder METAR/TAF", icon = Icons.Outlined.Translate) {
         OutlinedTextField(raw, { raw = it.uppercase() }, Modifier.fillMaxWidth(), textStyle = RawText, shape = RoundedCornerShape(12.dp), minLines = 3)
         Spacer(Modifier.size(10.dp))
         MetarDecoder.decode(raw).filter { it.text != "—" && it.text.isNotBlank() }.forEach { d ->

@@ -8,7 +8,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
@@ -58,6 +61,7 @@ fun UpdateDialog(vm: MainViewModel) {
     }
     AlertDialog(
         onDismissRequest = { if (state !is UpdateState.Downloading) vm.dismissUpdatePrompt() },
+        icon = { Icon(Icons.Outlined.SystemUpdate, null) },
         title = { Text("Nowa wersja ${info.versionName}") },
         text = {
             Column {
@@ -100,7 +104,7 @@ fun UpdateDialog(vm: MainViewModel) {
 fun UpdateSection(vm: MainViewModel) {
     val state by vm.update.collectAsStateWithLifecycle()
     val install = rememberInstaller()
-    SectionCard("Aktualizacje") {
+    SectionCard("Aktualizacje", icon = Icons.Outlined.SystemUpdate) {
         Text("Zainstalowana wersja: ${BuildConfig.VERSION_NAME}", color = TextHi)
         Spacer(Modifier.size(6.dp))
         when (val s = state) {

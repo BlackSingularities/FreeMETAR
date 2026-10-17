@@ -1,6 +1,15 @@
 package com.freemetar.app.ui.components
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.style.TextAlign
+import com.freemetar.app.ui.theme.PanelHi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -48,18 +57,39 @@ import com.freemetar.app.ui.theme.categoryColor
 import kotlin.math.cos
 import kotlin.math.sin
 
+/** Szerokość okna → liczba kolumn; telefon 1, składany/tablet 2–3. */
 @Composable
-fun SectionCard(title: String? = null, modifier: Modifier = Modifier, trailing: @Composable RowScope.() -> Unit = {}, content: @Composable ColumnScope.() -> Unit) {
+fun windowColumns(): Int {
+    val w = LocalConfiguration.current.screenWidthDp
+    return when { w >= 1000 -> 3; w >= 600 -> 2; else -> 1 }
+}
+
+@Composable
+fun isWide(): Boolean = LocalConfiguration.current.screenWidthDp >= 600
+
+@Composable
+fun SectionCard(
+    title: String? = null,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    trailing: @Composable RowScope.() -> Unit = {},
+    content: @Composable ColumnScope.() -> Unit,
+) {
     Column(
         modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .background(Panel)
             .border(1.dp, Line, RoundedCornerShape(18.dp))
-            .padding(16.dp),
+            .padding(16.dp)
+            .animateContentSize(),
     ) {
         if (title != null) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (icon != null) {
+                    Icon(icon, null, tint = Sky, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                }
                 Text(title.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextLo, modifier = Modifier.weight(1f))
                 trailing()
             }
@@ -87,17 +117,90 @@ fun CategoryBadge(cat: String?, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun StatTile(label: String, value: String, sub: String? = null, modifier: Modifier = Modifier, accent: Color = TextHi) {
+fun StatTile(label: String, value: String, sub: String? = null, modifier: Modifier = Modifier, accent: Color = TextHi, icon: ImageVector? = null) {
     Column(
         modifier
             .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(12.dp),
     ) {
-        Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextLo)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) {
+                Icon(icon, null, tint = TextLo, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(5.dp))
+            }
+            Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextLo, maxLines = 1)
+        }
         Spacer(Modifier.size(4.dp))
         Text(value, color = accent, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
         if (sub != null) Text(sub, color = TextLo, fontSize = 12.sp)
+    }
+}
+
+/** Pusty stan z dużą ikoną — zamiast samego szarego tekstu. */
+@Composable
+fun EmptyState(icon: ImageVector, title: String, sub: String? = null) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.size(64.dp).clip(CircleShape).background(PanelHi), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = Sky, modifier = Modifier.size(30.dp))
+        }
+        Spacer(Modifier.size(12.dp))
+        Text(title, color = TextHi, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+        if (sub != null) Text(sub, color = TextLo, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp))
+    }
+}
+
+/** Nagłówek sekcji listy z ikoną. */
+@Composable
+fun ListHeader(text: String, icon: ImageVector, modifier: Modifier = Modifier, trailing: @Composable RowScope.() -> Unit = {}) {
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = TextLo, modifier = Modifier.size(15.dp))
+        Spacer(Modifier.width(7.dp))
+        Text(text.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextLo, modifier = Modifier.weight(1f))
+        trailing()
+    }
+}
+
+/**
+ * Prosty wykres liniowy trendu (np. temperatura z 12 h). Punkty w kolejności czasu.
+ * Rysuje linię, wypełnienie i wartości min/maks.
+ */
+@Composable
+fun TrendChart(label: String, values: List<Double>, unit: String, color: Color, icon: ImageVector? = null, modifier: Modifier = Modifier) {
+    val measurer = rememberTextMeasurer()
+    Column(modifier.clip(RoundedCornerShape(14.dp)).background(PanelHi).padding(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) { Icon(icon, null, tint = color, modifier = Modifier.size(14.dp)); Spacer(Modifier.width(5.dp)) }
+            Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextLo, modifier = Modifier.weight(1f))
+            values.lastOrNull()?.let { Text("${it.toInt()}$unit", color = color, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+        }
+        Spacer(Modifier.size(8.dp))
+        if (values.size < 2) {
+            Text("Za mało danych", color = TextLo, fontSize = 12.sp)
+            return@Column
+        }
+        Canvas(Modifier.fillMaxWidth().height(70.dp)) {
+            val min = values.min(); val max = values.max()
+            val span = (max - min).takeIf { it > 0.0 } ?: 1.0
+            val pad = 14f
+            fun pt(i: Int, v: Double) = Offset(
+                i * size.width / (values.size - 1),
+                pad + (size.height - 2 * pad) * (1 - ((v - min) / span)).toFloat(),
+            )
+            val line = Path(); val fill = Path()
+            values.forEachIndexed { i, v ->
+                val p = pt(i, v)
+                if (i == 0) { line.moveTo(p.x, p.y); fill.moveTo(p.x, size.height); fill.lineTo(p.x, p.y) } else { line.lineTo(p.x, p.y); fill.lineTo(p.x, p.y) }
+            }
+            fill.lineTo(size.width, size.height); fill.close()
+            drawPath(fill, Brush.verticalGradient(listOf(color.copy(alpha = 0.35f), Color.Transparent)))
+            drawPath(line, color, style = Stroke(3f, cap = StrokeCap.Round))
+            val last = pt(values.size - 1, values.last())
+            drawCircle(color, 5f, last)
+            val st = TextStyle(color = TextLo, fontSize = 10.sp)
+            drawText(measurer.measure("max ${max.toInt()}", st), topLeft = Offset(0f, -2f))
+            drawText(measurer.measure("min ${min.toInt()}", st), topLeft = Offset(0f, size.height - 14f))
+        }
     }
 }
 

@@ -13,9 +13,31 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.material.icons.outlined.Air
+import androidx.compose.material.icons.outlined.Compress
+import androidx.compose.material.icons.outlined.Flight
+import androidx.compose.material.icons.outlined.FlightTakeoff
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Hub
+import androidx.compose.material.icons.outlined.LocalAirport
+import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.SearchOff
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material.icons.outlined.Thermostat
+import androidx.compose.material.icons.outlined.Water
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.freemetar.app.ui.components.EmptyState
+import com.freemetar.app.ui.components.ListHeader
+import com.freemetar.app.ui.components.windowColumns
+import com.freemetar.app.ui.theme.PanelHi
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.items as rowItems
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -74,6 +96,8 @@ import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
+private val Full = StaggeredGridItemSpan.FullLine
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
@@ -85,13 +109,15 @@ fun HomeScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
 
     PullToRefreshBox(isRefreshing = loading, onRefresh = { vm.refreshFavorites() }, modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            Modifier.fillMaxSize().statusBarsPadding(),
+        LazyVerticalStaggeredGrid(
+            columns = StaggeredGridCells.Fixed(windowColumns()),
+            modifier = Modifier.fillMaxSize().statusBarsPadding(),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalItemSpacing = 12.dp,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item { Header() }
-            item {
+            item(span = Full) { Header() }
+            item(span = Full) {
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it; vm.onQuery(it) },
@@ -106,34 +132,37 @@ fun HomeScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
                     colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = Panel, focusedContainerColor = Panel, unfocusedBorderColor = Line),
                 )
             }
-            item { DbBanner(db) { vm.loadDb(force = true) } }
+            item(span = Full) { DbBanner(db) { vm.loadDb(force = true) } }
 
             if (query.length >= 2) {
                 if (results.isEmpty()) {
-                    item { Text(if (db is DbState.Ready) "Brak wyników. Naciśnij Szukaj, aby spróbować pobrać METAR dla „${query.uppercase()}”." else "Baza lotnisk jeszcze się ładuje…", color = TextLo) }
+                    item(span = Full) {
+                        EmptyState(
+                            Icons.Outlined.SearchOff, "Brak wyników",
+                            if (db is DbState.Ready) "Naciśnij Szukaj na klawiaturze, aby spróbować pobrać METAR dla „${query.uppercase()}”." else "Baza lotnisk jeszcze się ładuje…",
+                        )
+                    }
                 }
-                items(results, key = { "s" + it.ident }) { a -> SearchRow(a) { onOpen(a.ident) } }
+                items(results, key = { "s" + it.ident }, span = { Full }) { a -> SearchRow(a) { onOpen(a.ident) } }
             } else {
                 if (settings.recent.isNotEmpty()) {
-                    item {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("OSTATNIO OGLĄDANE", style = MaterialTheme.typography.labelSmall, color = TextLo, modifier = Modifier.weight(1f))
+                    item(span = Full) {
+                        ListHeader("Ostatnio oglądane", Icons.Outlined.History) {
                             Text("Wyczyść", color = Sky, fontSize = 12.sp, modifier = Modifier.clickable { vm.clearRecent() })
                         }
                         Spacer(Modifier.size(6.dp))
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(settings.recent) { id -> AssistChip(onClick = { onOpen(id) }, label = { Text(id, fontFamily = Mono) }) }
+                            rowItems(settings.recent) { id -> AssistChip(onClick = { onOpen(id) }, label = { Text(id, fontFamily = Mono) }, leadingIcon = { Icon(Icons.Outlined.History, null, modifier = Modifier.size(16.dp)) }) }
                         }
                     }
                 }
-                item {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("ULUBIONE", style = MaterialTheme.typography.labelSmall, color = TextLo, modifier = Modifier.weight(1f))
+                item(span = Full) {
+                    ListHeader("Ulubione", Icons.Outlined.Star) {
                         IconButton({ vm.refreshFavorites() }) { Icon(Icons.Outlined.Refresh, "Odśwież", tint = TextLo) }
                     }
                 }
                 if (settings.favorites.isEmpty()) {
-                    item { Text("Dodaj lotnisko do ulubionych gwiazdką na jego karcie.", color = TextLo) }
+                    item(span = Full) { EmptyState(Icons.Outlined.StarBorder, "Brak ulubionych", "Wyszukaj lotnisko i dotknij gwiazdki na jego karcie.") }
                 }
                 items(settings.favorites, key = { "f$it" }) { id ->
                     FavoriteCard(
@@ -146,7 +175,7 @@ fun HomeScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
                         onDown = { vm.moveFavorite(id, 1) },
                     )
                 }
-                item { Attribution() }
+                item(span = Full) { Attribution() }
             }
         }
     }
@@ -158,12 +187,20 @@ private fun Header() {
     LaunchedEffect(Unit) { while (true) { now = ZonedDateTime.now(ZoneOffset.UTC); delay(1000) } }
     val local = now.withZoneSameInstant(ZoneId.systemDefault())
     Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(46.dp).clip(RoundedCornerShape(14.dp)).background(Sky.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
+            Icon(Icons.Outlined.FlightTakeoff, null, tint = Sky, modifier = Modifier.size(26.dp))
+        }
+        Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(buildLogo(), style = MaterialTheme.typography.headlineLarge)
             Text("Pogoda i dane lotnisk dla wirtualnych pilotów", color = TextLo, fontSize = 13.sp)
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text(now.format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "Z", fontFamily = Mono, fontSize = 20.sp, color = Amber, fontWeight = FontWeight.Bold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Public, null, tint = Amber, modifier = Modifier.size(15.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(now.format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "Z", fontFamily = Mono, fontSize = 20.sp, color = Amber, fontWeight = FontWeight.Bold)
+            }
             Text("LT " + local.format(DateTimeFormatter.ofPattern("HH:mm")), fontFamily = Mono, fontSize = 12.sp, color = TextLo)
         }
     }
@@ -204,7 +241,14 @@ private fun SearchRow(a: Airport, onClick: () -> Unit) {
         Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Panel).clickable(onClick = onClick).padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.width(70.dp)) {
+        Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(PanelHi), contentAlignment = Alignment.Center) {
+            Icon(
+                when (a.type) { "heliport" -> Icons.Outlined.Hub; "seaplane_base" -> Icons.Outlined.Water; "small_airport" -> Icons.Outlined.Flight; else -> Icons.Outlined.LocalAirport },
+                null, tint = Sky, modifier = Modifier.size(20.dp),
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.width(64.dp)) {
             Text(a.ident, fontFamily = Mono, fontWeight = FontWeight.Bold, color = Sky, fontSize = 16.sp)
             if (a.iata.isNotBlank()) Text(a.iata, fontFamily = Mono, color = TextLo, fontSize = 12.sp)
         }
@@ -236,11 +280,10 @@ private fun FavoriteCard(ident: String, name: String?, metar: Metar?, loading: B
             Spacer(Modifier.size(10.dp))
             if (metar != null) {
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    MiniStat("Wiatr", windShort(metar))
-                    MiniStat("Temp", metar.tempC?.let { "${it.toInt()}°" } ?: "—")
-                    MiniStat("QNH", metar.altimHpa?.let { "${it.toInt()}" } ?: "—")
-                    MiniStat("Wid.", metar.visibility ?: "—")
-                    MiniStat("Wiek", ageMinutes(metar.obsTimeEpoch))
+                    MiniStat("Wiatr", windShort(metar), Icons.Outlined.Air)
+                    MiniStat("Temp", metar.tempC?.let { "${it.toInt()}°" } ?: "—", Icons.Outlined.Thermostat)
+                    MiniStat("QNH", metar.altimHpa?.let { "${it.toInt()}" } ?: "—", Icons.Outlined.Compress)
+                    MiniStat("Wiek", ageMinutes(metar.obsTimeEpoch), Icons.Outlined.Schedule)
                 }
                 Spacer(Modifier.size(10.dp))
                 Text(metar.raw, style = RawText, color = TextHi.copy(alpha = 0.85f))
@@ -252,9 +295,13 @@ private fun FavoriteCard(ident: String, name: String?, metar: Metar?, loading: B
 }
 
 @Composable
-private fun MiniStat(label: String, value: String) {
+private fun MiniStat(label: String, value: String, icon: ImageVector) {
     Column {
-        Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextLo, fontSize = 10.sp)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, tint = TextLo, modifier = Modifier.size(11.dp))
+            Spacer(Modifier.width(3.dp))
+            Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextLo, fontSize = 10.sp)
+        }
         Text(value, color = TextHi, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, fontFamily = Mono)
     }
 }

@@ -134,6 +134,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun airportName(ident: String): String? = db.airport(ident)?.name
+    fun airport(ident: String): Airport? = db.airport(ident)
+
+    suspend fun metarsFor(ids: List<String>): Map<String, Metar> =
+        runCatching { WeatherApi.metars(ids) }.getOrDefault(emptyList()).associateBy { it.station }
 
     fun refreshFavorites() = viewModelScope.launch {
         _favLoading.value = true
