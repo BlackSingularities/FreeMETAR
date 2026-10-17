@@ -27,6 +27,12 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
 import com.freemetar.app.data.Locator
+import com.freemetar.app.data.LatLon
+import com.freemetar.app.data.OpenMeteo
+import com.freemetar.app.data.Pirep
+import com.freemetar.app.data.Sigmet
+import com.freemetar.app.data.WindsAloft
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
@@ -48,6 +54,10 @@ data class AirportDetail(
     val navaids: List<Pair<Navaid, Double>> = emptyList(),
     val weather: WeatherBundle? = null,
     val nearbyMetars: Map<String, Metar> = emptyMap(),
+    /** SIGMET obejmujące lotnisko lub do 50 NM od niego, z odległością (0 = nad lotniskiem). */
+    val sigmets: List<Pair<Sigmet, Double>> = emptyList(),
+    val pireps: List<Pirep> = emptyList(),
+    val aloft: WindsAloft? = null,
     val loading: Boolean = true,
     val error: String? = null,
 )
@@ -232,9 +242,50 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val m = runCatching { WeatherApi.metars(near) }.getOrDefault(emptyList()).associateBy { it.station }
                 _detail.update { if (it?.ident == ident) it.copy(nearbyMetars = m) else it }
             }
+            loadHazardsAndAloft(ident)
         } catch (e: Exception) {
             _detail.update { if (it?.ident == ident) it.copy(loading = false, error = e.message ?: "Błąd sieci") else it }
         }
+    }
+
+    /** Zagrożenia (SIGMET, PIREP) i wiatr na wysokościach — dodatki do briefingu, ich brak nie jest błędem. */
+    private suspend fun loadHazardsAndAloft(ident: String) = coroutineScope {
+        val a = _detail.value?.airport
+        val p = a?.let { LatLon(it.lat, it.lon) }
+            ?: _detail.value?.weather?.metar?.let { m -> m.lat?.let { la -> m.lon?.let { lo -> LatLon(la, lo) } } }
+            ?: return@coroutineScope
+        val sig = async { runCatching { WeatherApi.sigmets() }.getOrDefault(emptyList()) }
+        val pir = async { runCatching { WeatherApi.pireps(ident) }.getOrDefault(emptyList()) }
+        val alo = async { runCatching { OpenMeteo.fetch(p.lat, p.lon) }.getOrNull() }
+        val near = sig.await().map { it to it.distanceNm(p) }.filter { it.second <= 50 }.sortedBy { it.second }
+        val reports = pir.await().sortedByDescending { it.obsTime }.take(15)
+        val aloft = alo.await()
+        _detail.update { if (it?.ident == ident) it.copy(sigmets = near, pireps = reports, aloft = aloft) else it }
+    }
+
+    // ---------- mapa ----------
+
+    private val _mapMetars = MutableStateFlow<List<Metar>>(emptyList())
+    val mapMetars = _mapMetars.asStateFlow()
+    private val _mapSigmets = MutableStateFlow<List<Sigmet>>(emptyList())
+    val mapSigmets = _mapSigmets.asStateFlow()
+    private var mapJob: Job? = null
+
+    /** Pogoda dla widocznego obszaru mapy; wywoływane po zatrzymaniu kamery. Pomija zbyt duże obszary (limit 400 stacji). */
+    fun loadMapArea(south: Double, west: Double, north: Double, east: Double) {
+        mapJob?.cancel()
+        mapJob = viewModelScope.launch {
+            delay(350) // odbicie: szybkie przesuwanie mapy nie robi serii zapytań
+            if (north - south > 25 || east - west > 40) return@launch
+            runCatching { WeatherApi.metarsInBox(south, west, north, east) }.onSuccess { _mapMetars.value = it }
+            if (_mapSigmets.value.isEmpty()) runCatching { WeatherApi.sigmets() }.onSuccess { _mapSigmets.value = it }
+        }
+    }
+
+    /** Punkt startowy mapy: ostatnio otwarte lotnisko albo pierwsze ulubione. */
+    fun mapHome(): LatLon? {
+        val id = _detail.value?.ident ?: settings.value.favorites.firstOrNull() ?: return null
+        return db.airport(id)?.let { LatLon(it.lat, it.lon) }
     }
 
     fun toggleFavorite(ident: String) = viewModelScope.launch {

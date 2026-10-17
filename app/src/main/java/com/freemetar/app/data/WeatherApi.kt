@@ -26,6 +26,30 @@ object WeatherApi {
         return json.parseToJsonElement(body).jsonArray.mapNotNull { runCatching { parseMetar(it.jsonObject) }.getOrNull() }
     }
 
+    /** Wszystkie METAR-y w prostokącie (lat0,lon0,lat1,lon1) — do kolorowania mapy jednym zapytaniem. */
+    suspend fun metarsInBox(south: Double, west: Double, north: Double, east: Double): List<Metar> {
+        val box = "%.2f,%.2f,%.2f,%.2f".format(java.util.Locale.US, south, west, north, east)
+        val body = Http.get("$BASE/metar?bbox=$box&format=json")
+        if (body.isBlank()) return emptyList()
+        return json.parseToJsonElement(body).jsonArray.mapNotNull { runCatching { parseMetar(it.jsonObject) }.getOrNull() }
+    }
+
+    private var sigmetCache: Pair<Long, List<Sigmet>>? = null
+
+    /** Globalna lista SIGMET (krajowe USA i międzynarodowe); pamiętana 10 minut, żeby nie przekraczać limitu API. */
+    suspend fun sigmets(): List<Sigmet> {
+        sigmetCache?.let { (t, list) -> if (System.currentTimeMillis() - t < 10 * 60_000) return list }
+        val list = HazardParser.sigmets(Http.get("$BASE/sigmet?format=json"))
+        val now = System.currentTimeMillis() / 1000
+        val valid = list.filter { it.validTo == 0L || it.validTo >= now }
+        sigmetCache = System.currentTimeMillis() to valid
+        return valid
+    }
+
+    /** Raporty pilotów w promieniu od lotniska z ostatnich 3 godzin (głównie USA i Północny Atlantyk). */
+    suspend fun pireps(id: String, distanceNm: Int = 100): List<Pirep> =
+        HazardParser.pireps(Http.get("$BASE/pirep?id=$id&distance=$distanceNm&format=json&age=3"))
+
     suspend fun taf(id: String): Taf? {
         val body = Http.get("$BASE/taf?ids=$id&format=json")
         if (body.isBlank()) return null

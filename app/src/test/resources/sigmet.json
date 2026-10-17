@@ -1,0 +1,131 @@
+[
+ {
+  "icaoId": "MHTG",
+  "firId": "MHTG",
+  "firName": "MHCC CENTRAL AMERICAN",
+  "receiptTime": "2026-10-17T14:30:53.600Z",
+  "issueTime": "2026-10-17T14:30:00.000Z",
+  "validTime": 1792243200,
+  "validTimeFrom": 1792247400,
+  "validTimeTo": 1792269000,
+  "sigmetType": "OBS",
+  "seriesId": "A3",
+  "hazard": "VA",
+  "qualifier": "FUEGO",
+  "base": 0,
+  "top": 14000,
+  "geom": "AREA",
+  "coords": [
+   {
+    "lon": -90.883,
+    "lat": 14.467
+   },
+   {
+    "lon": -90.867,
+    "lat": 14.467
+   },
+   {
+    "lon": -90.867,
+    "lat": 14.05
+   },
+   {
+    "lon": -90.983,
+    "lat": 14.067
+   },
+   {
+    "lon": -90.883,
+    "lat": 14.467
+   }
+  ],
+  "dir": "S",
+  "spd": "15",
+  "chng": null,
+  "rawSigmet": "WVHO31 MHTG 171430\nMHTG SIGMET A3 VALID 171430/172030 MHTG-\nMHCC CENTRAL AMERICAN FIR VA FUEGO PSN N1428 W09052\nVA CLD OBS AT 1320Z SFC/FL140 N1428 W09053 - N1428 W09052\n- N1403 W09052 - N1404 W09059 - N1428 W09053 MOV S 15KT\nFCST 1930Z VA CLD SFC/FL140 N1428 W09053- N1428 W09052\n- N1356 W09057 - N1358 W09105 - N1428 W09053="
+ },
+ {
+  "icaoId": "MHTG",
+  "firId": "MHTG",
+  "firName": "MHCC CENTRAL AMERICAN",
+  "receiptTime": "2026-10-17T14:30:53.607Z",
+  "issueTime": "2026-10-17T14:30:00.000Z",
+  "validTime": 1792243200,
+  "validTimeFrom": 1792247400,
+  "validTimeTo": 1792269000,
+  "sigmetType": "FCST",
+  "seriesId": "A3F",
+  "hazard": "VA",
+  "qualifier": "FUEGO",
+  "base": 0,
+  "top": 14000,
+  "geom": "AREA",
+  "coords": [
+   {
+    "lon": -90.883,
+    "lat": 14.467
+   },
+   {
+    "lon": -90.867,
+    "lat": 14.467
+   },
+   {
+    "lon": -90.95,
+    "lat": 13.933
+   },
+   {
+    "lon": -91.083,
+    "lat": 13.967
+   },
+   {
+    "lon": -90.883,
+    "lat": 14.467
+   }
+  ],
+  "dir": "S",
+  "spd": "15",
+  "chng": null,
+  "rawSigmet": "WVHO31 MHTG 171430\nMHTG SIGMET A3 VALID 171430/172030 MHTG-\nMHCC CENTRAL AMERICAN FIR VA FUEGO PSN N1428 W09052\nVA CLD OBS AT 1320Z SFC/FL140 N1428 W09053 - N1428 W09052\n- N1403 W09052 - N1404 W09059 - N1428 W09053 MOV S 15KT\nFCST 1930Z VA CLD SFC/FL140 N1428 W09053- N1428 W09052\n- N1356 W09057 - N1358 W09105 - N1428 W09053="
+ },
+ {
+  "icaoId": "SEQU",
+  "firId": "SEFG",
+  "firName": "SEFG GUAYAQUIL",
+  "receiptTime": "2026-10-17T14:39:59.924Z",
+  "issueTime": "2026-10-17T14:37:00.000Z",
+  "validTime": 1792245600,
+  "validTimeFrom": 1792247820,
+  "validTimeTo": 1792269420,
+  "sigmetType": "OBS",
+  "seriesId": "3",
+  "hazard": "VA",
+  "qualifier": "ERUPTION MT SANGAY",
+  "base": 0,
+  "top": 26000,
+  "geom": "AREA",
+  "coords": [
+   {
+    "lon": -78.667,
+    "lat": -1.9
+   },
+   {
+    "lon": -78.317,
+    "lat": -2
+   },
+   {
+    "lon": -78.333,
+    "lat": -2.017
+   },
+   {
+    "lon": -78.717,
+    "lat": -2.033
+   },
+   {
+    "lon": -78.667,
+    "lat": -1.9
+   }
+  ],
+  "dir": "W",
+  "spd": "20",
+  "chng": null,
+  "rawSigmet": "WVEQ31 SEQU 171437\nSEFG SIGMET 3 VALID 171437/172037 SEGU-\nSEFG GUAYAQUIL FIR VA ERUPTION MT SANGAY PSN S0200 W07820\nVA CLD OBS AT 1400Z WI S0154 W07840 - S0200 W07819 - S0201 W07820 -\nS0202 W07843 - S0154 W07840 SFC/FL260 MOV W 20KT\nFCST AT 2000Z WI S0142 W07841 - S0200 W07819 - S0202 W07820 - S0152\nW07849 - S0142 W07841="
+ }
+]

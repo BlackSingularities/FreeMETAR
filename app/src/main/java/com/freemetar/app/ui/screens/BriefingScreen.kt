@@ -47,7 +47,7 @@ import androidx.compose.material.icons.outlined.Radio
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material.icons.outlined.ShowChart
+import androidx.compose.material.icons.automirrored.outlined.ShowChart
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.Stop
@@ -128,7 +128,7 @@ import kotlin.math.roundToInt
 private val hhmm = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneOffset.UTC)
 
 /** Rozdziały briefingu w kolejności czytania. */
-private enum class Part(val label: String) { WEATHER("Pogoda"), TAF("Prognoza"), RUNWAYS("Pasy"), RADIO("Radio"), AIRPORT("Lotnisko"), NEARBY("Okolica") }
+private enum class Part(val label: String) { WEATHER("Pogoda"), HAZARDS("Zagrożenia"), TAF("Prognoza"), ALOFT("Wysokości"), RUNWAYS("Pasy"), RADIO("Radio"), AIRPORT("Lotnisko"), NEARBY("Okolica") }
 
 @Composable
 fun BriefingScreen(vm: MainViewModel, onBack: () -> Unit, onOpen: (String) -> Unit) {
@@ -148,7 +148,9 @@ fun BriefingScreen(vm: MainViewModel, onBack: () -> Unit, onOpen: (String) -> Un
             Row(Modifier.fillMaxSize()) {
                 LazyColumn(Modifier.weight(1f).fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
                     item { WeatherPart(detail, settings) }
+                    item { HazardsPart(detail) }
                     item { TafPart(detail) }
+                    item { AloftPart(detail, settings) }
                 }
                 Box(Modifier.width(1.dp).fillMaxSize().background(c.rule))
                 LazyColumn(Modifier.weight(1f).fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
@@ -163,7 +165,9 @@ fun BriefingScreen(vm: MainViewModel, onBack: () -> Unit, onOpen: (String) -> Un
             JumpBar(list)
             LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(bottom = 24.dp)) {
                 item(key = Part.WEATHER) { WeatherPart(detail, settings) }
+                item(key = Part.HAZARDS) { HazardsPart(detail) }
                 item(key = Part.TAF) { TafPart(detail) }
+                item(key = Part.ALOFT) { AloftPart(detail, settings) }
                 item(key = Part.RUNWAYS) { RunwaysPart(detail) }
                 item(key = Part.RADIO) { RadioPart(detail) }
                 item(key = Part.AIRPORT) { AirportPart(detail, settings) }
@@ -259,7 +263,7 @@ private fun WeatherPart(d: AirportDetail, s: Settings) {
         }
         if (m.clouds.isNotEmpty()) Section("Chmury", Icons.Outlined.Layers) { Clouds(m, s) }
         val hist = d.weather?.history.orEmpty()
-        if (hist.size >= 3) Section("Ostatnie 12 godzin", Icons.Outlined.ShowChart) { Trends(hist.reversed()) }
+        if (hist.size >= 3) Section("Ostatnie 12 godzin", Icons.AutoMirrored.Outlined.ShowChart) { Trends(hist.reversed()) }
         if (hist.size > 1) Section("Wcześniejsze depesze", Icons.Outlined.History) { History(hist.drop(1)) }
     }
 }

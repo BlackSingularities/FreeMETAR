@@ -35,6 +35,35 @@ object Geo {
         return (atan2(y, x).deg() + 360) % 360
     }
 
+    /** Test promienia (ray casting) w układzie lat/lon — wystarczający dla obszarów SIGMET. */
+    fun pointInPolygon(p: com.freemetar.app.data.LatLon, poly: List<com.freemetar.app.data.LatLon>): Boolean {
+        var inside = false
+        var j = poly.size - 1
+        for (i in poly.indices) {
+            val a = poly[i]; val b = poly[j]
+            if ((a.lat > p.lat) != (b.lat > p.lat) &&
+                p.lon < (b.lon - a.lon) * (p.lat - a.lat) / (b.lat - a.lat) + a.lon
+            ) inside = !inside
+            j = i
+        }
+        return inside
+    }
+
+    /** Najmniejsza odległość punktu od krawędzi wielokąta (NM), próbkując każdą krawędź. */
+    fun distanceToPolygonNm(p: com.freemetar.app.data.LatLon, poly: List<com.freemetar.app.data.LatLon>): Double {
+        if (poly.isEmpty()) return Double.MAX_VALUE
+        var best = Double.MAX_VALUE
+        for (i in poly.indices) {
+            val a = poly[i]; val b = poly[(i + 1) % poly.size]
+            for (k in 0..10) {
+                val t = k / 10.0
+                val d = distanceNm(p.lat, p.lon, a.lat + (b.lat - a.lat) * t, a.lon + (b.lon - a.lon) * t)
+                if (d < best) best = d
+            }
+        }
+        return best
+    }
+
     fun compass(deg: Double): String {
         val dirs = listOf("N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW")
         return dirs[((deg / 22.5) + 0.5).toInt() % 16]

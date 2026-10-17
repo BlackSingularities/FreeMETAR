@@ -185,7 +185,12 @@ class MainActivity : ComponentActivity() {
                                         nav.navigate("airport/$id")
                                     })
                                 }
-                                composable("map") { MapScreen() }
+                                composable("map") {
+                                    MapScreen(vm) { ident ->
+                                        vm.open(ident)
+                                        nav.navigate("airport/$ident")
+                                    }
+                                }
                                 composable("flight") { FlightScreen() }
                                 composable("tools") { ToolsScreen(vm) }
                                 composable("settings") { SettingsScreen(vm) }
