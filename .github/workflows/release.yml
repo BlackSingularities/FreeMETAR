@@ -68,3 +68,32 @@ jobs:
             --title "OpenAirBook $VERSION" \
             --notes "$NOTES" \
             --target "$GITHUB_SHA"
+
+  # OpenAirBook Link (most MSFS ↔ telefon) — dołączany do tego samego release co APK.
+  # Osobny job po APK: jego błąd nie blokuje wydania aplikacji.
+  link:
+    needs: release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Testy
+        run: dotnet test bridge/OpenAirBookLink.Tests/OpenAirBookLink.Tests.csproj -c Release
+
+      - name: Publikuj OpenAirBook-Link.exe
+        shell: bash
+        run: |
+          VERSION="1.0.${GITHUB_RUN_NUMBER}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          dotnet publish bridge/OpenAirBookLink/OpenAirBookLink.csproj -c Release -o publish -p:Version=$VERSION
+          cp publish/OpenAirBook-Link.exe OpenAirBook-Link.exe
+
+      - name: Dołącz do release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "v$VERSION" OpenAirBook-Link.exe --clobber
