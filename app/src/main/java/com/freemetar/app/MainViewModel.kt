@@ -27,6 +27,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
 import com.freemetar.app.data.Locator
+import com.freemetar.app.data.ProcSelection
+import com.freemetar.app.data.RoutePoint
+import com.freemetar.app.domain.RouteEdit
 import com.freemetar.app.data.nav.AirportNav
 import com.freemetar.app.data.nav.NavDataStore
 import com.freemetar.app.data.nav.NavRepository
@@ -234,12 +237,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val m = async { runCatching { WeatherApi.metars(ids) }.getOrDefault(emptyList()).associateBy { it.station } }
             val t = async { ids.mapNotNull { id -> runCatching { WeatherApi.taf(id) }.getOrNull()?.let { id to it } }.toMap() }
             val sig = async {
-                val pts = r.points.filter { it.hasPosition }.map { LatLon(it.lat!!, it.lon!!) }
+                val pts = r.fullPath().filter { it.hasPosition }.map { LatLon(it.lat!!, it.lon!!) }
                 runCatching { WeatherApi.sigmets() }.getOrDefault(emptyList())
                     .filter { s -> pts.any { p -> s.distanceNm(p) <= 25 } }
             }
             val winds = async {
-                val pts = r.points.filter { it.hasPosition }
+                val pts = r.fullPath().filter { it.hasPosition }
                 val fl = r.cruiseFl
                 if (pts.isEmpty() || fl == null) emptyList() else
                     listOf(pts.first(), pts[pts.size / 2], pts.last()).distinct().map { p ->
@@ -345,6 +348,91 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         link.disconnect()
         link.stopDiscovery()
         super.onCleared()
+    }
+
+    // ---------- edytor planu lotu ----------
+
+    private val _editing = MutableStateFlow<SavedRoute?>(null)
+    /** Kopia trasy w edycji; zapisywana dopiero po [saveEdit]. */
+    val editing = _editing.asStateFlow()
+    private val _editNav = MutableStateFlow<Map<String, AirportNav>>(emptyMap())
+    /** Dane MSFS lotnisk edytowanej trasy (pasy, procedury). */
+    val editNav = _editNav.asStateFlow()
+    private val _editBusy = MutableStateFlow<String?>(null)
+    val editBusy = _editBusy.asStateFlow()
+
+    /** Oznaczenia pasów z bazy OurAirports (gdy brak danych MSFS). */
+    fun airportRunwayIdents(icao: String): List<String> =
+        db.runways(icao).flatMap { listOf(it.le.ident, it.he.ident) }.filter { it.isNotBlank() }.distinct()
+
+    fun startEdit(id: String) {
+        val r = _routes.value.firstOrNull { it.id == id } ?: return
+        _editing.value = r
+        refreshEditNav(listOf(r.origin, r.destination), refresh = false)
+    }
+
+    fun refreshEditNav(icaos: List<String>, refresh: Boolean) = viewModelScope.launch {
+        _editBusy.value = if (nav.connected) "Pobieranie procedur z MSFS…" else null
+        val map = _editNav.value.toMutableMap()
+        icaos.distinct().forEach { id -> runCatching { nav.airport(id, refresh) }.getOrNull()?.let { map[id] = it } }
+        _editNav.value = map
+        _editBusy.value = null
+    }
+
+    fun editUpdate(change: (SavedRoute) -> SavedRoute) { _editing.update { it?.let(change) } }
+
+    fun cancelEdit() { _editing.value = null }
+
+    fun saveEdit() = viewModelScope.launch {
+        val r = _editing.value ?: return@launch
+        _routes.value = _routes.value.map { if (it.id == r.id) r else it }
+        routeStore.save(_routes.value)
+        _editing.value = null
+        _flightMessage.value = "Zapisano plan ${r.name}."
+        if (settings.value.activeRouteId == r.id) refreshRouteBriefing(r)
+    }
+
+    /** Wybór SID / STAR / podejścia: odcinki z pamięci telefonu albo z MSFS przez Link. */
+    fun chooseProcedure(kind: String, icao: String, name: String?, runway: String?, transition: String?, label: String?) = viewModelScope.launch {
+        if (name == null) {
+            editUpdate { r ->
+                when (kind) {
+                    "departure" -> RouteEdit.setDeparture(r, runway, null)
+                    "arrival" -> RouteEdit.setArrival(r, null)
+                    else -> RouteEdit.setApproach(r, runway, null)
+                }
+            }
+            return@launch
+        }
+        _editBusy.value = "Pobieranie odcinków $name…"
+        val legs = runCatching { nav.legs(icao, kind, name, runway, transition) }.getOrNull()
+        _editBusy.value = null
+        val segment = when (kind) { "departure" -> "sid"; "arrival" -> "star"; else -> "approach" }
+        val sel = ProcSelection(kind, name, runway, transition, label, legs?.let { RouteEdit.legsToPoints(it.legs, segment) }.orEmpty())
+        if (legs == null) _flightMessage.value = "Brak odcinków $name w pamięci — połącz się z OpenAirBook Link, aby pobrać je z MSFS."
+        editUpdate { r ->
+            when (kind) {
+                "departure" -> RouteEdit.setDeparture(r, runway, sel)
+                "arrival" -> RouteEdit.setArrival(r, sel)
+                else -> RouteEdit.setApproach(r, runway, sel)
+            }
+        }
+    }
+
+    /** Dodanie punktu po identyfikatorze: najpierw baza OurAirports (lotniska, VOR, NDB), potem punkty MSFS. */
+    fun addFix(ident: String, index: Int) = viewModelScope.launch {
+        val r = _editing.value ?: return@launch
+        val id = ident.trim().uppercase()
+        if (id.isEmpty()) return@launch
+        val before = (listOf(r.points.firstOrNull()) + r.enroute.take(index)).lastOrNull { it?.hasPosition == true }
+        val near = before?.let { LatLon(it.lat!!, it.lon!!) }
+        val p = db.fixResolver.resolve(id, near)
+            ?: nav.fixes(id, near?.lat, near?.lon).firstOrNull()?.let { RoutePoint(it.ident, it.lat, it.lon, it.type) }
+        if (p == null) {
+            _flightMessage.value = "Nie znaleziono punktu $id" + if (!nav.connected) ". Punkty RNAV są w bazie MSFS — połącz się z OpenAirBook Link." else "."
+            return@launch
+        }
+        editUpdate { RouteEdit.insert(it, index, p) }
     }
 
     private val _nearMe = MutableStateFlow<NearMe>(NearMe.Idle)

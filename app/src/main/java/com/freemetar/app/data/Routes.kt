@@ -28,8 +28,25 @@ data class RoutePoint(
     val windKt: Int? = null,
     val oatC: Int? = null,
     val airway: String? = null,
+    /** Ograniczenie wysokości z procedury, np. „5000A”. */
+    val constraint: String? = null,
+    /** Odcinek trasy: sid / enroute / star / approach (null = enroute dla starszych plików). */
+    val segment: String? = null,
 ) {
     val hasPosition get() = lat != null && lon != null
+}
+
+/** Wybrana procedura (SID, STAR, podejście) z przejściem i odcinkami z bazy MSFS. */
+@Serializable
+data class ProcSelection(
+    val type: String,               // departure / arrival / approach
+    val name: String,
+    val runway: String? = null,
+    val transition: String? = null,
+    val label: String? = null,      // np. „ILS 29”
+    val points: List<RoutePoint> = emptyList(),
+) {
+    val display: String get() = listOfNotNull(label ?: name, transition?.let { "przez $it" }).joinToString(" ")
 }
 
 @Serializable
@@ -52,10 +69,43 @@ data class SavedRoute(
     val eteMin: Int? = null,
     val fuel: FuelPlan? = null,
     val createdAt: Long = System.currentTimeMillis(),
+    val depRunway: String? = null,
+    val arrRunway: String? = null,
+    val departure: ProcSelection? = null,
+    val arrival: ProcSelection? = null,
+    val approach: ProcSelection? = null,
 ) {
+    /** Punkty trasy między lotniskami (bez lotnisk na końcach). */
+    val enroute: List<RoutePoint> get() = if (points.size <= 2) emptyList() else points.subList(1, points.size - 1)
+
+    /**
+     * Pełna ścieżka do mapy i ND: lotnisko → SID → trasa → STAR → podejście → lotnisko.
+     * Kolejne powtórzenia tego samego punktu (np. koniec SID = początek trasy) są łączone.
+     */
+    fun fullPath(): List<RoutePoint> {
+        val origin = points.firstOrNull()
+        val dest = points.lastOrNull()?.takeIf { points.size > 1 }
+        val seq = buildList {
+            origin?.let(::add)
+            departure?.points?.let(::addAll)
+            enroute.forEach { add(if (it.segment == null) it.copy(segment = "enroute") else it) }
+            arrival?.points?.let(::addAll)
+            approach?.points?.let(::addAll)
+            dest?.let(::add)
+        }
+        return seq.fold(ArrayList<RoutePoint>()) { acc, p ->
+            val last = acc.lastOrNull()
+            if (last != null && last.ident == p.ident && (p.lat == null || last.lat == null || kotlin.math.abs(last.lat - p.lat) < 0.01)) {
+                // Zostaw wersję z ograniczeniem / segmentem procedury
+                acc[acc.lastIndex] = if (p.constraint != null || last.segment == "enroute") p.copy(lat = p.lat ?: last.lat, lon = p.lon ?: last.lon) else last
+            } else acc += p
+            acc
+        }
+    }
+
     /** Długość po punktach z pozycją (gdy brak danych z planu). */
     fun measuredDistanceNm(): Int? {
-        val p = points.filter { it.hasPosition }
+        val p = fullPath().filter { it.hasPosition }
         if (p.size < 2) return null
         return p.zipWithNext { a, b -> Geo.distanceNm(a.lat!!, a.lon!!, b.lat!!, b.lon!!) }.sum().toInt()
     }
@@ -201,13 +251,31 @@ object SimBrief {
         }
         val o = origin.str("icao_code")!!; val d = dest.str("icao_code")!!
         val flight = listOfNotNull(general?.str("icao_airline"), general?.str("flight_number")).joinToString("")
+
+        // Punkty SID/STAR z navlogu (is_sid_star=1): przed pierwszym punktem trasy to SID, po ostatnim — STAR.
+        // Wyodrębnione jako procedury, żeby edytor mógł je wymienić na inne z bazy MSFS.
+        val mid = points.subList(1, points.size - 1)
+        val sidFlags = fixes.filter { f -> f.str("ident") != o && f.str("ident") != d }.map { it.str("is_sid_star") == "1" }
+        val firstEnroute = sidFlags.indexOfFirst { !it }.let { if (it < 0) sidFlags.size else it }
+        val lastEnroute = sidFlags.indexOfLast { !it }
+        val sidPts = mid.take(firstEnroute).map { it.copy(segment = "sid") }
+        val starPts = if (lastEnroute >= 0 && lastEnroute < mid.lastIndex) mid.drop(lastEnroute + 1).map { it.copy(segment = "star") } else emptyList()
+        val enroutePts = mid.drop(sidPts.size).dropLast(starPts.size)
+        val sidName = sidPts.firstNotNullOfOrNull { it.airway }
+        val starName = starPts.lastOrNull()?.airway ?: starPts.firstNotNullOfOrNull { it.airway }
+        val depRwy = origin.str("plan_rwy")
+        val arrRwy = dest.str("plan_rwy")
         return SavedRoute(
+            depRunway = depRwy,
+            arrRunway = arrRwy,
+            departure = if (sidPts.isNotEmpty()) ProcSelection("departure", sidName ?: "SID", depRwy, null, sidName, sidPts) else null,
+            arrival = if (starPts.isNotEmpty()) ProcSelection("arrival", starName ?: "STAR", arrRwy, null, starName, starPts) else null,
             name = listOf(flight.ifBlank { null }, "$o → $d").filterNotNull().joinToString(" "),
             origin = o, destination = d,
             alternates = alternates,
             cruiseFl = general?.int("initial_altitude")?.let { if (it > 1000) it / 100 else it },
             routeText = general?.str("route").orEmpty(),
-            points = points,
+            points = listOf(points.first()) + enroutePts + points.last(),
             source = "simbrief",
             aircraft = root.obj("aircraft")?.let { listOfNotNull(it.str("icaocode") ?: it.str("icao_code"), it.str("reg")).joinToString(" ") }?.ifBlank { null },
             distanceNm = general?.int("route_distance") ?: general?.int("air_distance"),

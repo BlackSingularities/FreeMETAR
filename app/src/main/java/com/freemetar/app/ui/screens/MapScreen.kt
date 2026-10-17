@@ -81,6 +81,7 @@ private const val SRC_SIGMET = "oab-sigmets"
 private const val LYR_METAR = "oab-metar-dots"
 private const val SRC_ROUTE = "oab-route"
 private const val SRC_ROUTE_PTS = "oab-route-points"
+private const val SRC_ROUTE_PROC = "oab-route-proc"
 private const val SRC_PLANE = "oab-plane"
 private const val SRC_TRACK = "oab-track"
 private const val IMG_PLANE = "oab-plane-icon"
@@ -122,15 +123,26 @@ private fun sigmetFeatures(list: List<Sigmet>): FeatureCollection =
         Feature.fromGeometry(Polygon.fromLngLats(listOf(ring))).apply { addStringProperty("id", s.id) }
     })
 
-private fun routeLine(r: SavedRoute?): FeatureCollection {
-    val pts = r?.points?.filter { it.hasPosition }.orEmpty()
+/**
+ * Odcinki pełnej ścieżki rozdzielone na trasę (linia ciągła) i procedury SID/STAR/podejście (kreskowana).
+ * Odcinek należy do procedury, gdy jego punkt końcowy jest punktem procedury.
+ */
+private fun routeLines(r: SavedRoute?, procedures: Boolean): FeatureCollection {
+    val pts = r?.fullPath()?.filter { it.hasPosition }.orEmpty()
     if (pts.size < 2) return FeatureCollection.fromFeatures(emptyList())
-    return FeatureCollection.fromFeature(Feature.fromGeometry(LineString.fromLngLats(pts.map { Point.fromLngLat(it.lon!!, it.lat!!) })))
+    val feats = pts.zipWithNext().filter { (a, b) ->
+        val proc = b.segment in setOf("sid", "star", "approach") || (a.segment == "sid" && b.type == "airport")
+        proc == procedures
+    }.map { (a, b) -> Feature.fromGeometry(LineString.fromLngLats(listOf(Point.fromLngLat(a.lon!!, a.lat!!), Point.fromLngLat(b.lon!!, b.lat!!)))) }
+    return FeatureCollection.fromFeatures(feats)
 }
 
 private fun routePoints(r: SavedRoute?): FeatureCollection =
-    FeatureCollection.fromFeatures(r?.points?.filter { it.hasPosition }.orEmpty().map { p ->
-        Feature.fromGeometry(Point.fromLngLat(p.lon!!, p.lat!!)).apply { addStringProperty("id", p.ident) }
+    FeatureCollection.fromFeatures(r?.fullPath()?.filter { it.hasPosition }.orEmpty().map { p ->
+        Feature.fromGeometry(Point.fromLngLat(p.lon!!, p.lat!!)).apply {
+            // Etykieta z ograniczeniem wysokości, jak na chartach
+            addStringProperty("id", p.ident + (p.constraint?.let { " $it" } ?: ""))
+        }
     })
 
 /** Mapa pogody: lotniska w kolorach kategorii lotu i obszary SIGMET; dotknięcie lotniska otwiera briefing. */
@@ -228,12 +240,13 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
         )
     }
     LaunchedEffect(style, route) {
-        (style?.getSource(SRC_ROUTE) as? GeoJsonSource)?.setGeoJson(routeLine(route))
+        (style?.getSource(SRC_ROUTE) as? GeoJsonSource)?.setGeoJson(routeLines(route, procedures = false))
+        (style?.getSource(SRC_ROUTE_PROC) as? GeoJsonSource)?.setGeoJson(routeLines(route, procedures = true))
         (style?.getSource(SRC_ROUTE_PTS) as? GeoJsonSource)?.setGeoJson(routePoints(route))
     }
     // „Pokaż na mapie” z sekcji Lot: wykadruj całą trasę
     LaunchedEffect(style, focus, route) {
-        val pts = route?.points?.filter { it.hasPosition }.orEmpty()
+        val pts = route?.fullPath()?.filter { it.hasPosition }.orEmpty()
         if (style == null || focus == handledFocus || pts.size < 2) return@LaunchedEffect
         handledFocus = focus
         val bounds = LatLngBounds.Builder().apply { pts.forEach { include(LatLng(it.lat!!, it.lon!!)) } }.build()
@@ -292,6 +305,10 @@ private fun addOverlay(st: Style, c: FmColors) {
     st.addSource(GeoJsonSource(SRC_ROUTE))
     st.addLayer(LineLayer("oab-route-line", SRC_ROUTE).withProperties(
         PropertyFactory.lineColor(hex(c.magenta)), PropertyFactory.lineWidth(3.5f),
+    ))
+    st.addSource(GeoJsonSource(SRC_ROUTE_PROC))
+    st.addLayer(LineLayer("oab-route-proc-line", SRC_ROUTE_PROC).withProperties(
+        PropertyFactory.lineColor(hex(c.magenta)), PropertyFactory.lineWidth(2.5f), PropertyFactory.lineDasharray(arrayOf(2f, 1.5f)),
     ))
     st.addSource(GeoJsonSource(SRC_ROUTE_PTS))
     st.addLayer(CircleLayer("oab-route-pts", SRC_ROUTE_PTS).withProperties(

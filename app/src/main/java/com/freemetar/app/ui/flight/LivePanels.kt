@@ -166,7 +166,7 @@ fun LiveSection(s: FlightState, route: SavedRoute?, link: LinkClient) {
         if (wide) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box(Modifier.weight(1.1f).clip(RoundedCornerShape(8.dp))) { Pfd(s) }
-                Box(Modifier.weight(1f).clip(RoundedCornerShape(8.dp))) { NavDisplay(s, route?.points.orEmpty(), range) }
+                Box(Modifier.weight(1f).clip(RoundedCornerShape(8.dp))) { NavDisplay(s, route?.fullPath().orEmpty(), range) }
             }
             RangeRow(range) { range = it }
             Spacer(Modifier.size(12.dp))
@@ -184,7 +184,7 @@ fun LiveSection(s: FlightState, route: SavedRoute?, link: LinkClient) {
             when (view) {
                 LiveView.PFD -> Box(Modifier.clip(RoundedCornerShape(8.dp))) { Pfd(s) }
                 LiveView.ND -> {
-                    Box(Modifier.clip(RoundedCornerShape(8.dp))) { NavDisplay(s, route?.points.orEmpty(), range) }
+                    Box(Modifier.clip(RoundedCornerShape(8.dp))) { NavDisplay(s, route?.fullPath().orEmpty(), range) }
                     RangeRow(range) { range = it }
                 }
                 else -> PanelFor(view, s, link)
@@ -219,7 +219,7 @@ private fun RangeRow(range: Int, onRange: (Int) -> Unit) {
 private fun Progress(s: FlightState, route: SavedRoute?) {
     val c = Fm.c
     val lat = s.position.lat; val lon = s.position.lon
-    val dest = route?.points?.lastOrNull { it.hasPosition }
+    val dest = route?.fullPath()?.lastOrNull { it.hasPosition }
     val gs = s.speed.gsKt ?: 0.0
     val toDest = if (lat != null && lon != null && dest != null) Geo.distanceNm(lat, lon, dest.lat!!, dest.lon!!) else null
     val eteMin = if (toDest != null && gs > 50) toDest / gs * 60 else null

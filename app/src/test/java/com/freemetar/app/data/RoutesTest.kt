@@ -114,4 +114,26 @@ class RoutesTest {
     fun measuredDistanceNeedsTwoPositions() {
         assertNull(SavedRoute(name = "x", origin = "A", destination = "B", points = listOf(RoutePoint("A"), RoutePoint("B"))).measuredDistanceNm())
     }
+
+    @Test
+    fun simbriefSidAndStarRecognised() {
+        val body = """
+        {"fetch":{"status":"Success"},"general":{"initial_altitude":"35000"},
+         "origin":{"icao_code":"EPWA","pos_lat":"52.16","pos_long":"20.96","plan_rwy":"29"},
+         "destination":{"icao_code":"EPGD","pos_lat":"54.37","pos_long":"18.46","plan_rwy":"11"},
+         "navlog":{"fix":[
+           {"ident":"WA401","pos_lat":"52.2","pos_long":"20.8","is_sid_star":"1","via_airway":"LAPS1G"},
+           {"ident":"LAPSO","pos_lat":"52.4","pos_long":"20.6","is_sid_star":"1","via_airway":"LAPS1G"},
+           {"ident":"BIMPA","pos_lat":"53.2","pos_long":"20.1","is_sid_star":"0","via_airway":"N871"},
+           {"ident":"GD452","pos_lat":"54.0","pos_long":"18.9","is_sid_star":"1","via_airway":"BIMP2A"},
+           {"ident":"EPGD","pos_lat":"54.37","pos_long":"18.46","is_sid_star":"0"}]}}
+        """.trimIndent()
+        val r = SimBrief.parse(body)
+        assertEquals("29", r.depRunway); assertEquals("11", r.arrRunway)
+        assertEquals("LAPS1G", r.departure!!.name)
+        assertEquals(listOf("WA401", "LAPSO"), r.departure!!.points.map { it.ident })
+        assertEquals("BIMP2A", r.arrival!!.name)
+        assertEquals(listOf("BIMPA"), r.enroute.map { it.ident })
+        assertEquals(listOf("EPWA", "WA401", "LAPSO", "BIMPA", "GD452", "EPGD"), r.fullPath().map { it.ident })
+    }
 }

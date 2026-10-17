@@ -86,7 +86,7 @@ import java.util.Date
 /** Sekcja Lot: aktywny plan z pogodą na trasie, import (SimBrief, tekst, plik), zapisane trasy, symulator. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> Unit) {
+fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> Unit, onEditPlan: (String) -> Unit) {
     val c = Fm.c
     val settings by vm.settings.collectAsStateWithLifecycle()
     val routes by vm.routes.collectAsStateWithLifecycle()
@@ -110,7 +110,7 @@ fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> U
             live?.let { LiveSection(it, active, vm.link) }
             ConnectionSection(vm)
 
-            if (active != null) ActivePlan(active, briefing, onOpen, onShowMap) { vm.refreshRouteBriefing() }
+            if (active != null) ActivePlan(active, briefing, onOpen, onShowMap, { onEditPlan(active.id) }) { vm.refreshRouteBriefing() }
 
             Section("Nowy plan lotu", Icons.Outlined.CloudDownload) {
                 var user by rememberSaveable(settings.simbriefUser) { mutableStateOf(settings.simbriefUser) }
@@ -159,7 +159,7 @@ fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> U
                         style = MaterialTheme.typography.bodyMedium, color = c.ink2)
                 }
                 var toDelete by remember { mutableStateOf<SavedRoute?>(null) }
-                routes.forEach { r -> RouteRow(r, r.id == active?.id, onClick = { vm.activateRoute(r.id) }, onDelete = { toDelete = r }) }
+                routes.forEach { r -> RouteRow(r, r.id == active?.id, onClick = { vm.activateRoute(r.id) }, onEdit = { onEditPlan(r.id) }, onDelete = { toDelete = r }) }
                 toDelete?.let { r ->
                     AlertDialog(
                         onDismissRequest = { toDelete = null },
@@ -179,9 +179,10 @@ fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> U
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ActivePlan(r: SavedRoute, b: RouteBriefing?, onOpen: (String) -> Unit, onShowMap: () -> Unit, onRefresh: () -> Unit) {
+private fun ActivePlan(r: SavedRoute, b: RouteBriefing?, onOpen: (String) -> Unit, onShowMap: () -> Unit, onEdit: () -> Unit, onRefresh: () -> Unit) {
     val c = Fm.c
     Section(r.name, Icons.Outlined.Route, trailing = {
+        IconButton(onEdit) { Icon(Icons.Outlined.Edit, "Edytuj plan: procedury i punkty", tint = c.ink) }
         IconButton(onShowMap) { Icon(Icons.Outlined.Map, "Pokaż trasę na mapie", tint = c.ink) }
         IconButton(onRefresh) { Icon(Icons.Outlined.Refresh, "Odśwież pogodę na trasie", tint = c.ink2) }
     }) {
@@ -196,6 +197,11 @@ private fun ActivePlan(r: SavedRoute, b: RouteBriefing?, onOpen: (String) -> Uni
                 r.fuel?.let { f -> Fact("Rezerwa", f.reserve?.let { "$it ${f.unit}" } ?: "—", sub = f.alternate?.let { "do zapasowego $it ${f.unit}" }) },
             ),
         )
+        val procs = listOfNotNull(
+            r.depRunway?.let { "RWY $it" }, r.departure?.let { "SID ${it.display}" },
+            r.arrival?.let { "STAR ${it.display}" }, r.approach?.let { it.display } ?: r.arrRunway?.let { "lądowanie RWY $it" },
+        )
+        if (procs.isNotEmpty()) Text(procs.joinToString(" · "), fontFamily = Mono, fontSize = 12.sp, color = c.ink2, modifier = Modifier.padding(top = 10.dp))
         Spacer(Modifier.size(12.dp))
         val roles = listOf(r.origin to "Start", r.destination to "Cel") + r.alternates.map { it to "Zapasowe" }
         roles.forEach { (id, role) ->
@@ -238,7 +244,7 @@ private fun ActivePlan(r: SavedRoute, b: RouteBriefing?, onOpen: (String) -> Uni
                 }
             }
         }
-        val alts = r.points.mapNotNull { it.altitudeFt?.toDouble() }
+        val alts = r.fullPath().mapNotNull { it.altitudeFt?.toDouble() }
         if (alts.size >= 3) {
             Spacer(Modifier.size(12.dp))
             TrendChart("Profil wysokości (ft)", alts, "", c.magenta, Modifier.fillMaxWidth())
@@ -251,7 +257,7 @@ private fun ActivePlan(r: SavedRoute, b: RouteBriefing?, onOpen: (String) -> Uni
 }
 
 @Composable
-private fun RouteRow(r: SavedRoute, active: Boolean, onClick: () -> Unit, onDelete: () -> Unit) {
+private fun RouteRow(r: SavedRoute, active: Boolean, onClick: () -> Unit, onEdit: () -> Unit, onDelete: () -> Unit) {
     val c = Fm.c
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable(onClick = onClick).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(10.dp).clip(CircleShape).background(if (active) c.magenta else c.terrain))
@@ -268,6 +274,7 @@ private fun RouteRow(r: SavedRoute, active: Boolean, onClick: () -> Unit, onDele
                 style = MaterialTheme.typography.bodySmall, color = c.ink2,
             )
         }
+        IconButton(onEdit) { Icon(Icons.Outlined.Edit, "Edytuj trasę", tint = c.ink2) }
         IconButton(onDelete) { Icon(Icons.Outlined.Delete, "Usuń trasę", tint = c.ink2) }
     }
 }

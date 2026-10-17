@@ -61,6 +61,7 @@ import com.freemetar.app.ui.components.Rule
 import com.freemetar.app.ui.components.UpdateDialog
 import com.freemetar.app.ui.components.isWide
 import com.freemetar.app.ui.screens.BriefingScreen
+import com.freemetar.app.ui.plan.PlanEditorScreen
 import com.freemetar.app.ui.screens.FlightScreen
 import com.freemetar.app.ui.screens.MapScreen
 import com.freemetar.app.ui.screens.HomeScreen
@@ -196,7 +197,13 @@ class MainActivity : ComponentActivity() {
                                         vm,
                                         onOpen = { id -> vm.open(id); nav.navigate("airport/$id") },
                                         onShowMap = { vm.focusRouteOnMap(); nav.goTab("map") },
+                                        onEditPlan = { id -> vm.startEdit(id); nav.navigate("plan/$id") },
                                     )
+                                }
+                                composable("plan/{id}") { backStack ->
+                                    val id = backStack.arguments?.getString("id").orEmpty()
+                                    LaunchedEffect(id) { if (vm.editing.value?.id != id) vm.startEdit(id) }
+                                    PlanEditorScreen(vm, onBack = { nav.popBackStack() }, onShowMap = { vm.focusRouteOnMap(); nav.goTab("map") })
                                 }
                                 composable("tools") { ToolsScreen(vm) }
                                 composable("settings") { SettingsScreen(vm) }
