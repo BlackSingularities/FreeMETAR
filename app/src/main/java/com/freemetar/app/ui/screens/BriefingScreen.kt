@@ -166,6 +166,7 @@ fun BriefingScreen(vm: MainViewModel, onBack: () -> Unit, onOpen: (String) -> Un
                 LazyColumn(Modifier.weight(1f).fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
                     item { RunwaysPart(detail) }
                     item { RadioPart(detail, vm) }
+                    item { com.freemetar.app.ui.charts.ChartsPanel(detail.ident) }
                     item { AirportPart(detail, settings) }
                     item { NearbyPart(detail, onOpen) }
                 }
@@ -180,6 +181,7 @@ fun BriefingScreen(vm: MainViewModel, onBack: () -> Unit, onOpen: (String) -> Un
                 item(key = Part.ALOFT) { AloftPart(detail, settings) }
                 item(key = Part.RUNWAYS) { RunwaysPart(detail) }
                 item(key = Part.RADIO) { RadioPart(detail, vm) }
+                item(key = "charts") { com.freemetar.app.ui.charts.ChartsPanel(detail.ident) }
                 item(key = Part.AIRPORT) { AirportPart(detail, settings) }
                 item(key = Part.NEARBY) { NearbyPart(detail, onOpen) }
             }

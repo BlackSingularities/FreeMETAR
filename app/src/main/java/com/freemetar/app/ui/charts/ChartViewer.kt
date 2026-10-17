@@ -1,5 +1,7 @@
 package com.freemetar.app.ui.charts
 
+import com.freemetar.app.domain.loc
+
 import android.graphics.Bitmap
 import android.graphics.Color as AColor
 import android.graphics.Matrix
@@ -107,7 +109,7 @@ fun ChartViewer(chart: Chart, onClose: () -> Unit, modifier: Modifier = Modifier
         error = null
         runCatching { ChartDocument.open(repo.pdfs(chart)) }
             .onSuccess { doc = it }
-            .onFailure { error = it.message ?: "Nie udało się pobrać karty" }
+            .onFailure { error = it.message ?: loc("Nie udało się pobrać karty", "Could not download the chart") }
     }
     DisposableEffect(doc) { val d = doc; onDispose { d?.close() } }
 
@@ -118,7 +120,7 @@ fun ChartViewer(chart: Chart, onClose: () -> Unit, modifier: Modifier = Modifier
             error != null -> Column(Modifier.align(Alignment.Center).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(error!!, color = c.danger, style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.size(12.dp))
-                Pill("Spróbuj ponownie") { attempt++ }
+                Pill(loc("Spróbuj ponownie", "Try again")) { attempt++ }
             }
             else -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = MaterialTheme.colorScheme.primary)
         }
@@ -129,13 +131,13 @@ fun ChartViewer(chart: Chart, onClose: () -> Unit, modifier: Modifier = Modifier
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            RoundButton(Icons.AutoMirrored.Outlined.ArrowBack, "Zamknij", onClick = onClose)
+            RoundButton(Icons.AutoMirrored.Outlined.ArrowBack, loc("Zamknij", "Close"), onClick = onClose)
             Text(
                 chart.name, color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleSmall,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.background).padding(horizontal = 12.dp, vertical = 8.dp),
             )
-            RoundButton(if (night) Icons.Outlined.LightMode else Icons.Outlined.DarkMode, if (night) "Tryb dzienny" else "Tryb nocny") { night = !night }
+            RoundButton(if (night) Icons.Outlined.LightMode else Icons.Outlined.DarkMode, if (night) loc("Tryb dzienny", "Day mode") else loc("Tryb nocny", "Night mode")) { night = !night }
         }
         val count = d?.pageCount ?: 0
         if (count > 1) {
@@ -144,9 +146,9 @@ fun ChartViewer(chart: Chart, onClose: () -> Unit, modifier: Modifier = Modifier
                     .clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.background).padding(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                RoundButton(Icons.Outlined.ChevronLeft, "Poprzednia strona", enabled = page > 0) { page-- }
+                RoundButton(Icons.Outlined.ChevronLeft, loc("Poprzednia strona", "Previous page"), enabled = page > 0) { page-- }
                 Text("${page + 1} / $count", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 10.dp))
-                RoundButton(Icons.Outlined.ChevronRight, "Następna strona", enabled = page < count - 1) { page++ }
+                RoundButton(Icons.Outlined.ChevronRight, loc("Następna strona", "Next page"), enabled = page < count - 1) { page++ }
             }
         }
     }
@@ -251,7 +253,7 @@ private fun PdfPage(doc: ChartDocument, index: Int, night: Boolean, modifier: Mo
 
         if (scale > 1.05f) {
             Box(Modifier.align(Alignment.BottomEnd).safeDrawingPadding().padding(12.dp)) {
-                RoundButton(Icons.Outlined.ZoomOutMap, "Cała strona") { scale = 1f; clamp() }
+                RoundButton(Icons.Outlined.ZoomOutMap, loc("Cała strona", "Fit page")) { scale = 1f; clamp() }
             }
         }
     }
@@ -322,7 +324,7 @@ private class ChartDocument private constructor(
                 opened.forEach { (fd, r) -> runCatching { r.close() }; runCatching { fd.close() } }
                 // Uszkodzony plik (przerwane pobieranie) — usuwamy, żeby kolejna próba pobrała go od nowa
                 files.forEach { it.delete() }
-                throw java.io.IOException("Nie udało się otworzyć PDF karty: ${e.message}", e)
+                throw java.io.IOException(loc("Nie udało się otworzyć PDF karty: ", "Could not open chart PDF: ") + e.message, e)
             }
             ChartDocument(opened)
         }

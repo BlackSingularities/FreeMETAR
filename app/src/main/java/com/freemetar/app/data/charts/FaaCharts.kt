@@ -1,5 +1,7 @@
 package com.freemetar.app.data.charts
 
+import com.freemetar.app.domain.loc
+
 import android.content.Context
 import com.freemetar.app.data.Http
 import kotlinx.coroutines.Dispatchers
@@ -31,13 +33,15 @@ import javax.xml.parsers.SAXParserFactory
  * Źródło: aeronav.faa.gov/d-tpp/<cykl>/ — metadane cyklu w xml_data/d-TPP_Metafile.xml (~16 MB),
  * karty jako osobne PDF-y (100–500 kB). Cykl to numer AIRAC (RRNN, np. 2610), zmiana co 28 dni o 0901Z.
  */
-enum class ChartType(val label: String) {
-    APD("Diagram lotniska"),
-    IAP("Podejścia"),
-    DP("Odloty"),
-    STAR("Dolot (STAR)"),
-    MIN("Minima"),
-    HOT("Hot spots");
+enum class ChartType(private val labelOf: () -> String) {
+    APD({ loc("Diagram lotniska", "Airport diagram") }),
+    IAP({ loc("Podejścia", "Approaches") }),
+    DP({ loc("Odloty", "Departures") }),
+    STAR({ loc("Dolot (STAR)", "Arrivals (STAR)") }),
+    MIN({ "Minima" }),
+    HOT({ "Hot spots" });
+
+    val label: String get() = labelOf()
 
     companion object {
         /** Kod z metapliku → typ. ODP i DAU to odloty, LAH (LAHSO) trafia do minimów. */
@@ -321,7 +325,7 @@ class FaaCharts(
         } catch (e: IOException) {
             // Metaplik nowego cyklu bywa publikowany z opóźnieniem — próbujemy poprzedni
             if (have == null) runCatching { fetchIndex(DtppCycle.previous(clock())) }.getOrNull()
-                ?: run { _status.value = ChartsStatus.Failed(e.message ?: "Brak połączenia"); throw e }
+                ?: run { _status.value = ChartsStatus.Failed(e.message ?: loc("Brak połączenia", "No connection")); throw e }
             else { _status.value = ChartsStatus.Ready(have.cycle, stale = true); throw e }
         }
         index = idx
@@ -365,8 +369,8 @@ class FaaCharts(
     private suspend fun fetchIndex(cycle: String): DtppIndex = withContext(Dispatchers.IO) {
         val req = Request.Builder().url(DtppCycle.metafileUrl(cycle)).header("User-Agent", UA).build()
         val idx = client.newCall(req).execute().use { resp ->
-            if (!resp.isSuccessful) throw IOException("HTTP ${resp.code} dla metapliku d-TPP $cycle")
-            val body = resp.body ?: throw IOException("Pusta odpowiedź FAA")
+            if (!resp.isSuccessful) throw IOException(loc("HTTP ${resp.code} dla metapliku d-TPP $cycle", "HTTP ${resp.code} for d-TPP metafile $cycle"))
+            val body = resp.body ?: throw IOException(loc("Pusta odpowiedź FAA", "Empty response from FAA"))
             val total = body.contentLength()
             _status.value = ChartsStatus.Downloading(cycle, 0, total)
             val counting = object : FilterInputStream(body.byteStream()) {
@@ -384,10 +388,10 @@ class FaaCharts(
             } catch (e: IOException) {
                 throw e
             } catch (e: Exception) {
-                throw IOException("Nie udało się odczytać metapliku d-TPP: ${e.message}", e)
+                throw IOException(loc("Nie udało się odczytać metapliku d-TPP: ", "Could not read the d-TPP metafile: ") + e.message, e)
             }
         }
-        if (idx.airports.isEmpty()) throw IOException("Metaplik d-TPP $cycle nie zawiera lotnisk")
+        if (idx.airports.isEmpty()) throw IOException(loc("Metaplik d-TPP $cycle nie zawiera lotnisk", "d-TPP metafile $cycle contains no airports"))
         val dir = File(root, idx.cycle.ifEmpty { cycle }).apply { mkdirs() }
         val f = File(dir, INDEX)
         val tmp = File(dir, "$INDEX.tmp")
@@ -399,7 +403,7 @@ class FaaCharts(
     private fun download(url: String, target: File) {
         val req = Request.Builder().url(url).header("User-Agent", UA).build()
         client.newCall(req).execute().use { resp ->
-            if (!resp.isSuccessful) throw IOException("HTTP ${resp.code} dla $url")
+            if (!resp.isSuccessful) throw IOException(loc("HTTP ${resp.code} dla $url", "HTTP ${resp.code} for $url"))
             val tmp = File(target.parentFile, target.name + ".part")
             resp.body!!.byteStream().use { input -> tmp.outputStream().use { input.copyTo(it) } }
             if (!tmp.renameTo(target)) { target.delete(); tmp.renameTo(target) }
