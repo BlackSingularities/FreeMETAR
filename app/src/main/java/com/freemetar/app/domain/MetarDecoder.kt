@@ -29,7 +29,8 @@ object MetarDecoder {
     private val reWind = Regex("""^(\d{3}|VRB)(\d{2,3})(G(\d{2,3}))?(KT|MPS|KMH)$""")
     private val reWindVar = Regex("""^(\d{3})V(\d{3})$""")
     private val reVis = Regex("""^(\d{4})(NDV|N|NE|E|SE|S|SW|W|NW)?$""")
-    private val reVisSm = Regex("""^(M?)(\d+)?(/?\d*)SM$""")
+    private val reVisSm = Regex("""^([MP]?)(\d+ )?(\d+)?(/?\d*)SM$""")
+    private val reSmFraction = Regex("""^\d/\d{1,2}SM$""")
     private val reRvr = Regex("""^R(\d{2}[LCR]?)/([PM]?)(\d{4})(V([PM]?)(\d{4}))?(FT)?([UDN])?$""")
     private val reWx = Regex("""^(-|\+|VC)?(MI|PR|BC|DR|BL|SH|TS|FZ)?((DZ|RA|SN|SG|IC|PL|GR|GS|UP|BR|FG|FU|VA|DU|SA|HZ|PY|PO|SQ|FC|SS|DS)+)?$""")
     private val reCloud = Regex("""^(FEW|SCT|BKN|OVC|VV)(\d{3}|///)(CB|TCU|///)?$""")
@@ -43,8 +44,20 @@ object MetarDecoder {
     private val reFm = Regex("""^FM(\d{2})(\d{2})(\d{2})$""")
     private val reProb = Regex("""^PROB(\d{2})$""")
 
+    /** Dzieli depeszę na grupy; amerykańskie "1 1/2SM" zostaje jedną grupą. */
+    fun tokenize(raw: String): List<String> {
+        val parts = raw.trim().replace("=", "").split(Regex("\\s+")).filter { it.isNotBlank() }
+        val out = ArrayList<String>(parts.size)
+        parts.forEachIndexed { i, t ->
+            if (i > 0 && reSmFraction.matches(t) && parts[i - 1].length <= 2 && parts[i - 1].all { it.isDigit() } && out.isNotEmpty()) {
+                out[out.lastIndex] = out.last() + " " + t
+            } else out += t
+        }
+        return out
+    }
+
     fun decode(raw: String): List<Decoded> {
-        val tokens = raw.trim().replace("=", "").split(Regex("\\s+")).filter { it.isNotBlank() }
+        val tokens = tokenize(raw)
         val out = ArrayList<Decoded>()
         var inRemarks = false
         tokens.forEachIndexed { i, t ->
@@ -55,7 +68,7 @@ object MetarDecoder {
                 i == 0 && (t == "METAR" || t == "SPECI" || t == "TAF") ->
                     Decoded(t, Category.OTHER, when (t) { "SPECI" -> "Depesza specjalna (zmiana warunków)"; "TAF" -> "Prognoza lotniskowa"; else -> "Rutynowa depesza METAR" })
                 t == "AMD" -> Decoded(t, Category.OTHER, "Prognoza poprawiona")
-                (i <= 1 || (i == 2 && tokens[1] == "AMD")) && t.length == 4 && t.all { it.isLetterOrDigit() } && t.first().isLetter() && out.none { it.category == Category.STATION } ->
+                (i <= 1 || (i == 2 && (tokens[1] == "AMD" || tokens[1] == "COR"))) && t.length == 4 && t.all { it.isLetterOrDigit() } && t.first().isLetter() && out.none { it.category == Category.STATION } ->
                     Decoded(t, Category.STATION, "Lotnisko $t")
                 reTime.matches(t) -> reTime.find(t)!!.destructured.let { (d, h, m) -> Decoded(t, Category.TIME, "Dzień $d, godz. $h:$m UTC") }
                 t == "AUTO" -> Decoded(t, Category.OTHER, "Depesza automatyczna (bez obserwatora)")
@@ -66,12 +79,22 @@ object MetarDecoder {
                 reWindVar.matches(t) -> reWindVar.find(t)!!.destructured.let { (a, b) -> Decoded(t, Category.WIND, "Kierunek zmienny od $a° do $b°") }
                 t == "CAVOK" -> Decoded(t, Category.VISIBILITY, "CAVOK — widzialność ≥10 km, brak chmur poniżej 5000 ft i CB, brak zjawisk")
                 t == "9999" -> Decoded(t, Category.VISIBILITY, "Widzialność 10 km lub więcej")
-                reVis.matches(t) && out.none { it.category == Category.TEMP } -> reVis.find(t)!!.destructured.let { (v, dir) ->
-                    val m = v.toInt()
-                    val txt = if (m >= 5000) "${m / 1000} km" else "$m m"
-                    Decoded(t, Category.VISIBILITY, if (dir.isNotEmpty()) "Minimalna widzialność $txt w kierunku $dir" else "Widzialność $txt")
-                }
-                reVisSm.matches(t) -> Decoded(t, Category.VISIBILITY, "Widzialność ${t.removeSuffix("SM").removePrefix("M")} mil lądowych" + if (t.startsWith("M")) " (mniej niż)" else "")
+                // Po temperaturze 4 cyfry to widzialność tylko w trendzie (TEMPO 4000)
+                reVis.matches(t) && out.lastOrNull { it.category == Category.TEMP || it.category == Category.TREND }?.category != Category.TEMP ->
+                    reVis.find(t)!!.destructured.let { (v, dir) ->
+                        val m = v.toInt()
+                        val txt = if (m >= 9999) "10 km lub więcej" else if (m >= 5000) "${m / 1000} km" else "$m m"
+                        Decoded(t, Category.VISIBILITY, when (dir) {
+                            "" -> "Widzialność $txt"
+                            "NDV" -> "Widzialność $txt (brak zmienności kierunkowej)"
+                            else -> "Minimalna widzialność $txt w kierunku $dir"
+                        })
+                    }
+                reVisSm.matches(t) -> Decoded(
+                    t, Category.VISIBILITY,
+                    when (t.first()) { 'P' -> "Widzialność powyżej "; else -> "Widzialność " } +
+                        "${t.removeSuffix("SM").trimStart('M', 'P')} mil lądowych" + if (t.startsWith("M")) " (mniej niż)" else "",
+                )
                 reRvr.matches(t) -> rvr(t)
                 reRwyState.matches(t) && t.contains("/") && t.length >= 8 -> Decoded(t, Category.OTHER, "Stan nawierzchni pasa ${reRwyState.find(t)!!.groupValues[1]}")
                 t == "NSC" -> Decoded(t, Category.CLOUDS, "Brak znaczących chmur")

@@ -15,7 +15,7 @@ object FlightCategory {
         return when {
             c < 500 || v < 1600 -> "LIFR"
             c < 1000 || v < 4800 -> "IFR"
-            c <= 3000 || v <= 8000 -> "MVFR"
+            c <= 3000 || v <= 8047 -> "MVFR" // 5 SM = 8047 m
             else -> "VFR"
         }
     }
@@ -58,14 +58,15 @@ object TafAnalyzer {
     private val reFm = Regex("""^FM(\d{2})(\d{2})(\d{2})$""")
     private val reWind = Regex("""^(\d{3}|VRB)(\d{2,3})(G(\d{2,3}))?KT$""")
     private val reCloud = Regex("""^(BKN|OVC|VV)(\d{3})""")
+    private val reAnyCloud = Regex("""^((FEW|SCT|BKN|OVC|VV)(\d{3}|///)|SKC|CLR|NSC|NCD)""")
     private val reVis = Regex("""^\d{4}$""")
-    private val reSm = Regex("""^(P?)(\d+)?(/?\d*)SM$""")
+    private val reSm = Regex("""^(P?)(\d+ )?(\d+)?(/?\d*)SM$""")
 
     fun periods(raw: String): List<TafPeriod> {
         val lines = MetarDecoder.splitTaf(raw)
         var base: TafPeriod? = null
         return lines.mapIndexed { i, line ->
-            val t = line.split(" ").filter { it.isNotBlank() }
+            val t = MetarDecoder.tokenize(line)
             val kind = when {
                 i == 0 -> PeriodKind.BASE
                 t.first().startsWith("FM") -> PeriodKind.FROM
@@ -97,7 +98,8 @@ object TafAnalyzer {
 
             // Okresy zmian dziedziczą brakujące elementy z prognozy głównej
             val effVis = vis ?: base?.visM
-            val effCeil = if (t.contains("CAVOK") || t.contains("NSC") || t.any { reCloud.containsMatchIn(it) }) ceiling else base?.ceilingFt
+            // Każda grupa chmur (też FEW/SCT) zastępuje zachmurzenie z prognozy głównej
+            val effCeil = if (t.contains("CAVOK") || t.any { reAnyCloud.containsMatchIn(it) }) ceiling else base?.ceilingFt
             TafPeriod(
                 kind, prob, fd, fh, td, th, line, wind, vis, ceiling, wx,
                 FlightCategory.of(effVis, effCeil),
@@ -107,11 +109,12 @@ object TafAnalyzer {
 
     private fun smToM(s: String): Int? {
         val v = s.removeSuffix("SM").removePrefix("P")
-        val sm = when {
-            v.contains(" ") -> null
-            v.contains("/") -> v.split("/").let { (a, b) -> a.toDoubleOrNull()?.div(b.toDoubleOrNull() ?: return null) }
-            else -> v.toDoubleOrNull()
-        } ?: return null
+        fun part(p: String): Double? = when {
+            p.contains("/") -> p.split("/").let { (a, b) -> a.toDoubleOrNull()?.div(b.toDoubleOrNull() ?: return null) }
+            else -> p.toDoubleOrNull()
+        }
+        // "1 1/2" = 1 + 1/2
+        val sm = v.split(" ").map { part(it) ?: return null }.sum()
         return (sm * 1609).roundToInt()
     }
 }
@@ -148,7 +151,8 @@ object Atis {
         val l = letter(m)
         val time = Instant.ofEpochSecond(m.obsTimeEpoch).atZone(ZoneOffset.UTC).let { "%02d%02d".format(it.hour, it.minute) }
         val rwy = Wind.analyze(runways, m.windDir, m.windKt, m.gustKt).firstOrNull()?.runwayEnd
-        val tokens = m.raw.split(" ")
+        // Tylko część główna — widzialność z TEMPO/BECMG to nie bieżące warunki
+        val tokens = m.raw.split(" ").takeWhile { it !in setOf("TEMPO", "BECMG", "NOSIG", "RMK") }
         return buildList {
             add("$name information $l, time ${spell(time)} zulu.")
             if (rwy != null) {
@@ -166,7 +170,7 @@ object Atis {
             )
             when {
                 "CAVOK" in tokens -> add("CAVOK.")
-                else -> tokens.firstOrNull { it.matches(Regex("""\d{4}""")) }?.toInt()?.let { v ->
+                else -> tokens.firstOrNull { it.matches(Regex("""\d{4}(NDV)?""")) }?.take(4)?.toInt()?.let { v ->
                     add(if (v >= 9999) "Visibility one zero kilometers or more." else if (v >= 5000) "Visibility ${spell((v / 1000).toString())} kilometers." else "Visibility ${spell(v.toString())} meters.")
                 }
             }
