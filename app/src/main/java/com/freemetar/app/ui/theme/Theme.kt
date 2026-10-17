@@ -53,7 +53,31 @@ data class FmColors(
     }
 }
 
-/** Kokpit — domyślny, ciemny grafit (nie czerń, żeby panele miały głębię). */
+/**
+ * AMOLED — domyślny, w stylu OpenPDF: czysta czerń, biel jako akcent interfejsu (aktywny element
+ * to biały blok z czarnym tekstem), czerwień tylko do usuwania i ostrzeżeń. Kolory znaczeniowe
+ * zostają wyłącznie w danych (kategorie lotu, tryby AP, trasa, wartości wybrane).
+ */
+val AmoledColors = FmColors(
+    paper = Color(0xFF000000),
+    card = Color(0xFF000000),
+    terrain = Color(0xFF1C1C1C),
+    ink = Color(0xFFFFFFFF),
+    ink2 = Color(0xB3FFFFFF),
+    rule = Color(0x33FFFFFF),
+    accent = Color(0xFF4FD1E8),
+    magenta = Color(0xFFF25CD0),
+    green = Color(0xFF3FE07A),
+    caution = Color(0xFFFFB020),
+    danger = Color(0xFFFF3B47),
+    vfr = Color(0xFF3FE07A),
+    mvfr = Color(0xFF4FA3FF),
+    ifr = Color(0xFFFF3B47),
+    lifr = Color(0xFFF25CD0),
+    isNight = true,
+)
+
+/** Grafit — poprzedni „szklany kokpit” z głębią paneli. */
 val CockpitColors = FmColors(
     paper = Color(0xFF1B2128),
     card = Color(0xFF232B34),
@@ -93,7 +117,7 @@ val DaylightColors = FmColors(
     isNight = false,
 )
 
-val LocalFm = staticCompositionLocalOf { CockpitColors }
+val LocalFm = staticCompositionLocalOf { AmoledColors }
 
 /** Skrót: `Fm.c.ink` zamiast `LocalFm.current.ink`. */
 object Fm {
@@ -137,14 +161,21 @@ private fun typography(): Typography {
 
 @Composable
 fun OpenAirBookTheme(mode: ThemeMode = ThemeMode.SYSTEM, content: @Composable () -> Unit) {
-    // Kokpit jest domyślny (SYSTEM i NIGHT); DAY to jasny ekran do pracy w słońcu
-    val c = if (mode == ThemeMode.DAY) DaylightColors else CockpitColors
+    // SYSTEM = AMOLED (domyślny), NIGHT = grafit, DAY = jasny ekran do pracy w słońcu
+    val c = when (mode) {
+        ThemeMode.DAY -> DaylightColors
+        ThemeMode.NIGHT -> CockpitColors
+        ThemeMode.SYSTEM -> AmoledColors
+    }
     val scheme = if (c.isNight) darkColorScheme(
-        primary = c.accent, onPrimary = c.paper, secondary = c.accent, onSecondary = c.paper,
+        // Biel jako akcent interfejsu: przyciski, przełączniki, pola w fokusie
+        primary = c.ink, onPrimary = Color.Black, secondary = c.ink, onSecondary = Color.Black,
         background = c.paper, onBackground = c.ink, surface = c.paper, onSurface = c.ink,
         surfaceVariant = c.terrain, onSurfaceVariant = c.ink2, surfaceContainer = c.card,
         surfaceContainerHigh = c.card, surfaceContainerHighest = c.terrain, surfaceContainerLow = c.card,
-        outline = c.rule, outlineVariant = c.rule, error = c.danger, secondaryContainer = c.terrain, onSecondaryContainer = c.ink,
+        outline = c.rule, outlineVariant = c.rule, error = c.danger,
+        // Wybrany chip / aktywny element: biały blok, czarny tekst
+        secondaryContainer = c.ink, onSecondaryContainer = Color.Black,
     ) else lightColorScheme(
         primary = c.accent, onPrimary = Color.White, secondary = c.accent, onSecondary = Color.White,
         background = c.paper, onBackground = c.ink, surface = c.paper, onSurface = c.ink,

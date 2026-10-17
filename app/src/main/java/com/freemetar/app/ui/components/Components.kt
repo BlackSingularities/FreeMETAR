@@ -115,7 +115,7 @@ fun Section(
             .padding(horizontal = 14.dp, vertical = 5.dp)
             .clip(shape)
             .background(c.card)
-            .let { if (frame != null) it.border(1.5.dp, frame, shape) else if (!c.isNight) it.border(1.dp, c.rule, shape) else it }
+            .border(if (frame != null) 1.5.dp else 1.dp, frame ?: c.rule, shape)
             .padding(horizontal = 14.dp, vertical = 12.dp)
             .animateContentSize(),
     ) {
@@ -140,7 +140,7 @@ fun Panel(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, content:
             .fillMaxWidth()
             .clip(shape)
             .background(c.card)
-            .let { if (c.isNight) it else it.border(1.dp, c.rule, shape) }
+            .border(1.dp, c.rule, shape)
             .let { if (onClick != null) it.clickable(onClick = onClick) else it },
         content = content,
     )
@@ -225,14 +225,14 @@ fun CategoryTag(cat: String?, modifier: Modifier = Modifier) {
 fun Pill(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null, mono: Boolean = false, onClick: () -> Unit) {
     Row(
         modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(50))
             .background(Fm.c.terrain)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
-            Icon(icon, null, tint = Fm.c.accent, modifier = Modifier.size(15.dp))
+            Icon(icon, null, tint = Fm.c.ink, modifier = Modifier.size(15.dp))
             Spacer(Modifier.width(6.dp))
         }
         Text(text, color = Fm.c.ink, fontFamily = if (mono) Mono else null, style = MaterialTheme.typography.labelMedium)
@@ -244,7 +244,7 @@ fun Pill(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null,
 fun EmptyState(icon: ImageVector, title: String, sub: String? = null, action: (@Composable () -> Unit)? = null) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(56.dp).clip(CircleShape).background(Fm.c.terrain), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = Fm.c.accent, modifier = Modifier.size(26.dp))
+            Icon(icon, null, tint = Fm.c.ink, modifier = Modifier.size(26.dp))
         }
         Spacer(Modifier.size(12.dp))
         Text(title, style = MaterialTheme.typography.titleMedium, color = Fm.c.ink, textAlign = TextAlign.Center)
@@ -283,7 +283,7 @@ fun InteractiveMetar(raw: String, modifier: Modifier = Modifier, fontSize: Int =
                     fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                     modifier = Modifier
                         .clip(RoundedCornerShape(3.dp))
-                        .background(if (selected) c.accent.copy(alpha = 0.14f) else Color.Transparent)
+                        .background(if (selected) c.ink.copy(alpha = 0.16f) else Color.Transparent)
                         .clickable(role = Role.Button) { sel = i }
                         .padding(horizontal = 2.dp, vertical = 1.dp),
                 )
@@ -294,7 +294,7 @@ fun InteractiveMetar(raw: String, modifier: Modifier = Modifier, fontSize: Int =
         AnimatedContent(g, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "metar-group") { cur ->
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(6.dp)).background(c.terrain).padding(horizontal = 14.dp, vertical = 12.dp)) {
                 if (cur != null) {
-                    Text(cur.token, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = c.accent)
+                    Text(cur.token, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = c.ink)
                     Spacer(Modifier.size(2.dp))
                     Text(cur.text.takeIf { it != "—" && it.isNotBlank() } ?: "Grupa niestandardowa — bez objaśnienia.", style = MaterialTheme.typography.bodyMedium, color = c.ink)
                 }
@@ -326,7 +326,7 @@ fun RunwayWindDiagram(runways: List<Runway>, windDir: Int?, windKt: Int?, variab
         }
         listOf("N" to 0, "E" to 90, "S" to 180, "W" to 270).forEach { (s, d) ->
             val a = Math.toRadians(d.toDouble() - 90)
-            val layout = measurer.measure(s, TextStyle(color = if (s == "N") c.accent else c.ink2, fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = Mono))
+            val layout = measurer.measure(s, TextStyle(color = if (s == "N") c.ink else c.ink2, fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = Mono))
             drawText(layout, topLeft = Offset(center.x + (r - 26) * cos(a).toFloat() - layout.size.width / 2, center.y + (r - 26) * sin(a).toFloat() - layout.size.height / 2))
         }
 

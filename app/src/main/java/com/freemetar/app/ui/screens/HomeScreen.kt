@@ -142,7 +142,7 @@ fun HomeScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
                     keyboardActions = KeyboardActions(onSearch = { if (query.length >= 3) onOpen(results.firstOrNull()?.ident ?: query.uppercase().trim()) }),
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedContainerColor = c.card, focusedContainerColor = c.card,
-                        unfocusedBorderColor = c.ink2, focusedBorderColor = c.accent,
+                        unfocusedBorderColor = c.rule, focusedBorderColor = c.ink,
                     ),
                 )
             }
@@ -224,7 +224,7 @@ private fun Header() {
         Text(
             buildAnnotatedString {
                 append("Open")
-                withStyle(SpanStyle(color = c.accent)) { append("AirBook") }
+                withStyle(SpanStyle(color = c.ink2)) { append("AirBook") }
             },
             style = MaterialTheme.typography.headlineLarge, color = c.ink, modifier = Modifier.weight(1f),
         )
@@ -243,7 +243,7 @@ private fun DbBanner(db: DbState, onRetry: () -> Unit) {
             Column(Modifier.padding(14.dp)) {
                 Text(db.message, style = MaterialTheme.typography.bodyMedium, color = c.ink)
                 Spacer(Modifier.size(8.dp))
-                LinearProgressIndicator(Modifier.fillMaxWidth(), color = c.accent, trackColor = c.terrain)
+                LinearProgressIndicator(Modifier.fillMaxWidth(), color = c.ink, trackColor = c.terrain)
                 Spacer(Modifier.size(6.dp))
                 Text("Pierwsze uruchomienie pobiera ok. 15 MB danych lotnisk. Potem aplikacja korzysta z kopii w telefonie.", style = MaterialTheme.typography.bodySmall, color = c.ink2)
             }
@@ -270,7 +270,7 @@ private fun SearchRow(a: Airport, onClick: () -> Unit) {
         Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 when (a.type) { "seaplane_base" -> Icons.Outlined.Water; "small_airport" -> Icons.Outlined.Flight; else -> Icons.Outlined.LocalAirport },
-                null, tint = c.accent, modifier = Modifier.size(22.dp),
+                null, tint = c.ink2, modifier = Modifier.size(22.dp),
             )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.width(68.dp)) {
@@ -312,17 +312,18 @@ fun FlightStrip(
                     Spacer(Modifier.width(10.dp))
                     Text(name.orEmpty(), style = MaterialTheme.typography.bodySmall, color = c.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f).padding(bottom = 3.dp))
-                    if (trailingNote != null) Text(trailingNote, fontFamily = Mono, fontSize = 12.sp, color = c.accent, modifier = Modifier.padding(bottom = 3.dp))
+                    if (trailingNote != null) Text(trailingNote, fontFamily = Mono, fontSize = 12.sp, color = c.ink2, modifier = Modifier.padding(bottom = 3.dp))
                 }
                 Spacer(Modifier.size(7.dp))
                 Box(Modifier.fillMaxWidth().height(1.dp).background(c.rule))
                 Spacer(Modifier.size(6.dp))
                 if (metar != null) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        StripField("Wiatr", windShort(metar))
-                        StripField("QNH", metar.altimHpa?.roundToInt()?.toString() ?: "—")
-                        StripField("Temp", metar.tempC?.let { "${it.roundToInt()}°" } ?: "—")
-                        StripField("Obs.", ageMinutes(metar.obsTimeEpoch), stale = isStale(metar.obsTimeEpoch))
+                    // Kolumny o stałych proporcjach: wiatr z porywami potrzebuje najwięcej miejsca
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        StripField("Wiatr", windShort(metar), Modifier.weight(1.5f))
+                        StripField("QNH", metar.altimHpa?.roundToInt()?.toString() ?: "—", Modifier.weight(1f))
+                        StripField("Temp", metar.tempC?.let { "${it.roundToInt()}°" } ?: "—", Modifier.weight(0.8f))
+                        StripField("Obs.", ageMinutes(metar.obsTimeEpoch), Modifier.weight(1.2f), stale = isStale(metar.obsTimeEpoch))
                     }
                 } else {
                     Text(if (loading) "Pobieranie METAR…" else "Brak bieżącego METAR", style = MaterialTheme.typography.bodySmall, color = c.ink2,
@@ -345,11 +346,12 @@ fun FlightStrip(
 }
 
 @Composable
-private fun StripField(label: String, value: String, stale: Boolean = false) {
+private fun StripField(label: String, value: String, modifier: Modifier = Modifier, stale: Boolean = false) {
     val c = Fm.c
-    Column {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = c.ink2)
-        Text(value, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = if (stale) c.caution else c.ink)
+    Column(modifier) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = c.ink2, maxLines = 1)
+        Text(value, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = if (stale) c.caution else c.ink,
+            maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)
     }
 }
 
@@ -371,7 +373,7 @@ private fun NearMeBlock(vm: MainViewModel, state: NearMe, onOpen: (String) -> Un
         when (state) {
             NearMe.Idle -> Panel {
                 Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.MyLocation, null, tint = c.accent, modifier = Modifier.size(26.dp))
+                    Icon(Icons.Outlined.MyLocation, null, tint = c.ink, modifier = Modifier.size(26.dp))
                     Spacer(Modifier.width(12.dp))
                     Text("Najbliższe lotniska z bieżącą pogodą, wg przybliżonej lokalizacji telefonu.", style = MaterialTheme.typography.bodyMedium, color = c.ink, modifier = Modifier.weight(1f))
                 }
@@ -380,7 +382,7 @@ private fun NearMeBlock(vm: MainViewModel, state: NearMe, onOpen: (String) -> Un
                 }
             }
             NearMe.Locating -> Row(Modifier.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = c.accent)
+                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = c.ink)
                 Spacer(Modifier.width(12.dp))
                 Text("Ustalanie pozycji…", style = MaterialTheme.typography.bodyMedium, color = c.ink2)
             }

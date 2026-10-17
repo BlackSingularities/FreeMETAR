@@ -117,8 +117,10 @@ private fun SelectorRow(
     onEnter: (() -> Unit)?,
 ) {
     val c = Fm.c
+    // Poniżej 360 dp szerokości ekranu cztery przyciski i wartość się nie mieszczą
+    val roomy = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 360
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        if (bigDown != null && big != null) RepeatKey("«", "$label w dół o ${big.first}", action = bigDown)
+        if (roomy && bigDown != null && big != null) RepeatKey("«", "$label w dół o ${big.first}", action = bigDown)
         RepeatKey("−", "$label w dół o ${small.first}", action = smallDown)
         Column(
             Modifier.weight(1f).height(52.dp).clip(RoundedCornerShape(8.dp)).background(Color.Black.copy(alpha = 0.35f))
@@ -129,7 +131,7 @@ private fun SelectorRow(
             Text(value, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = c.accent)
         }
         RepeatKey("+", "$label w górę o ${small.first}", action = small.second)
-        if (big != null) RepeatKey("»", "$label w górę o ${big.first}", action = big.second)
+        if (roomy && big != null) RepeatKey("»", "$label w górę o ${big.first}", action = big.second)
     }
 }
 

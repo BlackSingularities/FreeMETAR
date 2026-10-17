@@ -136,9 +136,9 @@ fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> U
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
                 )
                 Spacer(Modifier.size(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                FlowRow(verticalArrangement = Arrangement.spacedBy(8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
-                        fl, { fl = it.filter { ch -> ch.isDigit() }.take(3) }, Modifier.width(140.dp),
+                        fl, { fl = it.filter { ch -> ch.isDigit() }.take(3) }, Modifier.width(120.dp),
                         label = { Text("Poziom FL") }, singleLine = true, shape = RoundedCornerShape(8.dp),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     )
@@ -182,7 +182,7 @@ fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> U
 private fun ActivePlan(r: SavedRoute, b: RouteBriefing?, onOpen: (String) -> Unit, onShowMap: () -> Unit, onRefresh: () -> Unit) {
     val c = Fm.c
     Section(r.name, Icons.Outlined.Route, trailing = {
-        IconButton(onShowMap) { Icon(Icons.Outlined.Map, "Pokaż trasę na mapie", tint = c.accent) }
+        IconButton(onShowMap) { Icon(Icons.Outlined.Map, "Pokaż trasę na mapie", tint = c.ink) }
         IconButton(onRefresh) { Icon(Icons.Outlined.Refresh, "Odśwież pogodę na trasie", tint = c.ink2) }
     }) {
         val dist = r.distanceNm ?: r.measuredDistanceNm()

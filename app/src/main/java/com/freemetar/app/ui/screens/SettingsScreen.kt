@@ -49,6 +49,7 @@ import com.freemetar.app.ui.components.SectionCard
 import java.text.DateFormat
 import java.util.Date
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(vm: MainViewModel) {
     val s by vm.settings.collectAsStateWithLifecycle()
@@ -75,12 +76,13 @@ fun SettingsScreen(vm: MainViewModel) {
 
         SectionCard("Wyświetlanie", icon = Icons.Outlined.Tune) {
             Text("Motyw", color = Fm.c.ink, style = MaterialTheme.typography.titleSmall)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)) {
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)) {
                 listOf(
-                    com.freemetar.app.data.ThemeMode.SYSTEM to "Kokpit",
+                    com.freemetar.app.data.ThemeMode.SYSTEM to "AMOLED",
+                    com.freemetar.app.data.ThemeMode.NIGHT to "Grafit",
                     com.freemetar.app.data.ThemeMode.DAY to "Jasny ekran",
                 ).forEach { (mode, label) ->
-                    FilterChip(s.themeMode == mode || (mode == com.freemetar.app.data.ThemeMode.SYSTEM && s.themeMode == com.freemetar.app.data.ThemeMode.NIGHT), { vm.setTheme(mode) }, { Text(label) },
+                    FilterChip(s.themeMode == mode, { vm.setTheme(mode) }, { Text(label) },
                         leadingIcon = { Icon(when (mode) { com.freemetar.app.data.ThemeMode.DAY -> Icons.Outlined.LightMode; com.freemetar.app.data.ThemeMode.NIGHT -> Icons.Outlined.DarkMode; else -> Icons.Outlined.Smartphone }, null, Modifier.size(16.dp)) })
                 }
             }

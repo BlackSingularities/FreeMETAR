@@ -126,7 +126,7 @@ class MainActivity : ComponentActivity() {
                                         icon = { Icon(if (sel) t.selectedIcon else t.icon, null) },
                                         label = { Text(t.label) },
                                         colors = NavigationBarItemDefaults.colors(
-                                            indicatorColor = c.terrain, selectedIconColor = c.accent, selectedTextColor = c.ink,
+                                            indicatorColor = c.ink, selectedIconColor = c.paper, selectedTextColor = c.ink,
                                             unselectedIconColor = c.ink2, unselectedTextColor = c.ink2,
                                         ),
                                     )
@@ -140,7 +140,7 @@ class MainActivity : ComponentActivity() {
                         if (wide) {
                             NavigationRail(containerColor = c.paper, modifier = Modifier.fillMaxHeight()) {
                                 Spacer(Modifier.statusBarsPadding().size(16.dp))
-                                Icon(Icons.Filled.LocalAirport, null, tint = c.accent, modifier = Modifier.size(28.dp))
+                                Icon(Icons.Filled.LocalAirport, null, tint = c.ink, modifier = Modifier.size(28.dp))
                                 Spacer(Modifier.size(24.dp))
                                 tabs.forEach { t ->
                                     val sel = activeTab == t.route
@@ -150,7 +150,7 @@ class MainActivity : ComponentActivity() {
                                         icon = { Icon(if (sel) t.selectedIcon else t.icon, null) },
                                         label = { Text(t.label) },
                                         colors = NavigationRailItemDefaults.colors(
-                                            indicatorColor = c.terrain, selectedIconColor = c.accent, selectedTextColor = c.ink,
+                                            indicatorColor = c.ink, selectedIconColor = c.paper, selectedTextColor = c.ink,
                                             unselectedIconColor = c.ink2, unselectedTextColor = c.ink2,
                                         ),
                                     )
