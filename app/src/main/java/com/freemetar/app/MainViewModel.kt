@@ -27,6 +27,12 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
 import com.freemetar.app.data.Locator
+import com.freemetar.app.data.link.FlightLog
+import com.freemetar.app.data.link.FlightLogStore
+import com.freemetar.app.data.link.FlightRecorder
+import com.freemetar.app.data.link.LinkClient
+import com.freemetar.app.data.link.LinkStatus
+import com.freemetar.app.data.link.TrackPoint
 import android.net.Uri
 import com.freemetar.app.data.AloftCell
 import com.freemetar.app.data.RouteImport
@@ -238,6 +244,85 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ---------- OpenAirBook Link (MSFS) ----------
+
+    val link = LinkClient(app, prefs.linkTokens)
+    val linkStatus = link.status
+    val linkServers = link.servers
+    val flightState = link.state
+    private val recorder = FlightRecorder { lat, lon -> db.nearby(lat, lon, radiusNm = 5.0, limit = 1).firstOrNull()?.first?.ident }
+    private val flightLogStore = FlightLogStore(app)
+    private val _flightLogs = MutableStateFlow<List<FlightLog>>(emptyList())
+    val flightLogs = _flightLogs.asStateFlow()
+    private val _track = MutableStateFlow<List<TrackPoint>>(emptyList())
+    /** Tor bieżącego lotu (do rysowania na mapie). */
+    val track = _track.asStateFlow()
+    private var userDisconnected = false
+
+    /** Odkrywanie działa, gdy ekran Lot lub Mapa jest widoczny; znany komputer łączy się sam. */
+    fun startLinkDiscovery() {
+        link.startDiscovery()
+    }
+
+    fun stopLinkDiscovery() = link.stopDiscovery()
+
+    fun linkConnect(ip: String, port: Int = 47810, code: String? = null) {
+        userDisconnected = false
+        link.connect(ip, port, code)
+    }
+
+    fun linkDisconnect() {
+        userDisconnected = true
+        link.disconnect()
+    }
+
+    fun deleteFlightLog(id: String) = viewModelScope.launch {
+        _flightLogs.value = _flightLogs.value.filterNot { it.id == id }
+        flightLogStore.save(_flightLogs.value)
+    }
+
+    private fun saveFlight(log: FlightLog?) {
+        log ?: return
+        viewModelScope.launch {
+            _flightLogs.value = listOf(log) + _flightLogs.value
+            flightLogStore.save(_flightLogs.value)
+            _flightMessage.value = "Zapisano lot ${log.from ?: "?"} → ${log.to ?: "?"} (${log.durationMin} min)."
+        }
+    }
+
+    private fun startLinkWatchers() {
+        viewModelScope.launch { _flightLogs.value = flightLogStore.load() }
+        viewModelScope.launch {
+            link.state.collect { st ->
+                if (st != null) {
+                    saveFlight(recorder.onState(st))
+                    if (recorder.recording) _track.value = recorder.currentTrack
+                }
+            }
+        }
+        viewModelScope.launch {
+            link.status.collect { s ->
+                if (s !is LinkStatus.Connected && s !is LinkStatus.Lost) saveFlight(recorder.finish())
+            }
+        }
+        // Automatyczne połączenie z komputerem, z którym telefon już się sparował
+        viewModelScope.launch {
+            link.servers.collect { list ->
+                val last = prefs.lastLinkIp() ?: return@collect
+                if (!userDisconnected && link.status.value is LinkStatus.Idle) {
+                    list.firstOrNull { it.ip == last }?.let { link.connect(it.ip, it.port) }
+                }
+            }
+        }
+    }
+
+    override fun onCleared() {
+        saveFlight(recorder.finish())
+        link.disconnect()
+        link.stopDiscovery()
+        super.onCleared()
+    }
+
     private val _nearMe = MutableStateFlow<NearMe>(NearMe.Idle)
     val nearMe = _nearMe.asStateFlow()
 
@@ -247,6 +332,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             prefs.settings.first().activeRouteId?.let { id -> _routes.value.firstOrNull { it.id == id }?.let { refreshRouteBriefing(it) } }
         }
         loadDb(force = false)
+        startLinkWatchers()
         startAutoRefresh()
         checkForUpdate(silent = true)
         // Lista ulubionych zmieniona (dodanie, usunięcie) → pobierz brakujące METAR-y

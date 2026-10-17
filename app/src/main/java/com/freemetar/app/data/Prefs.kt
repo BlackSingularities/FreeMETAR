@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 private val Context.dataStore by preferencesDataStore("settings")
@@ -34,6 +35,8 @@ class Prefs(private val context: Context) {
     private val AUTO = booleanPreferencesKey("auto_refresh")
     private val SIMBRIEF = stringPreferencesKey("simbrief_user")
     private val ROUTE = stringPreferencesKey("active_route")
+    private val LINK_TOKENS = stringPreferencesKey("link_tokens")   // ip=token;ip=token
+    private val LINK_LAST = stringPreferencesKey("link_last_ip")
 
     private fun list(v: String?) = v?.split(",")?.filter { it.isNotBlank() }
 
@@ -76,5 +79,24 @@ class Prefs(private val context: Context) {
     suspend fun setTheme(m: ThemeMode) = context.dataStore.edit { it[THEME] = m.name }
     suspend fun setAutoRefresh(v: Boolean) = context.dataStore.edit { it[AUTO] = v }
     suspend fun setSimbriefUser(v: String) = context.dataStore.edit { it[SIMBRIEF] = v.trim() }
+    private fun tokenMap(v: String?): Map<String, String> =
+        v?.split(";")?.mapNotNull { e -> e.split("=", limit = 2).takeIf { it.size == 2 }?.let { it[0] to it[1] } }?.toMap().orEmpty()
+
+    /** Zapis tokenów parowania OpenAirBook Link — osobno dla każdego komputera. */
+    val linkTokens = object : com.freemetar.app.data.link.LinkTokenStore {
+        override suspend fun token(ip: String): String? = tokenMap(context.dataStore.data.first()[LINK_TOKENS])[ip]
+        override suspend fun saveToken(ip: String, token: String) {
+            context.dataStore.edit { p ->
+                p[LINK_TOKENS] = (tokenMap(p[LINK_TOKENS]) + (ip to token)).entries.joinToString(";") { "${it.key}=${it.value}" }
+                p[LINK_LAST] = ip
+            }
+        }
+        override suspend fun clearToken(ip: String) {
+            context.dataStore.edit { p -> p[LINK_TOKENS] = (tokenMap(p[LINK_TOKENS]) - ip).entries.joinToString(";") { "${it.key}=${it.value}" } }
+        }
+    }
+
+    suspend fun lastLinkIp(): String? = context.dataStore.data.first()[LINK_LAST]
+
     suspend fun setActiveRoute(id: String?) = context.dataStore.edit { if (id == null) it.remove(ROUTE) else it[ROUTE] = id }
 }

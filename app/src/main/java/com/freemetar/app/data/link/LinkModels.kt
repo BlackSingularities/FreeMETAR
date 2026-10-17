@@ -1,0 +1,111 @@
+package com.freemetar.app.data.link
+
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+
+/** Modele protokołu OpenAirBook Link v1 (docs/link-protocol.md). Wszystkie pola opcjonalne — brak danych to null. */
+val LinkJson = Json { ignoreUnknownKeys = true; explicitNulls = false; encodeDefaults = true; isLenient = true }
+
+@Serializable
+data class Announce(
+    val v: Int = 1,
+    val type: String = "",
+    val name: String = "OpenAirBook Link",
+    val version: String? = null,
+    val host: String? = null,
+    val port: Int = 47810,
+    val ips: List<String> = emptyList(),
+    val source: String? = null,
+)
+
+/** Serwer znaleziony w sieci (adres z nadawcy datagramu). */
+data class LinkServer(val name: String, val host: String, val ip: String, val port: Int, val source: String?, val version: String?, val lastSeen: Long)
+
+@Serializable data class AircraftInfo(val title: String? = null, val onGround: Boolean? = null, val paused: Boolean? = null)
+@Serializable data class Position(val lat: Double? = null, val lon: Double? = null, val altMslFt: Double? = null, val altAglFt: Double? = null, val altIndFt: Double? = null)
+@Serializable data class Speed(val iasKt: Double? = null, val tasKt: Double? = null, val gsKt: Double? = null, val mach: Double? = null, val vsFpm: Double? = null)
+@Serializable data class Attitude(val pitchDeg: Double? = null, val bankDeg: Double? = null, val hdgTrueDeg: Double? = null, val hdgMagDeg: Double? = null, val trackTrueDeg: Double? = null)
+@Serializable data class ApModes(val hdg: Boolean = false, val nav: Boolean = false, val apr: Boolean = false, val loc: Boolean = false, val alt: Boolean = false, val vs: Boolean = false, val flc: Boolean = false)
+@Serializable data class Autopilot(
+    val master: Boolean = false, val fd: Boolean = false, val athr: Boolean = false,
+    val hdgDeg: Double? = null, val altFt: Double? = null, val vsFpm: Double? = null, val spdKt: Double? = null,
+    val modes: ApModes = ApModes(),
+)
+@Serializable data class Radio(val activeMhz: Double? = null, val standbyMhz: Double? = null)
+@Serializable data class Transponder(val code: String? = null, val mode: String? = null, val ident: Boolean? = null)
+@Serializable data class Radios(val com1: Radio? = null, val com2: Radio? = null, val nav1: Radio? = null, val nav2: Radio? = null, val transponder: Transponder? = null)
+@Serializable data class Controls(
+    val gearDown: Boolean? = null, val gearPct: Double? = null, val flapsIndex: Int? = null, val flapsPositions: Int? = null,
+    val flapsPct: Double? = null, val spoilersPct: Double? = null, val spoilersArmed: Boolean? = null,
+    val parkingBrake: Boolean? = null, val elevatorTrimPct: Double? = null,
+)
+@Serializable data class Lights(
+    val beacon: Boolean? = null, val strobe: Boolean? = null, val nav: Boolean? = null, val landing: Boolean? = null,
+    val taxi: Boolean? = null, val logo: Boolean? = null, val wing: Boolean? = null, val panel: Boolean? = null, val cabin: Boolean? = null,
+)
+@Serializable data class Fuel(val totalKg: Double? = null, val tanks: Map<String, Double> = emptyMap())
+@Serializable data class Engine(val n1Pct: Double? = null, val n2Pct: Double? = null, val rpm: Double? = null, val egtC: Double? = null, val fuelFlowKgH: Double? = null)
+@Serializable data class Environment(val windDirDeg: Double? = null, val windSpdKt: Double? = null, val oatC: Double? = null, val qnhHpa: Double? = null)
+@Serializable data class Axes(val active: Boolean = false)
+
+/** Pełny stan lotu z jednego komunikatu `state`. */
+@Serializable
+data class FlightState(
+    val source: String? = null,
+    val aircraft: AircraftInfo = AircraftInfo(),
+    val simTimeUtc: String? = null,
+    val position: Position = Position(),
+    val speed: Speed = Speed(),
+    val attitude: Attitude = Attitude(),
+    val autopilot: Autopilot = Autopilot(),
+    val radios: Radios = Radios(),
+    val controls: Controls = Controls(),
+    val lights: Lights = Lights(),
+    val fuel: Fuel = Fuel(),
+    val engines: List<Engine> = emptyList(),
+    val environment: Environment = Environment(),
+    val axes: Axes = Axes(),
+)
+
+/** Koperta przychodzącej wiadomości — pola wszystkich typów, czytamy te, które pasują do `type`. */
+@Serializable
+data class Incoming(
+    val v: Int = 1,
+    val type: String = "",
+    val id: String? = null,
+    val seq: Long? = null,
+    val t: Long? = null,
+    val data: FlightState? = null,
+    val token: String? = null,
+    val server: String? = null,
+    val version: String? = null,
+    val source: String? = null,
+    val rateHz: Int? = null,
+    val simConnected: Boolean? = null,
+    val message: String? = null,
+    val code: String? = null,
+    val name: String? = null,
+    val limits: Limits? = null,
+)
+
+@Serializable data class Limits(val maxDeflection: Double = 0.8, val axisTimeoutMs: Int = 500)
+
+@Serializable data class ClientInfo(val name: String, val app: String = "OpenAirBook", val version: String? = null)
+
+@Serializable
+data class Hello(
+    val v: Int = 1, val type: String = "hello", val id: String = "1",
+    val code: String? = null, val token: String? = null,
+    val client: ClientInfo, val rateHz: Int = 10,
+)
+
+@Serializable data class Ping(val v: Int = 1, val type: String = "ping", val id: String, val t: Long)
+
+@Serializable data class Command(val v: Int = 1, val type: String = "command", val id: String, val name: String, val value: Double? = null)
+
+@Serializable
+data class AxisMessage(
+    val v: Int = 1, val type: String = "axis",
+    val aileron: Double? = null, val elevator: Double? = null, val rudder: Double? = null,
+    val release: Boolean? = null,
+)

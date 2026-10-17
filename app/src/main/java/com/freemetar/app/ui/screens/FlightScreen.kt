@@ -67,6 +67,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.freemetar.app.MainViewModel
 import com.freemetar.app.RouteBriefing
+import com.freemetar.app.ui.flight.ConnectionSection
+import com.freemetar.app.ui.flight.FlightHistorySection
+import com.freemetar.app.ui.flight.LiveSection
 import com.freemetar.app.data.SavedRoute
 import com.freemetar.app.ui.components.CategoryTag
 import com.freemetar.app.ui.components.Fact
@@ -102,6 +105,10 @@ fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> U
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
             Text("Lot", style = MaterialTheme.typography.headlineLarge, color = c.ink, modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp))
+
+            val live by vm.flightState.collectAsStateWithLifecycle()
+            live?.let { LiveSection(it, active) }
+            ConnectionSection(vm)
 
             if (active != null) ActivePlan(active, briefing, onOpen, onShowMap) { vm.refreshRouteBriefing() }
 
@@ -164,18 +171,7 @@ fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> U
                 }
             }
 
-            Section("Symulator", Icons.Outlined.Computer) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(10.dp).clip(CircleShape).background(c.ink2))
-                    Spacer(Modifier.width(10.dp))
-                    Text("Nie połączono z MSFS", style = MaterialTheme.typography.titleMedium, color = c.ink)
-                }
-                Text(
-                    "Uruchom OpenAirBook Link na komputerze z Microsoft Flight Simulator 2024 w tej samej sieci Wi-Fi. " +
-                        "Po połączeniu zobaczysz tu PFD, samolot na mapie i panele autopilota, radia oraz systemów.",
-                    style = MaterialTheme.typography.bodyMedium, color = c.ink2, modifier = Modifier.padding(top = 8.dp),
-                )
-            }
+            FlightHistorySection(vm)
         }
         SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).padding(12.dp).widthIn(max = 560.dp))
     }

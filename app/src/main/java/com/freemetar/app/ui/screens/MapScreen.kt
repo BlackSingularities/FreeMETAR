@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.WarningAmber
+import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -80,6 +81,27 @@ private const val SRC_SIGMET = "oab-sigmets"
 private const val LYR_METAR = "oab-metar-dots"
 private const val SRC_ROUTE = "oab-route"
 private const val SRC_ROUTE_PTS = "oab-route-points"
+private const val SRC_PLANE = "oab-plane"
+private const val SRC_TRACK = "oab-track"
+private const val IMG_PLANE = "oab-plane-icon"
+
+/** Symbol samolotu (żółty jak na wyświetlaczach) jako bitmapa dla warstwy mapy. */
+private fun planeBitmap(): android.graphics.Bitmap {
+    val size = 64
+    val bmp = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
+    val cv = android.graphics.Canvas(bmp)
+    val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFC21A.toInt() }
+    val stroke = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFF0E1216.toInt(); style = android.graphics.Paint.Style.STROKE; strokeWidth = 3f
+    }
+    val path = android.graphics.Path().apply {
+        moveTo(32f, 4f); lineTo(36f, 24f); lineTo(60f, 36f); lineTo(60f, 42f); lineTo(36f, 36f); lineTo(35f, 50f)
+        lineTo(44f, 56f); lineTo(44f, 60f); lineTo(32f, 57f); lineTo(20f, 60f); lineTo(20f, 56f); lineTo(29f, 50f)
+        lineTo(28f, 36f); lineTo(4f, 42f); lineTo(4f, 36f); lineTo(28f, 24f); close()
+    }
+    cv.drawPath(path, p); cv.drawPath(path, stroke)
+    return bmp
+}
 
 private fun hex(c: Color) = String.format("#%06X", 0xFFFFFF and c.toArgb())
 
@@ -122,6 +144,9 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
     val routes by vm.routes.collectAsStateWithLifecycle()
     val focus by vm.mapRouteFocus.collectAsStateWithLifecycle()
     val route = routes.firstOrNull { it.id == settings.activeRouteId }
+    val live by vm.flightState.collectAsStateWithLifecycle()
+    val track by vm.track.collectAsStateWithLifecycle()
+    var follow by rememberSaveable { mutableStateOf(true) }
     var handledFocus by rememberSaveable { mutableStateOf(0) }
     var showSigmets by rememberSaveable { mutableStateOf(true) }
     var picked by remember { mutableStateOf<Metar?>(null) }
@@ -185,6 +210,23 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
     LaunchedEffect(style, metars, c) {
         (style?.getSource(SRC_METAR) as? GeoJsonSource)?.setGeoJson(metarFeatures(metars, c))
     }
+    // Samolot z symulatora i przebyty tor
+    LaunchedEffect(style, live?.position, live?.attitude) {
+        val st = style ?: return@LaunchedEffect
+        val lat = live?.position?.lat; val lon = live?.position?.lon
+        val fc = if (lat == null || lon == null) FeatureCollection.fromFeatures(emptyList())
+        else FeatureCollection.fromFeature(Feature.fromGeometry(Point.fromLngLat(lon, lat)).apply {
+            addNumberProperty("hdg", live?.attitude?.hdgTrueDeg ?: 0.0)
+        })
+        (st.getSource(SRC_PLANE) as? GeoJsonSource)?.setGeoJson(fc)
+        if (follow && lat != null && lon != null) mapView.getMapAsync { it.moveCamera(CameraUpdateFactory.newLatLng(LatLng(lat, lon))) }
+    }
+    LaunchedEffect(style, track.size) {
+        val pts = track.map { Point.fromLngLat(it.lon, it.lat) }
+        (style?.getSource(SRC_TRACK) as? GeoJsonSource)?.setGeoJson(
+            if (pts.size < 2) FeatureCollection.fromFeatures(emptyList()) else FeatureCollection.fromFeature(Feature.fromGeometry(LineString.fromLngLats(pts)))
+        )
+    }
     LaunchedEffect(style, route) {
         (style?.getSource(SRC_ROUTE) as? GeoJsonSource)?.setGeoJson(routeLine(route))
         (style?.getSource(SRC_ROUTE_PTS) as? GeoJsonSource)?.setGeoJson(routePoints(route))
@@ -206,6 +248,7 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
 
         Row(Modifier.statusBarsPadding().padding(12.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MapChip("SIGMET", showSigmets, Icons.Outlined.WarningAmber) { showSigmets = !showSigmets }
+            if (live != null) MapChip("Śledź samolot", follow, Icons.Outlined.MyLocation) { follow = !follow }
             Spacer(Modifier.weight(1f))
             Legend()
         }
@@ -264,6 +307,13 @@ private fun addOverlay(st: Style, c: FmColors) {
         PropertyFactory.textHaloWidth(1.5f),
         PropertyFactory.textOptional(true),
     ).apply { minZoom = 5.5f })
+    // Tor lotu i samolot nad wszystkim
+    st.addSource(GeoJsonSource(SRC_TRACK))
+    st.addLayer(LineLayer("oab-track-line", SRC_TRACK).withProperties(
+        PropertyFactory.lineColor(hex(c.ink)), PropertyFactory.lineWidth(2f), PropertyFactory.lineOpacity(0.7f),
+    ))
+    st.addImage(IMG_PLANE, planeBitmap())
+    st.addSource(GeoJsonSource(SRC_PLANE))
     st.addSource(GeoJsonSource(SRC_METAR))
     // Okrąg w kolorze kategorii, jak symbol lotniska na wyświetlaczu nawigacyjnym
     st.addLayer(CircleLayer(LYR_METAR, SRC_METAR).withProperties(
@@ -283,6 +333,14 @@ private fun addOverlay(st: Style, c: FmColors) {
         PropertyFactory.textHaloWidth(1.5f),
         PropertyFactory.textOptional(true),
     ).apply { minZoom = 6.5f })
+    st.addLayer(SymbolLayer("oab-plane-layer", SRC_PLANE).withProperties(
+        PropertyFactory.iconImage(IMG_PLANE),
+        PropertyFactory.iconRotate(Expression.get("hdg")),
+        PropertyFactory.iconRotationAlignment("map"),
+        PropertyFactory.iconAllowOverlap(true),
+        PropertyFactory.iconIgnorePlacement(true),
+        PropertyFactory.iconSize(0.7f),
+    ))
 }
 
 @Composable

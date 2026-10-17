@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Połączenie z OpenAirBook Link idzie po ws:// w sieci lokalnej (adres IP komputera nie jest znany z góry,
+     więc nie da się go wpisać do domain-config). Wszystkie zapytania do internetu i tak są po HTTPS. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

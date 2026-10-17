@@ -1,0 +1,225 @@
+package com.freemetar.app.data.link
+
+import android.content.Context
+import android.net.wifi.WifiManager
+import android.os.Build
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
+import java.net.DatagramPacket
+import java.net.DatagramSocket
+import java.net.InetSocketAddress
+import java.net.SocketTimeoutException
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
+
+sealed interface LinkStatus {
+    data object Idle : LinkStatus
+    data class Connecting(val ip: String) : LinkStatus
+    /** Serwer wymaga kodu parowania (pierwsze połączenie albo token unieważniony). */
+    data class NeedsCode(val ip: String, val port: Int, val error: String? = null) : LinkStatus
+    data class Connected(val ip: String, val server: String, val source: String?, val message: String?) : LinkStatus
+    data class Lost(val ip: String, val reason: String) : LinkStatus
+}
+
+/** Zapis tokenu parowania (DataStore) — klient nie zna szczegółów przechowywania. */
+interface LinkTokenStore {
+    suspend fun token(ip: String): String?
+    suspend fun saveToken(ip: String, token: String)
+    suspend fun clearToken(ip: String)
+}
+
+/**
+ * Klient OpenAirBook Link: odkrywanie po UDP, parowanie, strumień `state`, komendy.
+ * Po zerwaniu połączenia sam próbuje wrócić (co 3 s), dopóki użytkownik nie rozłączy.
+ */
+class LinkClient(private val context: Context, private val tokens: LinkTokenStore, private val deviceName: String = Build.MODEL ?: "Android") {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val http = OkHttpClient.Builder().pingInterval(0, TimeUnit.SECONDS).readTimeout(0, TimeUnit.SECONDS).build()
+
+    private val _servers = MutableStateFlow<List<LinkServer>>(emptyList())
+    val servers = _servers.asStateFlow()
+    private val _status = MutableStateFlow<LinkStatus>(LinkStatus.Idle)
+    val status = _status.asStateFlow()
+    private val _state = MutableStateFlow<FlightState?>(null)
+    val state = _state.asStateFlow()
+    private val _lastError = MutableStateFlow<String?>(null)
+    val lastError = _lastError.asStateFlow()
+    var limits = Limits()
+        private set
+
+    private var socket: WebSocket? = null
+    private var discoveryJob: Job? = null
+    private var pingJob: Job? = null
+    private var reconnectJob: Job? = null
+    private var wantConnected = false
+    private var target: Pair<String, Int>? = null
+    private val ids = AtomicLong(1)
+    private var lastStateAt = 0L
+
+    // ---------- odkrywanie ----------
+
+    fun startDiscovery() {
+        if (discoveryJob?.isActive == true) return
+        discoveryJob = scope.launch {
+            val wifi = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+            // Bez blokady multicastu wiele telefonów odrzuca pakiety broadcast przy wyłączonym ekranie Wi-Fi
+            val lock = wifi?.createMulticastLock("openairbook-link")?.apply { setReferenceCounted(false); acquire() }
+            try {
+                DatagramSocket(null).use { sock ->
+                    sock.reuseAddress = true
+                    sock.broadcast = true
+                    sock.soTimeout = 2500
+                    sock.bind(InetSocketAddress(47811))
+                    val buf = ByteArray(4096)
+                    while (isActive) {
+                        try {
+                            val p = DatagramPacket(buf, buf.size)
+                            sock.receive(p)
+                            val a = runCatching { LinkJson.decodeFromString(Announce.serializer(), String(p.data, 0, p.length, Charsets.UTF_8)) }.getOrNull()
+                            if (a != null && a.type == "announce" && a.v == 1) {
+                                val ip = p.address?.hostAddress ?: a.ips.firstOrNull() ?: continue
+                                val s = LinkServer(a.name, a.host ?: ip, ip, a.port, a.source, a.version, System.currentTimeMillis())
+                                _servers.update { list -> (list.filterNot { it.ip == ip } + s).sortedBy { it.host } }
+                            }
+                        } catch (_: SocketTimeoutException) {
+                        }
+                        // Serwer, który nie ogłaszał się od 10 s, znika z listy
+                        val now = System.currentTimeMillis()
+                        _servers.update { list -> list.filter { now - it.lastSeen < 10_000 } }
+                    }
+                }
+            } catch (e: Exception) {
+                _lastError.value = "Nie można nasłuchiwać w sieci (UDP 47811): ${e.message}"
+            } finally {
+                lock?.release()
+            }
+        }
+    }
+
+    fun stopDiscovery() { discoveryJob?.cancel(); discoveryJob = null }
+
+    // ---------- połączenie ----------
+
+    /** Łączy z serwerem; z kodem przy pierwszym parowaniu, bez kodu używa zapisanego tokenu. */
+    fun connect(ip: String, port: Int = 47810, code: String? = null) {
+        wantConnected = true
+        target = ip to port
+        reconnectJob?.cancel()
+        open(ip, port, code)
+    }
+
+    fun disconnect() {
+        wantConnected = false
+        reconnectJob?.cancel()
+        pingJob?.cancel()
+        socket?.close(1000, "rozłączono")
+        socket = null
+        _status.value = LinkStatus.Idle
+        _state.value = null
+    }
+
+    private fun open(ip: String, port: Int, code: String?) {
+        socket?.cancel()
+        _status.value = LinkStatus.Connecting(ip)
+        scope.launch {
+            val token = if (code == null) tokens.token(ip) else null
+            if (code == null && token == null) {
+                _status.value = LinkStatus.NeedsCode(ip, port)
+                return@launch
+            }
+            val req = Request.Builder().url("ws://$ip:$port/").build()
+            socket = http.newWebSocket(req, Listener(ip, port, code, token))
+        }
+    }
+
+    private inner class Listener(val ip: String, val port: Int, val code: String?, val token: String?) : WebSocketListener() {
+        override fun onOpen(webSocket: WebSocket, response: Response) {
+            val hello = Hello(code = code, token = token, client = ClientInfo(deviceName), rateHz = 10)
+            webSocket.send(LinkJson.encodeToString(Hello.serializer(), hello))
+        }
+
+        override fun onMessage(webSocket: WebSocket, text: String) {
+            val m = runCatching { LinkJson.decodeFromString(Incoming.serializer(), text) }.getOrNull() ?: return
+            when (m.type) {
+                "hello_ok" -> {
+                    m.token?.let { t -> scope.launch { tokens.saveToken(ip, t) } }
+                    m.limits?.let { limits = it }
+                    _status.value = LinkStatus.Connected(ip, m.server ?: "OpenAirBook Link", m.source, null)
+                    startPing(webSocket)
+                }
+                "status" -> _status.update { s -> if (s is LinkStatus.Connected) s.copy(source = m.source, message = m.message) else s }
+                "state" -> m.data?.let { _state.value = it; lastStateAt = System.currentTimeMillis() }
+                "error" -> when (m.code) {
+                    "pairing_failed" -> {
+                        scope.launch { tokens.clearToken(ip) }
+                        _status.value = LinkStatus.NeedsCode(ip, port, if (code != null) "Nieprawidłowy kod parowania." else "Parowanie wygasło — wpisz nowy kod.")
+                        wantConnected = false
+                        webSocket.close(1000, null)
+                    }
+                    "rate_limited" -> _lastError.value = "Za dużo prób — odczekaj minutę."
+                    else -> _lastError.value = m.message ?: m.code
+                }
+            }
+        }
+
+        override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) = lost(webSocket, t.message ?: "błąd połączenia")
+        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) = lost(webSocket, reason.ifBlank { "połączenie zamknięte" })
+
+        private fun lost(ws: WebSocket, reason: String) {
+            if (ws != socket) return
+            pingJob?.cancel()
+            _state.value = null
+            if (_status.value is LinkStatus.NeedsCode) return
+            if (wantConnected) {
+                _status.value = LinkStatus.Lost(ip, reason)
+                reconnectJob?.cancel()
+                reconnectJob = scope.launch { delay(3000); if (wantConnected) open(ip, port, null) }
+            } else {
+                _status.value = LinkStatus.Idle
+            }
+        }
+    }
+
+    private fun startPing(ws: WebSocket) {
+        pingJob?.cancel()
+        pingJob = scope.launch {
+            while (isActive) {
+                delay(5000)
+                ws.send(LinkJson.encodeToString(Ping.serializer(), Ping(id = "p${ids.getAndIncrement()}", t = System.currentTimeMillis())))
+            }
+        }
+    }
+
+    // ---------- komendy ----------
+
+    fun command(name: String, value: Double? = null): Boolean {
+        val ws = socket ?: return false
+        if (_status.value !is LinkStatus.Connected) return false
+        return ws.send(LinkJson.encodeToString(Command.serializer(), Command(id = "c${ids.getAndIncrement()}", name = name, value = value)))
+    }
+
+    fun axis(aileron: Double, elevator: Double, rudder: Double = 0.0): Boolean {
+        val ws = socket ?: return false
+        return ws.send(LinkJson.encodeToString(AxisMessage.serializer(), AxisMessage(aileron = aileron, elevator = elevator, rudder = rudder)))
+    }
+
+    fun releaseAxes() {
+        socket?.send(LinkJson.encodeToString(AxisMessage.serializer(), AxisMessage(release = true)))
+    }
+
+    /** Ile ms minęło od ostatniego `state` — do wykrywania zamrożonego strumienia. */
+    fun stateAgeMs() = if (lastStateAt == 0L) Long.MAX_VALUE else System.currentTimeMillis() - lastStateAt
+}
