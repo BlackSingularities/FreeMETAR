@@ -9,6 +9,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -88,6 +90,9 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(
                     containerColor = Night,
+                    // Pasek stanu obsługuje każdy ekran sam (statusBarsPadding / TopAppBar);
+                    // tu tylko dolny pasek systemowy, inaczej górny odstęp liczy się podwójnie
+                    contentWindowInsets = WindowInsets.navigationBars,
                     bottomBar = {
                         if (!wide && route in tabs.map { it.route }) {
                             NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
