@@ -1,5 +1,11 @@
 package com.freemetar.app.ui.screens
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.outlined.Route
+import kotlin.math.roundToInt
+
 import com.freemetar.app.domain.loc
 
 import android.graphics.PointF
@@ -261,11 +267,29 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
     Box(Modifier.fillMaxSize()) {
         AndroidView({ mapView }, Modifier.fillMaxSize())
 
-        Row(Modifier.statusBarsPadding().padding(12.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MapChip("SIGMET", showSigmets, Icons.Outlined.WarningAmber) { showSigmets = !showSigmets }
-            if (live != null) MapChip(loc("Śledź samolot", "Follow aircraft"), follow, Icons.Outlined.MyLocation) { follow = !follow }
-            Spacer(Modifier.weight(1f))
+        // Przełączniki warstw u góry (przewijane, by nie łamały się na wąskim ekranie), legenda pod nimi
+        Column(Modifier.statusBarsPadding().padding(12.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MapChip("SIGMET", showSigmets, Icons.Outlined.WarningAmber) { showSigmets = !showSigmets }
+                if (live != null) MapChip(loc("Śledź samolot", "Follow aircraft"), follow, Icons.Outlined.MyLocation) { follow = !follow }
+                if (route != null) MapChip(route.origin + " → " + route.destination, false, Icons.Outlined.Route) { follow = false; vm.focusRouteOnMap() }
+            }
             Legend()
+        }
+
+        val s = live
+        if (picked == null && s != null) {
+            Row(
+                Modifier.align(Alignment.BottomCenter).padding(12.dp).fillMaxWidth()
+                    .clip(RoundedCornerShape(50)).background(c.card.copy(alpha = 0.94f)).border(1.dp, c.rule, RoundedCornerShape(50))
+                    .padding(horizontal = 18.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                LiveValue("ALT", s.position.altIndFt?.let { "%d".format(it.roundToInt()) } ?: "—")
+                LiveValue("GS", s.speed.gsKt?.let { "${it.roundToInt()}" } ?: "—")
+                LiveValue("TRK", s.attitude.trackTrueDeg?.let { "%03d°".format(((it.roundToInt() % 360) + 360) % 360) } ?: "—")
+                LiveValue("V/S", s.speed.vsFpm?.let { "%+d".format(it.roundToInt()) } ?: "—")
+            }
         }
 
         picked?.let { m ->
@@ -365,14 +389,25 @@ private fun addOverlay(st: Style, c: FmColors) {
 @Composable
 private fun MapChip(text: String, on: Boolean, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
     val c = Fm.c
+    // Włączony: pełny blok w kolorze tekstu; wyłączony: półprzezroczysta pigułka z obwódką
     Row(
-        Modifier.clip(RoundedCornerShape(8.dp)).background(c.card.copy(alpha = 0.94f))
-            .clickable(role = Role.Switch, onClick = onClick).padding(horizontal = 10.dp, vertical = 8.dp),
+        Modifier.clip(RoundedCornerShape(50)).background(if (on) c.ink else c.card.copy(alpha = 0.94f))
+            .border(1.dp, if (on) c.ink else c.rule, RoundedCornerShape(50))
+            .clickable(role = Role.Switch, onClick = onClick).padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, null, tint = if (on) c.caution else c.ink2, modifier = Modifier.size(16.dp))
+        Icon(icon, null, tint = if (on) c.paper else c.ink2, modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(6.dp))
-        Text(text, style = MaterialTheme.typography.labelMedium, color = if (on) c.ink else c.ink2)
+        Text(text, style = MaterialTheme.typography.labelMedium, color = if (on) c.paper else c.ink, maxLines = 1)
+    }
+}
+
+@Composable
+private fun LiveValue(label: String, value: String) {
+    val c = Fm.c
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = c.ink2)
+        Text(value, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = c.ink)
     }
 }
 
@@ -380,7 +415,7 @@ private fun MapChip(text: String, on: Boolean, icon: androidx.compose.ui.graphic
 private fun Legend() {
     val c = Fm.c
     Row(
-        Modifier.clip(RoundedCornerShape(8.dp)).background(c.card.copy(alpha = 0.94f)).padding(horizontal = 10.dp, vertical = 8.dp),
+        Modifier.clip(RoundedCornerShape(50)).background(c.card.copy(alpha = 0.94f)).padding(horizontal = 12.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
     ) {
         listOf("VFR", "MVFR", "IFR", "LIFR").forEach { k ->

@@ -1,5 +1,13 @@
 package com.freemetar.app.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.draw.clip
+
 import com.freemetar.app.domain.loc
 
 import com.freemetar.app.ui.theme.Fm
@@ -69,34 +77,79 @@ private enum class Tool(private val labelOf: () -> String, val icon: ImageVector
     val label: String get() = labelOf()
 }
 
+/**
+ * Narzędzia: wszystkie widoczne naraz jako kafelki (telefon) albo lista po lewej (tablet / poziomo),
+ * wybrane narzędzie pod spodem lub obok. Aktywny kafelek to blok w kolorze tekstu.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun ToolsScreen(vm: MainViewModel) {
     var tool by rememberSaveable { mutableStateOf(Tool.ROUTE) }
-    LazyColumn(
-        Modifier.fillMaxSize().statusBarsPadding().widthIn(max = 760.dp),
-        contentPadding = PaddingValues(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item { Text(loc("Planowanie", "Planning"), style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 8.dp)) }
-        item {
-            androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(Tool.entries.size) { i ->
-                    val t = Tool.entries[i]
-                    FilterChip(selected = tool == t, onClick = { tool = t }, label = { Text(t.label) }, leadingIcon = { Icon(t.icon, null, modifier = Modifier.size(18.dp)) })
+    val content: @Composable () -> Unit = {
+        when (tool) {
+            Tool.ROUTE -> RouteTool(vm)
+            Tool.CHEAT -> CheatSheet()
+            Tool.WIND -> WindTool()
+            Tool.DENSITY -> DensityTool()
+            Tool.DESCENT -> DescentTool()
+            Tool.FUEL -> FuelTool()
+            Tool.UNITS -> UnitsTool()
+            Tool.DECODE -> DecodeTool()
+        }
+    }
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding()) {
+        if (maxWidth >= 720.dp) {
+            androidx.compose.foundation.layout.Row(Modifier.fillMaxSize()) {
+                androidx.compose.foundation.layout.Column(
+                    Modifier.width(230.dp).fillMaxHeight().verticalScroll(rememberScrollState()).padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(loc("Narzędzia", "Tools"), style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 8.dp, bottom = 10.dp))
+                    Tool.entries.forEach { t -> ToolTile(t, tool == t, Modifier.fillMaxWidth(), row = true) { tool = t } }
                 }
+                androidx.compose.foundation.layout.Box(Modifier.width(1.dp).fillMaxHeight().background(Fm.c.rule))
+                androidx.compose.foundation.layout.Column(
+                    Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(20.dp).widthIn(max = 760.dp),
+                ) { content() }
+            }
+        } else {
+            LazyColumn(
+                Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item { Text(loc("Narzędzia", "Tools"), style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 8.dp, start = 4.dp)) }
+                item {
+                    androidx.compose.foundation.layout.FlowRow(
+                        maxItemsInEachRow = 4,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Tool.entries.forEach { t -> ToolTile(t, tool == t, Modifier.weight(1f)) { tool = t } }
+                    }
+                }
+                item { content() }
             }
         }
-        item {
-            when (tool) {
-                Tool.ROUTE -> RouteTool(vm)
-                Tool.CHEAT -> CheatSheet()
-                Tool.WIND -> WindTool()
-                Tool.DENSITY -> DensityTool()
-                Tool.DESCENT -> DescentTool()
-                Tool.FUEL -> FuelTool()
-                Tool.UNITS -> UnitsTool()
-                Tool.DECODE -> DecodeTool()
-            }
+    }
+}
+
+@Composable
+private fun ToolTile(t: Tool, on: Boolean, modifier: Modifier, row: Boolean = false, onClick: () -> Unit) {
+    val c = Fm.c
+    val shape = RoundedCornerShape(if (row) 50 else 14)
+    val m = modifier.clip(shape).background(if (on) c.ink else c.card).border(1.dp, if (on) c.ink else c.rule, shape).clickable(onClick = onClick)
+    if (row) {
+        androidx.compose.foundation.layout.Row(m.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Icon(t.icon, null, tint = if (on) c.paper else c.ink2, modifier = Modifier.size(18.dp))
+            androidx.compose.foundation.layout.Spacer(Modifier.width(10.dp))
+            Text(t.label, color = if (on) c.paper else c.ink, style = MaterialTheme.typography.labelLarge)
+        }
+    } else {
+        androidx.compose.foundation.layout.Column(m.padding(vertical = 10.dp, horizontal = 4.dp), horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+            Icon(t.icon, null, tint = if (on) c.paper else c.ink2, modifier = Modifier.size(22.dp))
+            androidx.compose.foundation.layout.Spacer(Modifier.size(4.dp))
+            Text(t.label, color = if (on) c.paper else c.ink, style = MaterialTheme.typography.labelMedium, maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         }
     }
 }

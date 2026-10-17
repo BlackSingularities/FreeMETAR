@@ -1,5 +1,7 @@
 package com.freemetar.app.ui.screens
 
+import androidx.compose.foundation.layout.wrapContentWidth
+
 import com.freemetar.app.domain.loc
 
 import com.freemetar.app.ui.theme.Fm
@@ -63,7 +65,8 @@ fun SettingsScreen(vm: MainViewModel) {
     val s by vm.settings.collectAsStateWithLifecycle()
     val db by vm.dbState.collectAsStateWithLifecycle()
     Column(
-        Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(16.dp).widthIn(max = 760.dp),
+        Modifier.fillMaxSize().wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 760.dp)
+            .statusBarsPadding().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(loc("Ustawienia", "Settings"), style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 8.dp))

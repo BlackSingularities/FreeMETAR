@@ -1,5 +1,8 @@
 package com.freemetar.app.ui.plan
 
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.layout.widthIn
+
 import com.freemetar.app.domain.loc
 
 import androidx.compose.foundation.background
@@ -109,7 +112,8 @@ fun PlanEditorScreen(vm: MainViewModel, onBack: () -> Unit, onShowMap: () -> Uni
         }
         if (busy != null) LinearProgressIndicator(Modifier.fillMaxWidth(), color = c.ink, trackColor = c.terrain) else Rule()
 
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
+        // Na tablecie kolumna czytelnej szerokości na środku zamiast rozciągniętych pól
+        LazyColumn(Modifier.fillMaxSize().wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 820.dp), contentPadding = PaddingValues(bottom = 32.dp)) {
             item {
                 Section(loc("Ogólne", "General"), Icons.Outlined.Tune) {
                     var name by remember(r.id) { mutableStateOf(r.name) }

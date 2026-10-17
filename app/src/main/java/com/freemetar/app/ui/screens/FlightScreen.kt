@@ -1,5 +1,7 @@
 package com.freemetar.app.ui.screens
 
+import androidx.compose.foundation.layout.wrapContentWidth
+
 import com.freemetar.app.domain.loc
 
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -116,7 +118,10 @@ fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> U
                 ModeSwitch(cockpit) { cockpit = it }
                 CockpitView(vm.link, state, active, AircraftProfile.fromName(settings.aircraftProfile)) { p -> vm.setAircraftProfile(p) }
             }
-        } else Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+        } else Column(
+            Modifier.fillMaxSize().wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 820.dp)
+                .statusBarsPadding().verticalScroll(rememberScrollState()).padding(bottom = 24.dp),
+        ) {
             if (state != null) ModeSwitch(cockpit) { cockpit = it }
             else Text(loc("Lot", "Flight"), style = MaterialTheme.typography.headlineLarge, color = c.ink, modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp))
 

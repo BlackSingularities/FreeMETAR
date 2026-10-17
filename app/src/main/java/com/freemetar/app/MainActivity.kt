@@ -36,6 +36,10 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.LocalAirport
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.Calculate
+import androidx.compose.material.icons.filled.Calculate
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -80,8 +84,8 @@ private val tabs get() = listOf(
     Tab("home", loc("Lotniska", "Airports"), Icons.Outlined.LocalAirport, Icons.Filled.LocalAirport),
     Tab("map", loc("Mapa", "Map"), Icons.Outlined.Map, Icons.Filled.Map),
     Tab("flight", loc("Lot", "Flight"), Icons.Outlined.FlightTakeoff, Icons.Filled.FlightTakeoff),
-    Tab("tools", loc("Plan", "Plan"), Icons.Outlined.Explore, Icons.Filled.Explore),
-    Tab("settings", loc("Więcej", "More"), Icons.Outlined.Tune, Icons.Filled.Tune),
+    Tab("tools", loc("Narzędzia", "Tools"), Icons.Outlined.Calculate, Icons.Filled.Calculate),
+    Tab("settings", loc("Ustawienia", "Settings"), Icons.Outlined.Settings, Icons.Filled.Settings),
 )
 
 private fun NavHostController.goTab(route: String) = navigate(route) {
@@ -127,6 +131,14 @@ class MainActivity : ComponentActivity() {
                 }
                 val wide = isWide()
                 val c = Fm.c
+                val simLive = vm.flightState.collectAsStateWithLifecycle().value != null
+                // Ikona zakładki; przy Locie zielona kropka, gdy symulator jest połączony
+                val tabIcon: @androidx.compose.runtime.Composable (Tab, Boolean) -> Unit = { t, sel ->
+                    Box {
+                        Icon(if (sel) t.selectedIcon else t.icon, null)
+                        if (t.route == "flight" && simLive) Box(Modifier.align(Alignment.TopEnd).size(8.dp).background(Fm.c.green, androidx.compose.foundation.shape.CircleShape))
+                    }
+                }
                 UpdateDialog(vm)
 
                 Scaffold(
@@ -143,7 +155,7 @@ class MainActivity : ComponentActivity() {
                                     NavigationBarItem(
                                         selected = sel,
                                         onClick = { nav.goTab(t.route) },
-                                        icon = { Icon(if (sel) t.selectedIcon else t.icon, null) },
+                                        icon = { tabIcon(t, sel) },
                                         label = { Text(t.label) },
                                         colors = NavigationBarItemDefaults.colors(
                                             indicatorColor = c.ink, selectedIconColor = c.paper, selectedTextColor = c.ink,
@@ -167,7 +179,7 @@ class MainActivity : ComponentActivity() {
                                     NavigationRailItem(
                                         selected = sel,
                                         onClick = { nav.goTab(t.route) },
-                                        icon = { Icon(if (sel) t.selectedIcon else t.icon, null) },
+                                        icon = { tabIcon(t, sel) },
                                         label = { Text(t.label) },
                                         colors = NavigationRailItemDefaults.colors(
                                             indicatorColor = c.ink, selectedIconColor = c.paper, selectedTextColor = c.ink,
@@ -188,7 +200,7 @@ class MainActivity : ComponentActivity() {
                                 popExitTransition = { fadeOut() + slideOutHorizontally { it / 14 } },
                             ) {
                                 composable("home") {
-                                    HomeScreen(vm) { ident ->
+                                    HomeScreen(vm, onFlight = { nav.goTab("flight") }) { ident ->
                                         vm.open(ident)
                                         nav.navigate("airport/$ident")
                                     }

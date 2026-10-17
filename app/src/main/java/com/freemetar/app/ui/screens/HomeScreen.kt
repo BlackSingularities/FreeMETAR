@@ -110,7 +110,7 @@ private val hhmmZ = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneOffset.UTC
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun HomeScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
+fun HomeScreen(vm: MainViewModel, onFlight: () -> Unit = {}, onOpen: (String) -> Unit) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     val db by vm.dbState.collectAsStateWithLifecycle()
     val metars by vm.favMetars.collectAsStateWithLifecycle()
@@ -159,6 +159,7 @@ fun HomeScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
                 }
                 items(results, key = { "s" + it.ident }) { a -> SearchRow(a) { onOpen(a.ident) } }
             } else {
+                item(span = Full) { YourFlightCard(vm, onFlight, onOpen) }
                 if (settings.recent.isNotEmpty()) item(span = Full) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 6.dp)) {
                         settings.recent.forEach { id -> Pill(id, icon = Icons.Outlined.History, mono = true) { onOpen(id) } }
@@ -240,6 +241,71 @@ private fun Header() {
             Text(now.format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "Z", fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = c.green)
             Text(loc("czas lokalny ", "local time ") + local.format(DateTimeFormatter.ofPattern("HH:mm")), style = MaterialTheme.typography.bodySmall, color = c.ink2)
         }
+    }
+}
+
+/**
+ * „Twój lot”: dane z symulatora (jeśli połączony) i aktywny plan z kategoriami lotu na obu końcach.
+ * Nic nie rysuje, gdy nie ma ani planu, ani połączenia.
+ */
+@Composable
+private fun YourFlightCard(vm: MainViewModel, onFlight: () -> Unit, onOpen: (String) -> Unit) {
+    val c = Fm.c
+    val settings by vm.settings.collectAsStateWithLifecycle()
+    val routes by vm.routes.collectAsStateWithLifecycle()
+    val briefing by vm.routeBriefing.collectAsStateWithLifecycle()
+    val live by vm.flightState.collectAsStateWithLifecycle()
+    val route = routes.firstOrNull { it.id == settings.activeRouteId }
+    val s = live
+    if (route == null && s == null) return
+
+    Panel(onClick = onFlight) {
+        Column(Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(8.dp).clip(RoundedCornerShape(50)).background(if (s != null) c.green else c.ink2))
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (s != null) s.aircraft.title ?: loc("Symulator połączony", "Simulator connected") else loc("Aktywny plan lotu", "Active flight plan"),
+                    style = MaterialTheme.typography.labelLarge, color = c.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+                )
+                Text(
+                    if (s != null) loc("Kokpit", "Cockpit") else loc("Plan", "Plan"),
+                    fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = c.paper,
+                    modifier = Modifier.clip(RoundedCornerShape(50)).background(c.ink).padding(horizontal = 12.dp, vertical = 5.dp),
+                )
+            }
+            if (route != null) {
+                Spacer(Modifier.size(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RouteEnd(route.origin, briefing?.metars?.get(route.origin), Modifier.weight(1f)) { onOpen(route.origin) }
+                    Text(route.cruiseFl?.let { "FL%03d".format(it) } ?: "→", fontFamily = Mono, fontSize = 13.sp, color = c.magenta,
+                        modifier = Modifier.padding(horizontal = 10.dp))
+                    RouteEnd(route.destination, briefing?.metars?.get(route.destination), Modifier.weight(1f), end = true) { onOpen(route.destination) }
+                }
+            }
+            if (s != null) {
+                Spacer(Modifier.size(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StripField("ALT", s.position.altIndFt?.let { "%,d".format(it.roundToInt()).replace(',', ' ') } ?: "—", Modifier.weight(1.2f))
+                    StripField("IAS", s.speed.iasKt?.let { "${it.roundToInt()} kt" } ?: "—", Modifier.weight(1f))
+                    StripField("GS", s.speed.gsKt?.let { "${it.roundToInt()} kt" } ?: "—", Modifier.weight(1f))
+                    StripField("HDG", s.attitude.hdgMagDeg?.let { "%03d°".format(((it.roundToInt() % 360) + 360) % 360) } ?: "—", Modifier.weight(0.9f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RouteEnd(ident: String, metar: Metar?, modifier: Modifier, end: Boolean = false, onClick: () -> Unit) {
+    val c = Fm.c
+    Column(modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onClick).padding(vertical = 2.dp), horizontalAlignment = if (end) Alignment.End else Alignment.Start) {
+        Text(ident, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 22.sp, color = c.ink)
+        val cat = metar?.flightCategory
+        Text(
+            listOfNotNull(cat, metar?.let { windShort(it) }).joinToString("  ").ifBlank { "—" },
+            fontFamily = Mono, fontSize = 12.sp, color = if (cat != null) c.category(cat) else c.ink2, maxLines = 1,
+        )
     }
 }
 

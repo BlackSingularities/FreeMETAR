@@ -135,7 +135,7 @@ private val hhmm = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneOffset.UTC)
 private enum class Part(private val labelOf: () -> String) {
     WEATHER({ loc("Pogoda", "Weather") }), HAZARDS({ loc("Zagrożenia", "Hazards") }), TAF({ loc("Prognoza", "Forecast") }),
     ALOFT({ loc("Wysokości", "Aloft") }), RUNWAYS({ loc("Pasy", "Runways") }), RADIO({ "Radio" }),
-    AIRPORT({ loc("Lotnisko", "Airport") }), NEARBY({ loc("Okolica", "Nearby") });
+    CHARTS({ loc("Karty", "Charts") }), AIRPORT({ loc("Lotnisko", "Airport") }), NEARBY({ loc("Okolica", "Nearby") });
 
     val label: String get() = labelOf()
 }
@@ -173,17 +173,25 @@ fun BriefingScreen(vm: MainViewModel, onBack: () -> Unit, onOpen: (String) -> Un
             }
         } else {
             val list = rememberLazyListState()
-            JumpBar(list)
+            // Karty FAA tylko dla lotnisk USA; kolejność listy = kolejność paska skoków
+            val parts = Part.entries.filter { it != Part.CHARTS || com.freemetar.app.data.charts.FaaCharts.isUsIcao(detail.ident) }
+            JumpBar(list, parts)
             LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(bottom = 24.dp)) {
-                item(key = Part.WEATHER) { WeatherPart(detail, settings) }
-                item(key = Part.HAZARDS) { HazardsPart(detail) }
-                item(key = Part.TAF) { TafPart(detail) }
-                item(key = Part.ALOFT) { AloftPart(detail, settings) }
-                item(key = Part.RUNWAYS) { RunwaysPart(detail) }
-                item(key = Part.RADIO) { RadioPart(detail, vm) }
-                item(key = "charts") { com.freemetar.app.ui.charts.ChartsPanel(detail.ident) }
-                item(key = Part.AIRPORT) { AirportPart(detail, settings) }
-                item(key = Part.NEARBY) { NearbyPart(detail, onOpen) }
+                parts.forEach { p ->
+                    item(key = p) {
+                        when (p) {
+                            Part.WEATHER -> WeatherPart(detail, settings)
+                            Part.HAZARDS -> HazardsPart(detail)
+                            Part.TAF -> TafPart(detail)
+                            Part.ALOFT -> AloftPart(detail, settings)
+                            Part.RUNWAYS -> RunwaysPart(detail)
+                            Part.RADIO -> RadioPart(detail, vm)
+                            Part.CHARTS -> com.freemetar.app.ui.charts.ChartsPanel(detail.ident)
+                            Part.AIRPORT -> AirportPart(detail, settings)
+                            Part.NEARBY -> NearbyPart(detail, onOpen)
+                        }
+                    }
+                }
             }
         }
     }
@@ -213,20 +221,20 @@ private fun TopBar(d: AirportDetail, s: Settings, vm: MainViewModel, onBack: () 
 
 /** Pasek skoków do rozdziałów; podświetla rozdział widoczny na górze listy. */
 @Composable
-private fun JumpBar(list: LazyListState) {
+private fun JumpBar(list: LazyListState, parts: List<Part>) {
     val c = Fm.c
     val scope = rememberCoroutineScope()
     val current by remember { derivedStateOf { list.layoutInfo.visibleItemsInfo.firstOrNull()?.key as? Part ?: Part.WEATHER } }
     Column {
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp)) {
-            Part.entries.forEachIndexed { i, p ->
+            parts.forEachIndexed { i, p ->
                 val on = p == current
                 Column(
                     Modifier.clip(RoundedCornerShape(4.dp)).clickable(role = Role.Tab) { scope.launch { list.animateScrollToItem(i) } }.padding(horizontal = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(p.label, style = MaterialTheme.typography.labelLarge, color = if (on) c.ink else c.ink2, modifier = Modifier.padding(top = 10.dp, bottom = 8.dp))
-                    Box(Modifier.height(3.dp).width(28.dp).clip(RoundedCornerShape(2.dp)).background(if (on) c.accent else Color.Transparent))
+                    Box(Modifier.height(3.dp).width(28.dp).clip(RoundedCornerShape(2.dp)).background(if (on) c.ink else Color.Transparent))
                 }
             }
         }
