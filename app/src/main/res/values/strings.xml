@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">FreeMETAR</string>
-    <color name="ic_bg">#0B1220</color>
-    <style name="Theme.FreeMETAR" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">#0B1220</item>
+    <color name="ic_bg">#16202B</color>
+    <style name="Theme.FreeMETAR" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">#EDF1EE</item>
     </style>
 </resources>

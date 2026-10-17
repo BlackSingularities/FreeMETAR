@@ -1,5 +1,6 @@
 package com.freemetar.app.ui.screens
 
+import com.freemetar.app.ui.theme.Fm
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -48,18 +49,11 @@ import com.freemetar.app.MainViewModel
 import com.freemetar.app.data.Airport
 import com.freemetar.app.data.Metar
 import com.freemetar.app.domain.Geo
-import com.freemetar.app.ui.components.CategoryBadge
+import com.freemetar.app.ui.components.CategoryTag
 import com.freemetar.app.ui.components.SectionCard
 import com.freemetar.app.ui.components.StatTile
-import com.freemetar.app.ui.theme.Amber
-import com.freemetar.app.ui.theme.CatIfr
-import com.freemetar.app.ui.theme.CatVfr
 import com.freemetar.app.ui.theme.Mono
-import com.freemetar.app.ui.theme.PanelHi
 import com.freemetar.app.ui.theme.RawText
-import com.freemetar.app.ui.theme.Sky
-import com.freemetar.app.ui.theme.TextHi
-import com.freemetar.app.ui.theme.TextLo
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -104,7 +98,7 @@ fun RouteTool(vm: MainViewModel) {
                     b == null && arr.length >= 3 -> "Nie znaleziono lotniska $arr"
                     else -> "Wpisz kody ICAO obu lotnisk."
                 },
-                color = TextLo, fontSize = 13.sp,
+                color = Fm.c.ink2, fontSize = 13.sp,
             )
         } else {
             val dist = Geo.distanceNm(a.lat, a.lon, b.lat, b.lon)
@@ -113,11 +107,11 @@ fun RouteTool(vm: MainViewModel) {
             val speed = gs.num()?.takeIf { it > 0 }
             Spacer(Modifier.size(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatTile("Dystans", "${dist.roundToInt()} NM", "${(dist * 1.852).roundToInt()} km", Modifier.weight(1f), accent = Sky, icon = Icons.Outlined.Straighten)
+                StatTile("Dystans", "${dist.roundToInt()} NM", "${(dist * 1.852).roundToInt()} km", Modifier.weight(1f), accent = Fm.c.magenta, icon = Icons.Outlined.Straighten)
                 StatTile("Kurs", "%03d°".format(crs.roundToInt()), "powrót %03d°".format(back.roundToInt()), Modifier.weight(1f), icon = Icons.Outlined.Explore)
                 StatTile("Czas", speed?.let { val h = dist / it; "%d:%02d".format(h.toInt(), ((h - h.toInt()) * 60).roundToInt()) } ?: "—", "ETE", Modifier.weight(1f), icon = Icons.Outlined.Schedule)
             }
-            Text("Kurs rzeczywisty po ortodromie (bez deklinacji i wiatru).", color = TextLo, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
+            Text("Kurs rzeczywisty po ortodromie (bez deklinacji i wiatru).", color = Fm.c.ink2, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
             if (metars.isNotEmpty()) {
                 Spacer(Modifier.size(12.dp))
                 listOf(a, b).forEach { ap -> RouteMetar(ap, metars[ap.ident]) }
@@ -143,16 +137,16 @@ private fun IcaoField(label: String, value: String, icon: ImageVector, modifier:
 
 @Composable
 private fun RouteMetar(a: Airport, m: Metar?) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(12.dp)).background(PanelHi).padding(12.dp)) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(12.dp)).background(Fm.c.terrain).padding(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(a.ident, fontFamily = Mono, fontWeight = FontWeight.Bold, color = TextHi)
+            Text(a.ident, fontFamily = Mono, fontWeight = FontWeight.Bold, color = Fm.c.ink)
             Spacer(Modifier.width(8.dp))
-            CategoryBadge(m?.flightCategory)
+            CategoryTag(m?.flightCategory)
             Spacer(Modifier.width(8.dp))
-            Text(a.name, color = TextLo, fontSize = 12.sp, maxLines = 1)
+            Text(a.name, color = Fm.c.ink2, fontSize = 12.sp, maxLines = 1)
         }
         Spacer(Modifier.size(6.dp))
-        Text(m?.raw ?: "Brak METAR", style = RawText.copy(fontSize = 12.sp), color = TextHi.copy(alpha = 0.85f))
+        Text(m?.raw ?: "Brak METAR", style = RawText.copy(fontSize = 12.sp), color = Fm.c.ink.copy(alpha = 0.85f))
     }
 }
 
@@ -173,50 +167,50 @@ fun CheatSheet() {
         SectionCard("Alfabet fonetyczny ICAO", icon = Icons.Outlined.RecordVoiceOver) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 phonetic.forEach { (l, w) ->
-                    Row(Modifier.clip(RoundedCornerShape(8.dp)).background(PanelHi).padding(horizontal = 8.dp, vertical = 5.dp)) {
-                        Text(l, fontFamily = Mono, color = Sky, fontWeight = FontWeight.Bold)
+                    Row(Modifier.clip(RoundedCornerShape(8.dp)).background(Fm.c.terrain).padding(horizontal = 8.dp, vertical = 5.dp)) {
+                        Text(l, fontFamily = Mono, color = Fm.c.magenta, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.width(6.dp))
-                        Text(w, color = TextHi, fontSize = 13.sp)
+                        Text(w, color = Fm.c.ink, fontSize = 13.sp)
                     }
                 }
             }
         }
         SectionCard("Kody transpondera", icon = Icons.Outlined.Pin) {
             listOf(
-                Triple("7700", "Niebezpieczeństwo (MAYDAY)", CatIfr),
-                Triple("7600", "Utrata łączności radiowej", Amber),
-                Triple("7500", "Bezprawna ingerencja", CatIfr),
-                Triple("7000", "VFR — Europa", TextHi),
-                Triple("1200", "VFR — USA/Kanada", TextHi),
-                Triple("2000", "IFR bez przydziału kodu", TextHi),
+                Triple("7700", "Niebezpieczeństwo (MAYDAY)", Fm.c.ifr),
+                Triple("7600", "Utrata łączności radiowej", Fm.c.caution),
+                Triple("7500", "Bezprawna ingerencja", Fm.c.ifr),
+                Triple("7000", "VFR — Europa", Fm.c.ink),
+                Triple("1200", "VFR — USA/Kanada", Fm.c.ink),
+                Triple("2000", "IFR bez przydziału kodu", Fm.c.ink),
             ).forEach { (c, t, col) ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(c, fontFamily = Mono, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = col, modifier = Modifier.width(70.dp))
-                    Text(t, color = TextHi, fontSize = 14.sp)
+                    Text(t, color = Fm.c.ink, fontSize = 14.sp)
                 }
             }
         }
         SectionCard("Sygnały świetlne z wieży", icon = Icons.Outlined.Lightbulb) {
             Row(Modifier.padding(bottom = 6.dp)) {
-                Text("Sygnał", color = TextLo, fontSize = 12.sp, modifier = Modifier.weight(1f))
-                Text("W locie", color = TextLo, fontSize = 12.sp, modifier = Modifier.weight(1f))
-                Text("Na ziemi", color = TextLo, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                Text("Sygnał", color = Fm.c.ink2, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                Text("W locie", color = Fm.c.ink2, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                Text("Na ziemi", color = Fm.c.ink2, fontSize = 12.sp, modifier = Modifier.weight(1f))
             }
             listOf(
-                Triple(CatVfr to "Zielone ciągłe", "Zezwolenie na lądowanie", "Zezwolenie na start"),
-                Triple(CatVfr to "Zielone przeryw.", "Wróć do lądowania", "Zezwolenie na kołowanie"),
-                Triple(CatIfr to "Czerwone ciągłe", "Ustąp, krąż dalej", "Stop"),
-                Triple(CatIfr to "Czerwone przeryw.", "Nie ląduj, lotnisko niebezp.", "Opuść drogę startową"),
-                Triple(Color.White to "Białe przeryw.", "Ląduj tutaj, potem płyta", "Wróć na miejsce startu"),
+                Triple(Fm.c.vfr to "Zielone ciągłe", "Zezwolenie na lądowanie", "Zezwolenie na start"),
+                Triple(Fm.c.vfr to "Zielone przeryw.", "Wróć do lądowania", "Zezwolenie na kołowanie"),
+                Triple(Fm.c.ifr to "Czerwone ciągłe", "Ustąp, krąż dalej", "Stop"),
+                Triple(Fm.c.ifr to "Czerwone przeryw.", "Nie ląduj, lotnisko niebezp.", "Opuść drogę startową"),
+                Triple(Fm.c.ink2 to "Białe przeryw.", "Ląduj tutaj, potem płyta", "Wróć na miejsce startu"),
             ).forEach { (sig, air, ground) ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
                     Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                         Spacer(Modifier.size(10.dp).clip(RoundedCornerShape(50)).background(sig.first))
                         Spacer(Modifier.width(6.dp))
-                        Text(sig.second, color = TextHi, fontSize = 12.sp)
+                        Text(sig.second, color = Fm.c.ink, fontSize = 12.sp)
                     }
-                    Text(air, color = TextHi, fontSize = 12.sp, modifier = Modifier.weight(1f))
-                    Text(ground, color = TextHi, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                    Text(air, color = Fm.c.ink, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                    Text(ground, color = Fm.c.ink, fontSize = 12.sp, modifier = Modifier.weight(1f))
                 }
             }
         }

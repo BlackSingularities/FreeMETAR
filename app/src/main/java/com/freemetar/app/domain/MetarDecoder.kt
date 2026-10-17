@@ -131,6 +131,34 @@ object MetarDecoder {
         return Decoded(t, Category.CLOUDS, "${cover[c]?.replaceFirstChar { it.uppercase() }} na $height$ty")
     }
 
+    /** Czy token jest grupą zjawisk (np. -SHRA, TSRA, BR). */
+    fun isWeather(t: String) = t.length >= 2 && reWx.matches(t) && t != "NSW" &&
+        (phenomena.keys.any { t.contains(it) } || t.endsWith("TS"))
+
+    private val phenomenaEn = mapOf(
+        "DZ" to "drizzle", "RA" to "rain", "SN" to "snow", "SG" to "snow grains", "IC" to "ice crystals", "PL" to "ice pellets",
+        "GR" to "hail", "GS" to "small hail", "BR" to "mist", "FG" to "fog", "FU" to "smoke", "HZ" to "haze", "DU" to "dust",
+        "SA" to "sand", "SQ" to "squalls", "FC" to "funnel cloud", "SS" to "sandstorm", "DS" to "duststorm", "VA" to "volcanic ash",
+    )
+    private val descriptorsEn = mapOf(
+        "MI" to "shallow", "PR" to "partial", "BC" to "patches of", "DR" to "low drifting", "BL" to "blowing",
+        "SH" to "showers of", "TS" to "thunderstorm with", "FZ" to "freezing",
+    )
+
+    /** Zjawiska po angielsku dla komunikatu ATIS, np. "-SHRA BR" → "light showers of rain, mist". */
+    fun weatherTextEn(wx: String): String = wx.split(" ").filter { it.isNotBlank() }.joinToString(", ") { t ->
+        var rest = t
+        val parts = mutableListOf<String>()
+        when {
+            rest.startsWith("+") -> { parts += "heavy"; rest = rest.drop(1) }
+            rest.startsWith("-") -> { parts += "light"; rest = rest.drop(1) }
+            rest.startsWith("VC") -> { parts += "in the vicinity"; rest = rest.drop(2) }
+        }
+        descriptorsEn.keys.firstOrNull { rest.startsWith(it) }?.let { parts += descriptorsEn[it]!!; rest = rest.removePrefix(it) }
+        rest.chunked(2).forEach { phenomenaEn[it]?.let(parts::add) }
+        parts.joinToString(" ").removeSuffix(" with").removeSuffix(" of").ifBlank { t }
+    }.replaceFirstChar { it.uppercase() }
+
     fun weatherText(t: String): String {
         var rest = t
         val parts = mutableListOf<String>()

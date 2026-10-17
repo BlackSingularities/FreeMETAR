@@ -1,61 +1,83 @@
 package com.freemetar.app.ui.components
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.height
-import androidx.compose.material3.Icon
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.text.style.TextAlign
-import com.freemetar.app.ui.theme.PanelHi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AcUnit
+import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.Dehaze
+import androidx.compose.material.icons.outlined.Thunderstorm
+import androidx.compose.material.icons.outlined.Umbrella
+import androidx.compose.material.icons.outlined.WbCloudy
+import androidx.compose.material.icons.outlined.WbSunny
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.freemetar.app.data.Metar
 import com.freemetar.app.data.Runway
+import com.freemetar.app.domain.Category
+import com.freemetar.app.domain.MetarDecoder
 import com.freemetar.app.domain.Wind
-import com.freemetar.app.ui.theme.Amber
-import com.freemetar.app.ui.theme.Line
+import com.freemetar.app.ui.theme.Fm
 import com.freemetar.app.ui.theme.Mono
-import com.freemetar.app.ui.theme.Panel
-import com.freemetar.app.ui.theme.Sky
-import com.freemetar.app.ui.theme.TextHi
-import com.freemetar.app.ui.theme.TextLo
-import com.freemetar.app.ui.theme.categoryColor
 import kotlin.math.cos
 import kotlin.math.sin
+
+// ---------- układ ----------
 
 /** Szerokość okna → liczba kolumn; telefon 1, składany/tablet 2–3. */
 @Composable
@@ -68,146 +90,211 @@ fun windowColumns(): Int {
 fun isWide(): Boolean = LocalConfiguration.current.screenWidthDp >= 600
 
 @Composable
-fun SectionCard(
-    title: String? = null,
-    modifier: Modifier = Modifier,
-    icon: ImageVector? = null,
-    trailing: @Composable RowScope.() -> Unit = {},
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Column(
-        modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(Panel)
-            .border(1.dp, Line, RoundedCornerShape(18.dp))
-            .padding(16.dp)
-            .animateContentSize(),
-    ) {
-        if (title != null) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (icon != null) {
-                    Icon(icon, null, tint = Sky, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(8.dp))
-                }
-                Text(title.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextLo, modifier = Modifier.weight(1f))
-                trailing()
-            }
-            Spacer(Modifier.size(10.dp))
-        }
-        content()
-    }
-}
-
-@Composable
-fun CategoryBadge(cat: String?, modifier: Modifier = Modifier) {
-    val c = categoryColor(cat)
-    Row(
-        modifier
-            .clip(RoundedCornerShape(50))
-            .background(c.copy(alpha = 0.16f))
-            .border(1.dp, c.copy(alpha = 0.6f), RoundedCornerShape(50))
-            .padding(horizontal = 10.dp, vertical = 3.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.size(7.dp).clip(CircleShape).background(c))
-        Spacer(Modifier.width(6.dp))
-        Text(cat ?: "—", color = c, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-fun StatTile(label: String, value: String, sub: String? = null, modifier: Modifier = Modifier, accent: Color = TextHi, icon: ImageVector? = null) {
-    Column(
-        modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(12.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (icon != null) {
-                Icon(icon, null, tint = TextLo, modifier = Modifier.size(14.dp))
-                Spacer(Modifier.width(5.dp))
-            }
-            Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextLo, maxLines = 1)
-        }
-        Spacer(Modifier.size(4.dp))
-        Text(value, color = accent, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-        if (sub != null) Text(sub, color = TextLo, fontSize = 12.sp)
-    }
-}
-
-/** Pusty stan z dużą ikoną — zamiast samego szarego tekstu. */
-@Composable
-fun EmptyState(icon: ImageVector, title: String, sub: String? = null) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(64.dp).clip(CircleShape).background(PanelHi), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = Sky, modifier = Modifier.size(30.dp))
-        }
-        Spacer(Modifier.size(12.dp))
-        Text(title, color = TextHi, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-        if (sub != null) Text(sub, color = TextLo, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp))
-    }
-}
-
-/** Nagłówek sekcji listy z ikoną. */
-@Composable
-fun ListHeader(text: String, icon: ImageVector, modifier: Modifier = Modifier, trailing: @Composable RowScope.() -> Unit = {}) {
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, null, tint = TextLo, modifier = Modifier.size(15.dp))
-        Spacer(Modifier.width(7.dp))
-        Text(text.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextLo, modifier = Modifier.weight(1f))
-        trailing()
-    }
+fun Rule(modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxWidth().height(1.dp).background(Fm.c.rule))
 }
 
 /**
- * Prosty wykres liniowy trendu (np. temperatura z 12 h). Punkty w kolejności czasu.
- * Rysuje linię, wypełnienie i wartości min/maks.
+ * Sekcja briefingu: nagłówek z ikoną i treść, oddzielona od następnej linią —
+ * jak rozdziały na karcie podejścia, nie stos kart.
  */
 @Composable
-fun TrendChart(label: String, values: List<Double>, unit: String, color: Color, icon: ImageVector? = null, modifier: Modifier = Modifier) {
-    val measurer = rememberTextMeasurer()
-    Column(modifier.clip(RoundedCornerShape(14.dp)).background(PanelHi).padding(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (icon != null) { Icon(icon, null, tint = color, modifier = Modifier.size(14.dp)); Spacer(Modifier.width(5.dp)) }
-            Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextLo, modifier = Modifier.weight(1f))
-            values.lastOrNull()?.let { Text("${it.toInt()}$unit", color = color, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
-        }
-        Spacer(Modifier.size(8.dp))
-        if (values.size < 2) {
-            Text("Za mało danych", color = TextLo, fontSize = 12.sp)
-            return@Column
-        }
-        Canvas(Modifier.fillMaxWidth().height(70.dp)) {
-            val min = values.min(); val max = values.max()
-            val span = (max - min).takeIf { it > 0.0 } ?: 1.0
-            val pad = 14f
-            fun pt(i: Int, v: Double) = Offset(
-                i * size.width / (values.size - 1),
-                pad + (size.height - 2 * pad) * (1 - ((v - min) / span)).toFloat(),
-            )
-            val line = Path(); val fill = Path()
-            values.forEachIndexed { i, v ->
-                val p = pt(i, v)
-                if (i == 0) { line.moveTo(p.x, p.y); fill.moveTo(p.x, size.height); fill.lineTo(p.x, p.y) } else { line.lineTo(p.x, p.y); fill.lineTo(p.x, p.y) }
+fun Section(
+    title: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    trailing: @Composable RowScope.() -> Unit = {},
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(modifier.fillMaxWidth()) {
+        Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp).animateContentSize()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(icon, null, tint = Fm.c.magenta, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(10.dp))
+                Text(title, style = MaterialTheme.typography.titleLarge, color = Fm.c.ink, modifier = Modifier.weight(1f))
+                trailing()
             }
-            fill.lineTo(size.width, size.height); fill.close()
-            drawPath(fill, Brush.verticalGradient(listOf(color.copy(alpha = 0.35f), Color.Transparent)))
-            drawPath(line, color, style = Stroke(3f, cap = StrokeCap.Round))
-            val last = pt(values.size - 1, values.last())
-            drawCircle(color, 5f, last)
-            val st = TextStyle(color = TextLo, fontSize = 10.sp)
-            drawText(measurer.measure("max ${max.toInt()}", st), topLeft = Offset(0f, -2f))
-            drawText(measurer.measure("min ${min.toInt()}", st), topLeft = Offset(0f, size.height - 14f))
+            Spacer(Modifier.size(12.dp))
+            content()
+        }
+        Rule()
+    }
+}
+
+/** Powierzchnia „kartonika” — pasek lotu, pole danych. */
+@Composable
+fun Panel(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
+    val shape = RoundedCornerShape(6.dp)
+    Column(
+        modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(Fm.c.card)
+            .border(1.dp, Fm.c.rule, shape)
+            .let { if (onClick != null) it.clickable(onClick = onClick) else it },
+        content = content,
+    )
+}
+
+// ---------- dane ----------
+
+data class Fact(val label: String, val value: String, val accent: Color? = null, val sub: String? = null)
+
+/**
+ * Siatka par etykieta–wartość rozdzielona cienkimi liniami, jak pola na pasku
+ * kontrolera. Wartości krojem kokpitowym.
+ */
+@Composable
+fun FactGrid(facts: List<Fact>, columns: Int = 2, modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxWidth()) {
+        Rule()
+        facts.chunked(columns).forEach { row ->
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                row.forEachIndexed { i, f ->
+                    if (i > 0) Box(Modifier.width(1.dp).fillMaxHeight().background(Fm.c.rule))
+                    Column(Modifier.weight(1f).padding(start = if (i > 0) 14.dp else 0.dp, end = 10.dp, top = 10.dp, bottom = 10.dp)) {
+                        Text(f.label, style = MaterialTheme.typography.labelSmall, color = Fm.c.ink2, maxLines = 1)
+                        Text(f.value, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = f.accent ?: Fm.c.ink)
+                        if (f.sub != null) Text(f.sub, style = MaterialTheme.typography.bodySmall, color = Fm.c.ink2)
+                    }
+                }
+                repeat(columns - row.size) {
+                    Box(Modifier.width(1.dp).fillMaxHeight().background(Fm.c.rule))
+                    Spacer(Modifier.weight(1f))
+                }
+            }
+            Rule()
         }
     }
 }
 
-@Composable
-fun TileRow(vararg tiles: @Composable RowScope.() -> Unit) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) { tiles.forEach { it() } }
+/** Ikona najbardziej znaczącego zjawiska pogodowego. */
+fun weatherIcon(m: Metar?): ImageVector {
+    if (m == null) return Icons.Outlined.Cloud
+    val wx = m.wx.orEmpty()
+    return when {
+        "TS" in wx || m.clouds.any { it.type == "CB" } -> Icons.Outlined.Thunderstorm
+        "SN" in wx || "FZ" in wx || "PL" in wx || "GR" in wx -> Icons.Outlined.AcUnit
+        "RA" in wx || "DZ" in wx -> Icons.Outlined.Umbrella
+        "FG" in wx || "BR" in wx || "HZ" in wx -> Icons.Outlined.Dehaze
+        m.clouds.any { it.cover in setOf("BKN", "OVC", "VV") } -> Icons.Outlined.Cloud
+        m.clouds.any { it.cover in setOf("FEW", "SCT") } -> Icons.Outlined.WbCloudy
+        else -> Icons.Outlined.WbSunny
+    }
 }
+
+/** Blok kategorii lotu na końcu paska — kolor wg konwencji VFR/MVFR/IFR/LIFR. */
+@Composable
+fun CategoryBlock(metar: Metar?, modifier: Modifier = Modifier, width: Dp = 62.dp) {
+    val cat = metar?.flightCategory
+    val bg = if (cat == null) Fm.c.terrain else Fm.c.category(cat)
+    val fg = if (cat == null) Fm.c.ink2 else Color.White
+    Column(
+        modifier.width(width).fillMaxHeight().background(bg).padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(weatherIcon(metar), null, tint = fg, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.size(4.dp))
+        Text(cat ?: "—", color = fg, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+    }
+}
+
+@Composable
+fun CategoryTag(cat: String?, modifier: Modifier = Modifier) {
+    val c = Fm.c.category(cat)
+    Text(
+        cat ?: "—",
+        color = if (cat == null) Fm.c.ink2 else Color.White,
+        fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 11.sp,
+        modifier = modifier.clip(RoundedCornerShape(3.dp)).background(if (cat == null) Fm.c.terrain else c).padding(horizontal = 6.dp, vertical = 2.dp),
+    )
+}
+
+@Composable
+fun Pill(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null, mono: Boolean = false, onClick: () -> Unit) {
+    Row(
+        modifier
+            .clip(RoundedCornerShape(50))
+            .border(1.dp, Fm.c.rule, RoundedCornerShape(50))
+            .background(Fm.c.card)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (icon != null) {
+            Icon(icon, null, tint = Fm.c.magenta, modifier = Modifier.size(15.dp))
+            Spacer(Modifier.width(6.dp))
+        }
+        Text(text, color = Fm.c.ink, fontFamily = if (mono) Mono else null, style = MaterialTheme.typography.labelMedium)
+    }
+}
+
+/** Pusty stan: co się stało i co zrobić. */
+@Composable
+fun EmptyState(icon: ImageVector, title: String, sub: String? = null, action: (@Composable () -> Unit)? = null) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.size(56.dp).clip(CircleShape).background(Fm.c.terrain), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = Fm.c.magenta, modifier = Modifier.size(26.dp))
+        }
+        Spacer(Modifier.size(12.dp))
+        Text(title, style = MaterialTheme.typography.titleMedium, color = Fm.c.ink, textAlign = TextAlign.Center)
+        if (sub != null) Text(sub, style = MaterialTheme.typography.bodySmall, color = Fm.c.ink2, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
+        if (action != null) { Spacer(Modifier.size(14.dp)); action() }
+    }
+}
+
+// ---------- interaktywny METAR ----------
+
+/**
+ * METAR dużym krojem kokpitowym; każda grupa jest dotykalna, a jej znaczenie
+ * pojawia się pod spodem. Element, który odróżnia FreeMETAR od zwykłej listy.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun InteractiveMetar(raw: String, modifier: Modifier = Modifier, fontSize: Int = 19) {
+    val groups = remember(raw) { MetarDecoder.decode(raw) }
+    // Domyślnie zaznaczony wiatr — najczęściej pierwsza rzecz, o którą pyta pilot
+    var sel by remember(raw) { mutableIntStateOf(groups.indexOfFirst { it.category == Category.WIND }.coerceAtLeast(0)) }
+    val c = Fm.c
+    Column(modifier) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            groups.forEachIndexed { i, g ->
+                val danger = g.token.contains("CB") || g.token.contains("TS") || g.token.contains("FZ") || g.token.startsWith("+")
+                val color = when {
+                    danger -> c.ifr
+                    g.category == Category.WIND -> c.blue
+                    g.category == Category.REMARK -> c.ink2
+                    else -> c.ink
+                }
+                val selected = i == sel
+                Text(
+                    g.token,
+                    fontFamily = Mono, fontSize = fontSize.sp, color = color,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(if (selected) c.magenta.copy(alpha = 0.14f) else Color.Transparent)
+                        .clickable(role = Role.Button) { sel = i }
+                        .padding(horizontal = 2.dp, vertical = 1.dp),
+                )
+            }
+        }
+        Spacer(Modifier.size(10.dp))
+        val g = groups.getOrNull(sel)
+        AnimatedContent(g, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "metar-group") { cur ->
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(6.dp)).background(c.terrain).padding(horizontal = 14.dp, vertical = 12.dp)) {
+                if (cur != null) {
+                    Text(cur.token, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = c.magenta)
+                    Spacer(Modifier.size(2.dp))
+                    Text(cur.text.takeIf { it != "—" && it.isNotBlank() } ?: "Grupa niestandardowa — bez objaśnienia.", style = MaterialTheme.typography.bodyMedium, color = c.ink)
+                }
+            }
+        }
+    }
+}
+
+// ---------- schemat pasów ----------
 
 /**
  * Schemat lotniska: pasy w skali, róża kierunków i strzałka wiatru.
@@ -216,72 +303,105 @@ fun TileRow(vararg tiles: @Composable RowScope.() -> Unit) {
 @Composable
 fun RunwayWindDiagram(runways: List<Runway>, windDir: Int?, windKt: Int?, variable: Boolean, modifier: Modifier = Modifier) {
     val measurer = rememberTextMeasurer()
+    val c = Fm.c
     Canvas(modifier.fillMaxWidth().aspectRatio(1f)) {
-        val c = Offset(size.width / 2, size.height / 2)
-        val r = size.minDimension / 2 * 0.92f
+        val center = Offset(size.width / 2, size.height / 2)
+        val r = size.minDimension / 2 * 0.94f
 
-        drawCircle(Line, r, c, style = Stroke(1.5f))
-        drawCircle(Line.copy(alpha = 0.5f), r * 0.66f, c, style = Stroke(1f))
+        drawCircle(c.rule, r, center, style = Stroke(2f))
         for (d in 0 until 360 step 10) {
-            val len = if (d % 30 == 0) 14f else 6f
+            val len = if (d % 30 == 0) 12f else 5f
             val a = Math.toRadians(d.toDouble() - 90)
-            drawLine(TextLo, Offset(c.x + (r - len) * cos(a).toFloat(), c.y + (r - len) * sin(a).toFloat()),
-                Offset(c.x + r * cos(a).toFloat(), c.y + r * sin(a).toFloat()), 1.5f)
+            drawLine(c.ink2, Offset(center.x + (r - len) * cos(a).toFloat(), center.y + (r - len) * sin(a).toFloat()),
+                Offset(center.x + r * cos(a).toFloat(), center.y + r * sin(a).toFloat()), 1.5f)
         }
         listOf("N" to 0, "E" to 90, "S" to 180, "W" to 270).forEach { (s, d) ->
             val a = Math.toRadians(d.toDouble() - 90)
-            val layout = measurer.measure(s, TextStyle(color = if (s == "N") Amber else TextLo, fontSize = 13.sp, fontWeight = FontWeight.Bold))
-            val p = Offset(c.x + (r - 30) * cos(a).toFloat() - layout.size.width / 2, c.y + (r - 30) * sin(a).toFloat() - layout.size.height / 2)
-            drawText(layout, topLeft = p)
+            val layout = measurer.measure(s, TextStyle(color = if (s == "N") c.magenta else c.ink2, fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = Mono))
+            drawText(layout, topLeft = Offset(center.x + (r - 26) * cos(a).toFloat() - layout.size.width / 2, center.y + (r - 26) * sin(a).toFloat() - layout.size.height / 2))
         }
 
-        // Pasy: pozycja z współrzędnych progów, jeśli są — inaczej przez środek
-        val coords = runways.flatMap { listOfNotNull(it.le.lat?.let { la -> it.le.lon?.let { lo -> la to lo } }, it.he.lat?.let { la -> it.he.lon?.let { lo -> la to lo } }) }
+        val coords = runways.flatMap { rw -> listOfNotNull(rw.le.lat?.let { la -> rw.le.lon?.let { lo -> la to lo } }, rw.he.lat?.let { la -> rw.he.lon?.let { lo -> la to lo } }) }
         val cLat = coords.map { it.first }.average().takeIf { !it.isNaN() }
         val cLon = coords.map { it.second }.average().takeIf { !it.isNaN() }
-        val maxLen = runways.maxOfOrNull { it.lengthFt ?: 0 }?.coerceAtLeast(1) ?: 1
-        val spanNm = if (cLat != null && cLon != null) coords.maxOf { kotlin.math.hypot(it.first - cLat, (it.second - cLon) * cos(Math.toRadians(cLat))) } else 0.0
-        val scale = if (spanNm > 0) (r * 0.55f) / spanNm.toFloat() else 0f
+        val maxLen = (runways.maxOfOrNull { it.lengthFt ?: 0 } ?: 0).coerceAtLeast(1)
+        val span = if (cLat != null && cLon != null) coords.maxOf { kotlin.math.hypot(it.first - cLat, (it.second - cLon) * cos(Math.toRadians(cLat))) } else 0.0
+        val scale = if (span > 0) (r * 0.55f) / span.toFloat() else 0f
 
         runways.forEach { rw ->
             val hdg = Wind.headingOf(rw.le.ident, rw.le.headingTrue) ?: return@forEach
             val half = (rw.lengthFt ?: maxLen).toFloat() / maxLen * r * 0.55f
-            val center = if (scale > 0 && rw.le.lat != null && rw.he.lat != null && rw.le.lon != null && rw.he.lon != null && cLat != null && cLon != null) {
+            val mid = if (scale > 0 && rw.le.lat != null && rw.he.lat != null && rw.le.lon != null && rw.he.lon != null && cLat != null && cLon != null) {
                 val mLat = (rw.le.lat + rw.he.lat) / 2; val mLon = (rw.le.lon + rw.he.lon) / 2
-                Offset(c.x + ((mLon - cLon) * cos(Math.toRadians(cLat)) * scale).toFloat(), c.y - ((mLat - cLat) * scale).toFloat())
-            } else c
-            rotate(hdg.toFloat(), center) {
-                val w = 16f
-                drawRect(Color(0xFF334155), Offset(center.x - w / 2, center.y - half), Size(w, half * 2))
-                drawLine(TextHi.copy(alpha = 0.7f), Offset(center.x, center.y - half + 8), Offset(center.x, center.y + half - 8), 1.5f,
-                    pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f)))
+                Offset(center.x + ((mLon - cLon) * cos(Math.toRadians(cLat)) * scale).toFloat(), center.y - ((mLat - cLat) * scale).toFloat())
+            } else center
+            rotate(hdg.toFloat(), mid) {
+                val w = 14f
+                drawRect(c.ink, Offset(mid.x - w / 2, mid.y - half), Size(w, half * 2))
+                drawLine(c.paper, Offset(mid.x, mid.y - half + 8), Offset(mid.x, mid.y + half - 8), 1.5f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(9f, 9f)))
             }
-            // Oznaczenia końców
             val a = Math.toRadians(hdg - 90)
-            listOf(rw.le.ident to (half + 16), rw.he.ident to -(half + 16)).forEach { (id, dist) ->
+            listOf(rw.le.ident to (half + 15), rw.he.ident to -(half + 15)).forEach { (id, dist) ->
                 if (id.isBlank()) return@forEach
-                val layout = measurer.measure(id, TextStyle(color = TextHi, fontSize = 11.sp, fontFamily = Mono))
-                // le znajduje się po stronie przeciwnej do kierunku lądowania
-                val p = Offset(center.x - (dist * cos(a)).toFloat() - layout.size.width / 2, center.y - (dist * sin(a)).toFloat() - layout.size.height / 2)
-                drawText(layout, topLeft = p)
+                val layout = measurer.measure(id, TextStyle(color = c.ink, fontSize = 11.sp, fontFamily = Mono, fontWeight = FontWeight.Bold))
+                drawText(layout, topLeft = Offset(mid.x - (dist * cos(a)).toFloat() - layout.size.width / 2, mid.y - (dist * sin(a)).toFloat() - layout.size.height / 2))
             }
         }
 
-        // Wiatr: strzałka wskazuje, DOKĄD wieje; zaczyna się od strony, z której wieje
+        // Strzałka wskazuje, dokąd wieje wiatr; zaczyna się od strony, z której wieje
         if (windDir != null && (windKt ?: 0) > 0 && !variable) {
             val a = Math.toRadians(windDir.toDouble() - 90)
-            val from = Offset(c.x + r * 0.95f * cos(a).toFloat(), c.y + r * 0.95f * sin(a).toFloat())
-            val to = Offset(c.x + r * 0.35f * cos(a).toFloat(), c.y + r * 0.35f * sin(a).toFloat())
-            drawLine(Sky, from, to, 6f)
+            val from = Offset(center.x + r * 0.97f * cos(a).toFloat(), center.y + r * 0.97f * sin(a).toFloat())
+            val to = Offset(center.x + r * 0.4f * cos(a).toFloat(), center.y + r * 0.4f * sin(a).toFloat())
+            drawLine(c.blue, from, to, 7f, cap = StrokeCap.Round)
+            val ang = Math.atan2((to.y - from.y).toDouble(), (to.x - from.x).toDouble())
             val head = Path().apply {
-                val back = 22f; val spread = 0.45
-                val ang = Math.atan2((to.y - from.y).toDouble(), (to.x - from.x).toDouble())
-                moveTo(to.x + 8 * cos(ang).toFloat(), to.y + 8 * sin(ang).toFloat())
-                lineTo(to.x - back * cos(ang - spread).toFloat(), to.y - back * sin(ang - spread).toFloat())
-                lineTo(to.x - back * cos(ang + spread).toFloat(), to.y - back * sin(ang + spread).toFloat())
+                moveTo(to.x + 10 * cos(ang).toFloat(), to.y + 10 * sin(ang).toFloat())
+                lineTo(to.x - 22 * cos(ang - 0.45).toFloat(), to.y - 22 * sin(ang - 0.45).toFloat())
+                lineTo(to.x - 22 * cos(ang + 0.45).toFloat(), to.y - 22 * sin(ang + 0.45).toFloat())
                 close()
             }
-            drawPath(head, Sky)
+            drawPath(head, c.blue)
+        }
+    }
+}
+
+// ---------- wykres ----------
+
+/** Linia trendu z 12 h (wartości w kolejności czasu). */
+@Composable
+fun TrendChart(label: String, values: List<Double>, unit: String, color: Color, modifier: Modifier = Modifier) {
+    val measurer = rememberTextMeasurer()
+    val c = Fm.c
+    Column(modifier) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(label, style = MaterialTheme.typography.labelMedium, color = c.ink2, modifier = Modifier.weight(1f))
+            values.lastOrNull()?.let { Text("${it.toInt()}$unit", fontFamily = Mono, fontWeight = FontWeight.Bold, color = c.ink, fontSize = 15.sp) }
+        }
+        Spacer(Modifier.size(6.dp))
+        if (values.size < 2) {
+            Text("Za mało obserwacji", style = MaterialTheme.typography.bodySmall, color = c.ink2)
+            return@Column
+        }
+        Canvas(Modifier.fillMaxWidth().height(64.dp)) {
+            val min = values.min(); val max = values.max()
+            val spanV = (max - min).takeIf { it > 0.0 } ?: 1.0
+            val pad = 12f
+            fun pt(i: Int, v: Double) = Offset(i * size.width / (values.size - 1), pad + (size.height - 2 * pad) * (1 - ((v - min) / spanV)).toFloat())
+            val line = Path(); val fill = Path()
+            values.forEachIndexed { i, v ->
+                val p = pt(i, v)
+                if (i == 0) { line.moveTo(p.x, p.y); fill.moveTo(p.x, size.height); fill.lineTo(p.x, p.y) } else { line.lineTo(p.x, p.y); fill.lineTo(p.x, p.y) }
+            }
+            fill.lineTo(size.width, size.height); fill.close()
+            drawLine(c.rule, Offset(0f, size.height - 0.5f), Offset(size.width, size.height - 0.5f), 1f)
+            drawPath(fill, Brush.verticalGradient(listOf(color.copy(alpha = 0.22f), Color.Transparent)))
+            drawPath(line, color, style = Stroke(3f, cap = StrokeCap.Round))
+            drawCircle(color, 5f, pt(values.size - 1, values.last()))
+            val st = TextStyle(color = c.ink2, fontSize = 10.sp, fontFamily = Mono)
+            drawText(measurer.measure(max.toInt().toString(), st), topLeft = Offset(0f, -4f))
+            drawText(measurer.measure(min.toInt().toString(), st), topLeft = Offset(0f, size.height - 16f))
         }
     }
 }

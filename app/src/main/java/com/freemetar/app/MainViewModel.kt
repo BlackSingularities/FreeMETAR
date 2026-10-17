@@ -24,6 +24,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
+import com.freemetar.app.data.Locator
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
@@ -59,6 +62,13 @@ sealed interface UpdateState {
     data class Error(val message: String) : UpdateState
 }
 
+sealed interface NearMe {
+    data object Idle : NearMe
+    data object Locating : NearMe
+    data class Found(val airports: List<Pair<Airport, Double>>, val metars: Map<String, Metar>) : NearMe
+    data class Failed(val message: String) : NearMe
+}
+
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val db = AirportDb(app)
     private val prefs = Prefs(app)
@@ -88,11 +98,35 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _updatePromptDismissed = MutableStateFlow(false)
     val updatePromptDismissed = _updatePromptDismissed.asStateFlow()
 
+    private val _nearMe = MutableStateFlow<NearMe>(NearMe.Idle)
+    val nearMe = _nearMe.asStateFlow()
+
     init {
         loadDb(force = false)
-        refreshFavorites()
         startAutoRefresh()
         checkForUpdate(silent = true)
+        // Lista ulubionych zmieniona (dodanie, usunięcie) → pobierz brakujące METAR-y
+        viewModelScope.launch {
+            prefs.settings.map { it.favorites.toSet() }.distinctUntilChanged().collect { refreshFavorites() }
+        }
+    }
+
+    /** Lotniska najbliżej użytkownika (wymaga zgody na przybliżoną lokalizację). */
+    fun findNearMe() = viewModelScope.launch {
+        _nearMe.value = NearMe.Locating
+        val loc = runCatching { Locator.locate(getApplication()) }.getOrNull()
+        if (loc == null) {
+            _nearMe.value = NearMe.Failed("Nie udało się ustalić pozycji. Włącz lokalizację i spróbuj ponownie.")
+            return@launch
+        }
+        if (!db.isLoaded) {
+            _nearMe.value = NearMe.Failed("Baza lotnisk jeszcze się ładuje.")
+            return@launch
+        }
+        val list = db.nearby(loc.latitude, loc.longitude, radiusNm = 120.0, limit = 8)
+        _nearMe.value = NearMe.Found(list, emptyMap())
+        val metars = metarsFor(list.map { it.first.ident })
+        _nearMe.value = NearMe.Found(list, metars)
     }
 
     fun checkForUpdate(silent: Boolean = false) = viewModelScope.launch {
@@ -142,7 +176,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun refreshFavorites() = viewModelScope.launch {
         _favLoading.value = true
         try {
-            val favs = settings.first().favorites
+            val favs = prefs.settings.first().favorites
             _favMetars.value = WeatherApi.metars(favs).associateBy { it.station }
         } catch (_: Exception) {
         } finally {
@@ -212,6 +246,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun clearRecent() = viewModelScope.launch { prefs.clearRecent() }
     fun setPressure(u: com.freemetar.app.data.PressureUnit) = viewModelScope.launch { prefs.setPressure(u) }
     fun setAlt(u: com.freemetar.app.data.AltUnit) = viewModelScope.launch { prefs.setAlt(u) }
-    fun setRawFirst(v: Boolean) = viewModelScope.launch { prefs.setRawFirst(v) }
+    fun setTheme(m: com.freemetar.app.data.ThemeMode) = viewModelScope.launch { prefs.setTheme(m) }
     fun setAutoRefresh(v: Boolean) = viewModelScope.launch { prefs.setAutoRefresh(v) }
 }

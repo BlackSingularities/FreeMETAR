@@ -1,5 +1,6 @@
 package com.freemetar.app.ui.screens
 
+import com.freemetar.app.ui.theme.Fm
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,8 +13,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.outlined.Autorenew
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material.icons.outlined.Compress
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Height
@@ -43,8 +46,6 @@ import com.freemetar.app.MainViewModel
 import com.freemetar.app.data.AltUnit
 import com.freemetar.app.data.PressureUnit
 import com.freemetar.app.ui.components.SectionCard
-import com.freemetar.app.ui.theme.TextHi
-import com.freemetar.app.ui.theme.TextLo
 import java.text.DateFormat
 import java.util.Date
 
@@ -59,13 +60,13 @@ fun SettingsScreen(vm: MainViewModel) {
         Text("Ustawienia", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 8.dp))
 
         SectionCard("Jednostki", icon = Icons.Outlined.Straighten) {
-            Text("Ciśnienie", color = TextHi)
+            Text("Ciśnienie", color = Fm.c.ink)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(s.pressureUnit == PressureUnit.HPA, { vm.setPressure(PressureUnit.HPA) }, { Text("hPa") }, leadingIcon = { Icon(Icons.Outlined.Compress, null, Modifier.size(16.dp)) })
                 FilterChip(s.pressureUnit == PressureUnit.INHG, { vm.setPressure(PressureUnit.INHG) }, { Text("inHg") }, leadingIcon = { Icon(Icons.Outlined.Compress, null, Modifier.size(16.dp)) })
             }
             Spacer(Modifier.size(8.dp))
-            Text("Wysokość", color = TextHi)
+            Text("Wysokość", color = Fm.c.ink)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(s.altUnit == AltUnit.FT, { vm.setAlt(AltUnit.FT) }, { Text("stopy") }, leadingIcon = { Icon(Icons.Outlined.Height, null, Modifier.size(16.dp)) })
                 FilterChip(s.altUnit == AltUnit.M, { vm.setAlt(AltUnit.M) }, { Text("metry") }, leadingIcon = { Icon(Icons.Outlined.Height, null, Modifier.size(16.dp)) })
@@ -73,7 +74,17 @@ fun SettingsScreen(vm: MainViewModel) {
         }
 
         SectionCard("Wyświetlanie", icon = Icons.Outlined.Tune) {
-            ToggleRow(Icons.AutoMirrored.Outlined.Article, "Surowy METAR na górze", "Pokaż tekst depeszy przed kafelkami", s.showRawFirst) { vm.setRawFirst(it) }
+            Text("Motyw", color = Fm.c.ink, style = MaterialTheme.typography.titleSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)) {
+                listOf(
+                    com.freemetar.app.data.ThemeMode.SYSTEM to "Jak telefon",
+                    com.freemetar.app.data.ThemeMode.DAY to "Dzień",
+                    com.freemetar.app.data.ThemeMode.NIGHT to "Noc",
+                ).forEach { (mode, label) ->
+                    FilterChip(s.themeMode == mode, { vm.setTheme(mode) }, { Text(label) },
+                        leadingIcon = { Icon(when (mode) { com.freemetar.app.data.ThemeMode.DAY -> Icons.Outlined.LightMode; com.freemetar.app.data.ThemeMode.NIGHT -> Icons.Outlined.DarkMode; else -> Icons.Outlined.Smartphone }, null, Modifier.size(16.dp)) })
+                }
+            }
             ToggleRow(Icons.Outlined.Autorenew, "Automatyczne odświeżanie", "Co 5 minut, gdy aplikacja jest otwarta", s.autoRefresh) { vm.setAutoRefresh(it) }
         }
 
@@ -84,26 +95,26 @@ fun SettingsScreen(vm: MainViewModel) {
                 is DbState.Error -> "Błąd: ${d.message}"
                 DbState.Idle -> "—"
             }
-            Text(txt, color = TextLo, fontSize = 13.sp)
+            Text(txt, color = Fm.c.ink2, fontSize = 13.sp)
             Spacer(Modifier.size(8.dp))
             OutlinedButton({ vm.loadDb(force = true) }, enabled = db !is DbState.Loading) {
                 Icon(Icons.Outlined.Download, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Pobierz ponownie")
             }
-            Text("Baza odświeża się sama co 30 dni.", color = TextLo, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+            Text("Baza odświeża się sama co 30 dni.", color = Fm.c.ink2, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
         }
 
         com.freemetar.app.ui.components.UpdateSection(vm)
 
         SectionCard("O aplikacji", icon = Icons.Outlined.Info) {
-            Text("FreeMETAR ${BuildConfig.VERSION_NAME}", color = TextHi)
+            Text("FreeMETAR ${BuildConfig.VERSION_NAME}", color = Fm.c.ink)
             Spacer(Modifier.size(4.dp))
             Text(
                 "Pogoda: aviationweather.gov (NOAA/NWS, domena publiczna).\n" +
                     "Lotniska, pasy, częstotliwości, pomoce nawigacyjne: OurAirports (domena publiczna).\n\n" +
                     "Aplikacja przeznaczona wyłącznie do symulacji lotów. Dane mogą być nieaktualne lub niekompletne — nie używaj do rzeczywistej nawigacji lotniczej.",
-                color = TextLo, fontSize = 13.sp,
+                color = Fm.c.ink2, fontSize = 13.sp,
             )
         }
     }
@@ -112,11 +123,11 @@ fun SettingsScreen(vm: MainViewModel) {
 @Composable
 private fun ToggleRow(icon: ImageVector, title: String, sub: String, value: Boolean, onChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, null, tint = TextLo, modifier = Modifier.size(20.dp))
+        Icon(icon, null, tint = Fm.c.ink2, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, color = TextHi)
-            Text(sub, color = TextLo, fontSize = 12.sp)
+            Text(title, color = Fm.c.ink)
+            Text(sub, color = Fm.c.ink2, fontSize = 12.sp)
         }
         Switch(value, onChange)
     }

@@ -4,14 +4,18 @@ Aplikacja na Androida dla wirtualnych pilotów (MSFS, X-Plane, VATSIM, IVAO). Po
 
 ## Funkcje
 
-- **Pogoda**: aktualny METAR z kategorią lotu (VFR/MVFR/IFR/LIFR), rozkodowanie depeszy po polsku, TAF podzielony na okresy, historia z 12 h
-- **Kafelki**: wiatr, widzialność, temperatura/punkt rosy, QNH (hPa/inHg), QFE, pułap chmur, wilgotność, wysokość ciśnieniowa i gęstościowa, ryzyko oblodzenia gaźnika
-- **Pasy**: schemat lotniska ze strzałką wiatru, składowe czołowe/boczne dla każdego kierunku (także w porywach), preferowany pas, długość, szerokość, nawierzchnia, oświetlenie
-- **Radio**: częstotliwości ATIS/DEL/GND/TWR/APP/DEP, pomoce nawigacyjne (VOR, NDB, DME) w promieniu 40 NM z kursem i odległością
-- **Info**: współrzędne, elewacja, wschód/zachód słońca i zmierzch cywilny, odnośniki do SkyVector, Windy, VATSIM Radar, OSM
-- **Okolica**: lotniska w promieniu 60 NM z bieżącą pogodą
-- **Narzędzia**: kalkulator wiatru, wysokość gęstościowa i TAS, planowanie zniżania (TOD), paliwo, przelicznik jednostek, dekoder dowolnego METAR/TAF
-- Ulubione z podglądem METAR, ostatnio oglądane, zegar UTC, automatyczne odświeżanie
+- **Briefing lotniska** czytany z góry na dół: pogoda, prognoza, pasy, radio, lotnisko, okolica, z paskiem skoków do rozdziałów
+- **Interaktywny METAR**: dotknij dowolnej grupy (np. `BKN025CB`), a pod spodem pojawi się jej znaczenie po polsku
+- **ATIS na głos**: komunikat w stylu ATIS złożony z METAR, czytany po angielsku przez syntezator mowy telefonu
+- **TAF podzielony na okresy** z kategorią lotu dla każdego (VFR/MVFR/IFR/LIFR)
+- Ostrzeżenia: burza i CB, oblodzenie, silne porywy, ryzyko mgły; oznaczenie nieaktualnych depesz
+- Pas wg wiatru, składowe czołowe i boczne dla każdego kierunku, schemat lotniska ze strzałką wiatru
+- Częstotliwości (dotknij, aby skopiować), radiolatarnie do 40 NM, wschód/zachód słońca i zmierzch cywilny
+- Trendy temperatury, wiatru i QNH z 12 godzin, wcześniejsze depesze
+- **Paski lotu** na ekranie startowym jak na stanowisku kontrolera; ulubione z układaniem kolejności
+- **W pobliżu Ciebie**: najbliższe lotniska z pogodą wg przybliżonej lokalizacji (bez usług Google)
+- Planowanie: trasa z pogodą na obu końcach, kalkulator wiatru, wysokość gęstościowa i TAS, zniżanie (TOD), paliwo, jednostki, dekoder METAR/TAF, ściąga radiowa
+- Motyw dzienny (kolory map VFR) i nocny (kokpit), układ na telefon i tablet, automatyczne aktualizacje z GitHuba
 
 ## Źródła danych
 

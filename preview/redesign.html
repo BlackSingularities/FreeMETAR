@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FreeMETAR — nowy projekt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=B612:wght@400;700&family=B612+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EDF1EE; --ink:#16202B; --ink2:#55636E; --magenta:#A3195B; --blue:#1D4E89; --rule:#C5D0CB; --terrain:#DDE7D6; --white:#FAFCFB;
+  --vfr:#2E8540; --mvfr:#1D4E89; --ifr:#C62828; --lifr:#A3195B;
+}
+.night{--paper:#0F161D;--ink:#E4EBE8;--ink2:#8D9BA3;--magenta:#E0558F;--blue:#6FA3E0;--rule:#26333C;--terrain:#17222A;--white:#141D25;--mvfr:#6FA3E0;--vfr:#4CB863;--ifr:#EF5350;--lifr:#E0558F}
+*{box-sizing:border-box}
+body{margin:0;background:#c9d0cd;font-family:'B612',sans-serif;color:var(--ink);padding:28px 16px 48px}
+.intro{max-width:760px;margin:0 auto 26px;font-size:14px;color:#33413c;line-height:1.55}
+.row{display:flex;gap:30px;justify-content:center;flex-wrap:wrap;align-items:flex-start}
+.phone{width:375px;height:800px;background:var(--paper);color:var(--ink);border-radius:34px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 0 0 9px #1c2329}
+.cap{text-align:center;color:#33413c;font-size:13px;margin-top:14px;max-width:375px}
+.sb{height:28px;flex:none}
+.scroll{flex:1;overflow-y:auto}
+.mono{font-family:'B612 Mono',monospace}
+/* nagłówek startu */
+.top{padding:6px 20px 14px;display:flex;align-items:flex-end;justify-content:space-between}
+.word{font-weight:700;font-size:26px;letter-spacing:-.5px}
+.word b{color:var(--magenta)}
+.clock{text-align:right}.clock .z{font-family:'B612 Mono';font-size:22px;font-weight:700}.clock small{display:block;color:var(--ink2);font-size:12px}
+.search{margin:0 20px 18px;display:flex;align-items:center;gap:10px;border:1.5px solid var(--ink);border-radius:10px;padding:12px 14px;font-size:15px;color:var(--ink2);background:var(--white)}
+.search svg{flex:none}
+.h{font-size:13px;color:var(--ink2);padding:0 20px 8px;display:flex;justify-content:space-between}
+/* pasek lotu */
+.strip{display:grid;grid-template-columns:1fr auto;margin:0 20px 10px;background:var(--white);border:1px solid var(--rule);border-radius:4px}
+.strip .main{padding:12px 14px 10px}
+.strip .id{display:flex;align-items:baseline;gap:10px}
+.strip .id .icao{font-family:'B612 Mono';font-weight:700;font-size:24px}
+.strip .id .nm{color:var(--ink2);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fields{display:grid;grid-template-columns:repeat(4,auto);gap:0;margin-top:8px;border-top:1px dashed var(--rule)}
+.fields div{padding:7px 10px 0 0;font-size:11px;color:var(--ink2)}
+.fields div b{display:block;font-family:'B612 Mono';font-size:15px;color:var(--ink);font-weight:700}
+.cat{width:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#fff;font-weight:700;font-size:12px;border-radius:0 3px 3px 0}
+.cat svg{opacity:.95}
+.vfr{background:var(--vfr)}.mvfr{background:var(--mvfr)}.ifr{background:var(--ifr)}.lifr{background:var(--lifr)}
+.recent{display:flex;gap:8px;padding:0 20px 18px;flex-wrap:wrap}
+.recent span{font-family:'B612 Mono';font-size:13px;border:1px solid var(--rule);border-radius:99px;padding:5px 12px;background:var(--white)}
+.tabbar{flex:none;display:flex;justify-content:space-around;border-top:1px solid var(--rule);padding:8px 0 14px;font-size:11.5px;color:var(--ink2);background:var(--paper)}
+.tabbar span{display:flex;flex-direction:column;align-items:center;gap:3px}
+.tabbar .on{color:var(--magenta)}
+/* briefing */
+.ahead{padding:4px 20px 0;display:flex;align-items:center;gap:12px}
+.ahead .back{font-size:22px}
+.ahead .t{flex:1}.ahead .t b{font-family:'B612 Mono';font-size:28px;display:block;line-height:1}
+.ahead .t span{font-size:12.5px;color:var(--ink2)}
+.jump{display:flex;gap:18px;padding:12px 20px 0;font-size:13.5px;color:var(--ink2);border-bottom:1px solid var(--rule);overflow:hidden;white-space:nowrap}
+.jump span{padding-bottom:9px}.jump .on{color:var(--ink);box-shadow:inset 0 -2.5px 0 var(--magenta)}
+.sec{padding:18px 20px;border-bottom:1px solid var(--rule)}
+.sec h2{font-size:17px;margin:0 0 12px;font-weight:700;display:flex;align-items:center;gap:8px}
+.sec h2 svg{color:var(--magenta)}
+.verdict{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.verdict .big{font-size:22px;font-weight:700;color:var(--mvfr)}
+.verdict small{display:block;color:var(--ink2);font-size:12.5px}
+.metar{font-family:'B612 Mono';font-size:19px;line-height:1.75;word-spacing:2px}
+.metar .g{cursor:pointer;border-bottom:2px solid var(--rule);padding:0 1px}
+.metar .g:hover,.metar .g.sel{border-color:var(--magenta);background:color-mix(in srgb,var(--magenta) 12%,transparent)}
+.metar .w{color:var(--blue)} .metar .c{color:var(--ifr)}
+.explain{margin-top:12px;background:var(--terrain);border-radius:8px;padding:12px 14px;font-size:14px;line-height:1.45;min-height:64px}
+.explain .tok{font-family:'B612 Mono';font-weight:700;color:var(--magenta);display:block;font-size:13px;margin-bottom:2px}
+.facts{display:grid;grid-template-columns:1fr 1fr;margin-top:16px;border-top:1px solid var(--rule)}
+.facts div{padding:10px 0;border-bottom:1px solid var(--rule);font-size:12px;color:var(--ink2)}
+.facts div:nth-child(odd){padding-right:12px;border-right:1px solid var(--rule)}
+.facts div:nth-child(even){padding-left:14px}
+.facts b{display:block;font-family:'B612 Mono';font-size:18px;color:var(--ink)}
+.warn{display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-size:13.5px;color:var(--ink);border:1.5px solid var(--ifr);border-radius:8px;padding:10px 12px}
+.warn svg{color:var(--ifr);flex:none;margin-top:1px}
+.rw{display:grid;grid-template-columns:150px 1fr;gap:14px;align-items:center}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td{padding:7px 0;border-bottom:1px solid var(--rule)}
+td.r{text-align:right;font-family:'B612 Mono'}
+.best td{font-weight:700}.best td:first-child{color:var(--magenta)}
+.fq{display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--rule)}
+.fq span{font-size:14px}.fq small{display:block;color:var(--ink2);font-size:12px}
+.fq b{font-family:'B612 Mono';font-size:20px;color:var(--blue)}
+.taf p{margin:0 0 6px;font-family:'B612 Mono';font-size:13.5px;line-height:1.5}
+.taf p.ch{padding-left:16px;color:var(--ink2)}.taf p.ch em{font-style:normal;color:var(--magenta);font-weight:700}
+</style></head><body>
+<p class="intro">Propozycja nowego wyglądu FreeMETAR. Kolory z map lotniczych VFR (papier mapy, magenta lotnisk, błękit IFR), krój <b>B612</b> zaprojektowany dla kokpitów Airbusa. Lotniska jako „paski lotu” jak na stanowisku kontrolera. Na karcie lotniska <b>kliknij dowolną grupę METAR</b>, aby zobaczyć jej znaczenie.</p>
+<div class="row">
+
+<!-- START -->
+<div><div class="phone">
+  <div class="sb"></div>
+  <div class="scroll">
+    <div class="top"><div class="word">Free<b>METAR</b></div><div class="clock"><div class="z">10:42Z</div><small>czas lokalny 12:42</small></div></div>
+    <div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Lotnisko: ICAO, IATA lub miasto</div>
+    <div class="recent"><span>EPPO</span><span>EDDF</span><span>LOWI</span><span>EPKT</span></div>
+    <div class="h"><span>Twoje lotniska</span><span>odświeżono 2 min temu</span></div>
+
+    <div class="strip"><div class="main">
+      <div class="id"><span class="icao">EPWA</span><span class="nm">Warszawa Chopin</span></div>
+      <div class="fields"><div>Wiatr<b>240/12G24</b></div><div>QNH<b>1008</b></div><div>Temp<b>12°</b></div><div>Obs.<b>10:30</b></div></div>
+    </div><div class="cat mvfr"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M6 17h11a4 4 0 0 0 0-8 6 6 0 0 0-11.6 1.5A3.5 3.5 0 0 0 6 17Z"/></svg>MVFR</div></div>
+
+    <div class="strip"><div class="main">
+      <div class="id"><span class="icao">EPKK</span><span class="nm">Kraków Balice</span></div>
+      <div class="fields"><div>Wiatr<b>270/08</b></div><div>QNH<b>1010</b></div><div>Temp<b>14°</b></div><div>Obs.<b>10:30</b></div></div>
+    </div><div class="cat vfr"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5"/></svg>VFR</div></div>
+
+    <div class="strip"><div class="main">
+      <div class="id"><span class="icao">EPGD</span><span class="nm">Gdańsk Rębiechowo</span></div>
+      <div class="fields"><div>Wiatr<b>180/06</b></div><div>QNH<b>1006</b></div><div>Temp<b>9°</b></div><div>Obs.<b>10:30</b></div></div>
+    </div><div class="cat ifr"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M4 10h16M4 14h16M6 18h12M7 6h10"/></svg>IFR</div></div>
+
+    <div class="strip"><div class="main">
+      <div class="id"><span class="icao">LOWI</span><span class="nm">Innsbruck</span></div>
+      <div class="fields"><div>Wiatr<b>VRB02</b></div><div>QNH<b>1019</b></div><div>Temp<b>3°</b></div><div>Obs.<b>10:20</b></div></div>
+    </div><div class="cat lifr"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M4 10h16M4 14h16M6 18h12M7 6h10"/></svg>LIFR</div></div>
+  </div>
+  <div class="tabbar"><span class="on"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>Lotniska</span><span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m15 9-4 2-2 4 4-2z"/></svg>Planowanie</span><span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Ustawienia</span></div>
+</div><div class="cap">Start: paski lotu. Kategoria lotu jako blok koloru z ikoną pogody, dane w stałych polach jak na pasku kontrolera.</div></div>
+
+<!-- BRIEFING -->
+<div><div class="phone">
+  <div class="sb"></div>
+  <div class="ahead"><span class="back">←</span><div class="t"><b>EPWA</b><span>Warszawa Chopin, Polska</span></div>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13"/></svg>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--magenta)"><path d="m12 2 3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z"/></svg></div>
+  <div class="jump"><span class="on">Pogoda</span><span>Pasy</span><span>Radio</span><span>Lotnisko</span><span>Okolica</span></div>
+  <div class="scroll">
+    <div class="sec">
+      <div class="verdict"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="var(--mvfr)" stroke-width="1.8"><path d="M6 17h11a4 4 0 0 0 0-8 6 6 0 0 0-11.6 1.5A3.5 3.5 0 0 0 6 17Z"/><path d="M9 20l-1 2M13 20l-1 2"/></svg>
+        <div><div class="big">Marginal VFR</div><small>Obserwacja 10:30Z, 12 minut temu</small></div></div>
+      <div class="metar" id="metar"></div>
+      <div class="explain" id="explain"><span class="tok">24012G24KT</span>Wiatr z 240° (WSW), 12 węzłów, w porywach 24 węzły.</div>
+      <div class="warn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Cumulonimbus na 2500 ft i okresowo burza z deszczem w prognozie.</div>
+      <div class="facts">
+        <div>Pas w użyciu (wiatr)<b style="color:var(--magenta)">RWY 29</b></div><div>Pułap<b>2500 ft</b></div>
+        <div>Wiatr czołowy / boczny<b>8 / 9 kt</b></div><div>Widzialność<b>10 km +</b></div>
+        <div>QNH<b>1008 hPa</b></div><div>Wysokość gęstościowa<b>320 ft</b></div>
+      </div>
+    </div>
+    <div class="sec taf"><h2><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Prognoza TAF</h2>
+      <p>TAF EPWA 170830Z 1709/1812 25012KT 9999 SCT025</p>
+      <p class="ch"><em>Okresowo 10–16Z</em> 25018G30KT 4000 TSRA BKN015CB</p>
+      <p class="ch"><em>Od 18–20Z</em> VRB03KT</p>
+    </div>
+    <div class="sec"><h2><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>Pasy i wiatr</h2>
+      <div class="rw">
+        <svg viewBox="0 0 150 150" width="150"><circle cx="75" cy="75" r="70" fill="none" stroke="var(--rule)" stroke-width="1.5"/>
+          <text x="75" y="17" text-anchor="middle" font-size="10" fill="var(--magenta)" font-weight="700">N</text>
+          <g transform="rotate(287 75 75)"><rect x="70" y="30" width="10" height="90" fill="var(--ink)"/></g>
+          <g transform="rotate(332 80 80)"><rect x="76" y="40" width="8" height="80" fill="var(--ink2)"/></g>
+          <line x1="14" y1="110" x2="52" y2="88" stroke="var(--blue)" stroke-width="4"/><polygon points="58,84 44,86 50,96" fill="var(--blue)"/></svg>
+        <table><tr class="best"><td>29</td><td class="r">↓8 ←9</td></tr><tr><td>33</td><td class="r">↓0 ←12</td></tr><tr><td>15</td><td class="r">↑0 →12</td></tr><tr><td>11</td><td class="r">↑8 →9</td></tr></table>
+      </div>
+    </div>
+    <div class="sec"><h2><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10a8 8 0 0 1 16 0M7.5 12a4.5 4.5 0 0 1 9 0"/><circle cx="12" cy="14" r="1.5"/><path d="M12 15.5V22"/></svg>Radio</h2>
+      <div class="fq"><span>ATIS</span><b>128.800</b></div>
+      <div class="fq"><span>Ziemia<small>Okęcie Ground</small></span><b>121.900</b></div>
+      <div class="fq"><span>Wieża<small>Okęcie Tower</small></span><b>118.300</b></div>
+    </div>
+  </div>
+</div><div class="cap">Lotnisko: jeden briefing czytany z góry na dół. Dotknij grupy METAR, a jej znaczenie pojawi się pod spodem. Dane w tabeli zamiast kafelków.</div></div>
+
+<!-- NOC -->
+<div><div class="phone night">
+  <div class="sb"></div>
+  <div class="ahead"><span class="back">←</span><div class="t"><b>EPWA</b><span>Warszawa Chopin, Polska</span></div>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--magenta)"><path d="m12 2 3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z"/></svg></div>
+  <div class="jump"><span>Pogoda</span><span>Pasy</span><span class="on">Radio</span><span>Lotnisko</span><span>Okolica</span></div>
+  <div class="scroll">
+    <div class="sec"><h2><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10a8 8 0 0 1 16 0M7.5 12a4.5 4.5 0 0 1 9 0"/><circle cx="12" cy="14" r="1.5"/><path d="M12 15.5V22"/></svg>Radio</h2>
+      <div class="fq"><span>ATIS</span><b>128.800</b></div>
+      <div class="fq"><span>Delivery<small>Okęcie Delivery</small></span><b>121.605</b></div>
+      <div class="fq"><span>Ziemia<small>Okęcie Ground</small></span><b>121.900</b></div>
+      <div class="fq"><span>Wieża<small>Okęcie Tower</small></span><b>118.300</b></div>
+      <div class="fq"><span>Zbliżanie<small>Warszawa Approach</small></span><b>128.805</b></div>
+    </div>
+    <div class="sec"><h2><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m15 9-4 2-2 4 4-2z"/></svg>Radiolatarnie w pobliżu</h2>
+      <div class="fq"><span>OKC VOR-DME<small>Okęcie, 1 NM na 285°</small></span><b>113.45</b></div>
+      <div class="fq"><span>WAR VOR-DME<small>Warszawa, 6 NM na 040°</small></span><b>114.90</b></div>
+    </div>
+    <div class="sec"><h2><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>Słońce dziś</h2>
+      <div class="facts" style="margin-top:0"><div>Wschód<b>05:18Z</b></div><div>Zachód<b>15:27Z</b></div><div>Świt cywilny<b>04:44Z</b></div><div>Koniec zmierzchu<b>16:01Z</b></div></div>
+    </div>
+  </div>
+</div><div class="cap">Tryb nocny: te same role kolorów na ciemnym tle, włącza się razem z ciemnym motywem telefonu.</div></div>
+
+</div>
+<script>
+const groups=[["EPWA","Lotnisko Warszawa Chopin."],["171030Z","Obserwacja 17. dnia miesiąca o 10:30 UTC."],["24012G24KT","Wiatr z 240° (WSW), 12 węzłów, w porywach 24 węzły.","w"],["210V280","Kierunek wiatru zmienia się od 210° do 280°.","w"],["9999","Widzialność 10 km lub więcej."],["-SHRA","Słaby przelotny deszcz."],["FEW012","Nieliczne chmury (1–2/8) na 1200 ft."],["BKN025CB","Zachmurzenie poprzerywane (5–7/8) na 2500 ft. Cumulonimbus: chmura burzowa.","c"],["12/09","Temperatura 12 °C, punkt rosy 9 °C."],["Q1008","Ciśnienie QNH 1008 hPa (29,77 inHg)."],["TEMPO","Okresowo w ciągu 2 godzin:"],["4000","widzialność spadnie do 4 km,"],["TSRA","burza z deszczem.","c"]];
+const m=document.getElementById('metar'),ex=document.getElementById('explain');
+groups.forEach(([t,d,c],i)=>{const s=document.createElement('span');s.className='g'+(c?' '+c:'')+(i==2?' sel':'');s.textContent=t;s.tabIndex=0;
+ const show=()=>{document.querySelectorAll('.g').forEach(x=>x.classList.remove('sel'));s.classList.add('sel');ex.innerHTML='<span class="tok">'+t+'</span>'+d};
+ s.onclick=show;s.onkeydown=e=>{if(e.key==='Enter')show()};m.appendChild(s);m.append(' ')});
+</script>
+</body></html>

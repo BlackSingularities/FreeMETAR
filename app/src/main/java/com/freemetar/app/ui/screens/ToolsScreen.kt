@@ -1,5 +1,6 @@
 package com.freemetar.app.ui.screens
 
+import com.freemetar.app.ui.theme.Fm
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -47,13 +48,8 @@ import com.freemetar.app.domain.Wind
 import com.freemetar.app.domain.fmt
 import com.freemetar.app.ui.components.SectionCard
 import com.freemetar.app.ui.components.StatTile
-import com.freemetar.app.ui.theme.Amber
-import com.freemetar.app.ui.theme.CatIfr
 import com.freemetar.app.ui.theme.Mono
 import com.freemetar.app.ui.theme.RawText
-import com.freemetar.app.ui.theme.Sky
-import com.freemetar.app.ui.theme.TextHi
-import com.freemetar.app.ui.theme.TextLo
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -73,10 +69,10 @@ fun ToolsScreen(vm: MainViewModel) {
     var tool by rememberSaveable { mutableStateOf(Tool.ROUTE) }
     LazyColumn(
         Modifier.fillMaxSize().statusBarsPadding().widthIn(max = 760.dp),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { Text("Narzędzia", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 8.dp)) }
+        item { Text("Planowanie", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 8.dp)) }
         item {
             androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(Tool.entries.size) { i ->
@@ -134,11 +130,11 @@ private fun WindTool() {
             val g = gust.num()?.let { Wind.components(d, it, hdg) }
             Spacer(Modifier.size(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatTile(if (c.headwind >= 0) "Czołowy" else "Tylny", "${abs(c.headwind).roundToInt()} kt", g?.let { "porywy ${abs(it.headwind).roundToInt()} kt" }, Modifier.weight(1f), accent = if (c.headwind < 0) CatIfr else TextHi)
-                StatTile("Boczny", "${abs(c.crosswind).roundToInt()} kt", (g?.let { "porywy ${abs(it.crosswind).roundToInt()} kt · " } ?: "") + c.crossSide, Modifier.weight(1f), accent = if (abs(c.crosswind) > 15) Amber else TextHi)
+                StatTile(if (c.headwind >= 0) "Czołowy" else "Tylny", "${abs(c.headwind).roundToInt()} kt", g?.let { "porywy ${abs(it.headwind).roundToInt()} kt" }, Modifier.weight(1f), accent = if (c.headwind < 0) Fm.c.ifr else Fm.c.ink)
+                StatTile("Boczny", "${abs(c.crosswind).roundToInt()} kt", (g?.let { "porywy ${abs(it.crosswind).roundToInt()} kt · " } ?: "") + c.crossSide, Modifier.weight(1f), accent = if (abs(c.crosswind) > 15) Fm.c.caution else Fm.c.ink)
             }
             Spacer(Modifier.size(8.dp))
-            Text("Korekta znosu przy TAS 100 kt: ok. ${(Math.toDegrees(Math.asin((c.crosswind / 100).coerceIn(-1.0, 1.0)))).roundToInt()}°", color = TextLo, fontSize = 12.sp)
+            Text("Korekta znosu przy TAS 100 kt: ok. ${(Math.toDegrees(Math.asin((c.crosswind / 100).coerceIn(-1.0, 1.0)))).roundToInt()}°", color = Fm.c.ink2, fontSize = 12.sp)
         }
     }
 }
@@ -166,7 +162,7 @@ private fun DensityTool() {
             Spacer(Modifier.size(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 StatTile("Ciśnieniowa", "${pa.roundToInt()} ft", null, Modifier.weight(1f))
-                StatTile("Gęstościowa", "${da.roundToInt()} ft", "ISA ${Atmo.isaTemp(pa).fmt(1)} °C", Modifier.weight(1f), accent = if (da - e > 2000) Amber else TextHi)
+                StatTile("Gęstościowa", "${da.roundToInt()} ft", "ISA ${Atmo.isaTemp(pa).fmt(1)} °C", Modifier.weight(1f), accent = if (da - e > 2000) Fm.c.caution else Fm.c.ink)
             }
             ias.num()?.let {
                 Spacer(Modifier.size(10.dp))
@@ -198,10 +194,10 @@ private fun DescentTool() {
             val vs = g * 6076.12 / 60 * Math.tan(Math.toRadians(a))
             Spacer(Modifier.size(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatTile("Początek zniżania", "${dist.roundToInt()} NM", "przed punktem docelowym", Modifier.weight(1f), accent = Sky)
+                StatTile("Początek zniżania", "${dist.roundToInt()} NM", "przed punktem docelowym", Modifier.weight(1f), accent = Fm.c.magenta)
                 StatTile("Prędkość pionowa", "${vs.roundToInt()} ft/min", "czas ${(dist / g * 60).roundToInt()} min", Modifier.weight(1f))
             }
-            Text("Reguła kciuka: 3 × (FL/10) NM, VS ≈ GS × 5.", color = TextLo, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+            Text("Reguła kciuka: 3 × (FL/10) NM, VS ≈ GS × 5.", color = Fm.c.ink2, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
         }
     }
 }
@@ -231,9 +227,9 @@ private fun FuelTool() {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 StatTile("Czas", "%d:%02d".format(h.toInt(), ((h - h.toInt()) * 60).roundToInt()), null, Modifier.weight(1f))
                 StatTile("Na trasę", trip.fmt(1), null, Modifier.weight(1f))
-                StatTile("Z rezerwą", (trip + res).fmt(1), "+${res.fmt(1)}", Modifier.weight(1f), accent = Sky)
+                StatTile("Z rezerwą", (trip + res).fmt(1), "+${res.fmt(1)}", Modifier.weight(1f), accent = Fm.c.magenta)
             }
-            Text("Jednostki paliwa takie jak zużycia (l, kg, lb, gal).", color = TextLo, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+            Text("Jednostki paliwa takie jak zużycia (l, kg, lb, gal).", color = Fm.c.ink2, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
         }
     }
 }
@@ -260,8 +256,8 @@ private fun UnitsTool() {
             )
             rows.forEach { (l, r) ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
-                    Text(l, color = TextLo, modifier = Modifier.weight(1f))
-                    Text(r, fontFamily = Mono, color = TextHi, fontWeight = FontWeight.SemiBold)
+                    Text(l, color = Fm.c.ink2, modifier = Modifier.weight(1f))
+                    Text(r, fontFamily = Mono, color = Fm.c.ink, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -276,8 +272,8 @@ private fun DecodeTool() {
         Spacer(Modifier.size(10.dp))
         MetarDecoder.decode(raw).filter { it.text != "—" && it.text.isNotBlank() }.forEach { d ->
             Row(Modifier.padding(vertical = 4.dp)) {
-                Text(d.token, fontFamily = Mono, color = Sky, fontSize = 12.sp, modifier = Modifier.width(96.dp))
-                Column { Text(d.text, color = TextHi, fontSize = 14.sp) }
+                Text(d.token, fontFamily = Mono, color = Fm.c.magenta, fontSize = 12.sp, modifier = Modifier.width(96.dp))
+                Column { Text(d.text, color = Fm.c.ink, fontSize = 14.sp) }
             }
         }
     }

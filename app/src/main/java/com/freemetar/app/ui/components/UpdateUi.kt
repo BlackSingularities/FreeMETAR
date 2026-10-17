@@ -1,5 +1,6 @@
 package com.freemetar.app.ui.components
 
+import com.freemetar.app.ui.theme.Fm
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,11 +30,6 @@ import com.freemetar.app.MainViewModel
 import com.freemetar.app.UpdateState
 import com.freemetar.app.data.UpdateInfo
 import com.freemetar.app.data.Updater
-import com.freemetar.app.ui.theme.Amber
-import com.freemetar.app.ui.theme.CatIfr
-import com.freemetar.app.ui.theme.CatVfr
-import com.freemetar.app.ui.theme.TextHi
-import com.freemetar.app.ui.theme.TextLo
 import java.io.File
 
 private fun sizeMb(b: Long) = if (b > 0) " (%.1f MB)".format(b / 1_048_576.0) else ""
@@ -65,22 +61,22 @@ fun UpdateDialog(vm: MainViewModel) {
         title = { Text("Nowa wersja ${info.versionName}") },
         text = {
             Column {
-                Text("Masz ${BuildConfig.VERSION_NAME}. Aktualizacja pobierze się z GitHuba${sizeMb(info.sizeBytes)}.", color = TextLo, fontSize = 13.sp)
+                Text("Masz ${BuildConfig.VERSION_NAME}. Aktualizacja pobierze się z GitHuba${sizeMb(info.sizeBytes)}.", color = Fm.c.ink2, fontSize = 13.sp)
                 if (info.notes.isNotBlank()) {
                     Spacer(Modifier.size(10.dp))
                     Column(Modifier.heightIn(max = 220.dp).verticalScroll(rememberScrollState())) {
-                        Text(info.notes, color = TextHi, fontSize = 13.sp)
+                        Text(info.notes, color = Fm.c.ink, fontSize = 13.sp)
                     }
                 }
                 when (val s = state) {
                     is UpdateState.Downloading -> {
                         Spacer(Modifier.size(12.dp))
                         LinearProgressIndicator(progress = { s.progress }, modifier = Modifier.fillMaxWidth())
-                        Text("Pobieranie… ${(s.progress * 100).toInt()}%", color = TextLo, fontSize = 12.sp)
+                        Text("Pobieranie… ${(s.progress * 100).toInt()}%", color = Fm.c.ink2, fontSize = 12.sp)
                     }
                     is UpdateState.Ready -> if (!Updater.canInstall(ctx)) {
                         Spacer(Modifier.size(10.dp))
-                        Text("Zezwól FreeMETAR na instalowanie aplikacji, wróć i naciśnij „Zainstaluj” jeszcze raz.", color = Amber, fontSize = 12.sp)
+                        Text("Zezwól FreeMETAR na instalowanie aplikacji, wróć i naciśnij „Zainstaluj” jeszcze raz.", color = Fm.c.caution, fontSize = 12.sp)
                     }
                     else -> {}
                 }
@@ -105,19 +101,19 @@ fun UpdateSection(vm: MainViewModel) {
     val state by vm.update.collectAsStateWithLifecycle()
     val install = rememberInstaller()
     SectionCard("Aktualizacje", icon = Icons.Outlined.SystemUpdate) {
-        Text("Zainstalowana wersja: ${BuildConfig.VERSION_NAME}", color = TextHi)
+        Text("Zainstalowana wersja: ${BuildConfig.VERSION_NAME}", color = Fm.c.ink)
         Spacer(Modifier.size(6.dp))
         when (val s = state) {
-            UpdateState.Idle -> Text("Sprawdzane automatycznie przy starcie.", color = TextLo, fontSize = 13.sp)
-            UpdateState.Checking -> Text("Sprawdzanie…", color = TextLo, fontSize = 13.sp)
-            UpdateState.UpToDate -> Text("Masz najnowszą wersję.", color = CatVfr, fontSize = 13.sp)
-            is UpdateState.Error -> Text(s.message, color = CatIfr, fontSize = 13.sp)
-            is UpdateState.Available -> Text("Dostępna wersja ${s.info.versionName}${sizeMb(s.info.sizeBytes)}", color = Amber, fontSize = 13.sp)
+            UpdateState.Idle -> Text("Sprawdzane automatycznie przy starcie.", color = Fm.c.ink2, fontSize = 13.sp)
+            UpdateState.Checking -> Text("Sprawdzanie…", color = Fm.c.ink2, fontSize = 13.sp)
+            UpdateState.UpToDate -> Text("Masz najnowszą wersję.", color = Fm.c.vfr, fontSize = 13.sp)
+            is UpdateState.Error -> Text(s.message, color = Fm.c.ifr, fontSize = 13.sp)
+            is UpdateState.Available -> Text("Dostępna wersja ${s.info.versionName}${sizeMb(s.info.sizeBytes)}", color = Fm.c.caution, fontSize = 13.sp)
             is UpdateState.Downloading -> {
                 LinearProgressIndicator(progress = { s.progress }, modifier = Modifier.fillMaxWidth())
-                Text("Pobieranie ${s.info.versionName}… ${(s.progress * 100).toInt()}%", color = TextLo, fontSize = 12.sp)
+                Text("Pobieranie ${s.info.versionName}… ${(s.progress * 100).toInt()}%", color = Fm.c.ink2, fontSize = 12.sp)
             }
-            is UpdateState.Ready -> Text("Wersja ${s.info.versionName} pobrana — gotowa do instalacji.", color = CatVfr, fontSize = 13.sp)
+            is UpdateState.Ready -> Text("Wersja ${s.info.versionName} pobrana — gotowa do instalacji.", color = Fm.c.vfr, fontSize = 13.sp)
         }
         Spacer(Modifier.size(10.dp))
         Row {
