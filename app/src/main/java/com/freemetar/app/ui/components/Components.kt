@@ -95,42 +95,52 @@ fun Rule(modifier: Modifier = Modifier) {
 }
 
 /**
- * Sekcja briefingu: nagłówek z ikoną i treść, oddzielona od następnej linią —
- * jak rozdziały na karcie podejścia, nie stos kart.
+ * Sekcja briefingu jako panel przyrządu: etykieta panelu u góry, dane pod spodem.
+ * Ramka w kolorze `frame` wyróżnia panel ostrzeżeń (bursztyn/czerwień).
  */
 @Composable
 fun Section(
     title: String,
     icon: ImageVector,
     modifier: Modifier = Modifier,
+    frame: Color? = null,
     trailing: @Composable RowScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(modifier.fillMaxWidth()) {
-        Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp).animateContentSize()) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, null, tint = Fm.c.magenta, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(10.dp))
-                Text(title, style = MaterialTheme.typography.titleLarge, color = Fm.c.ink, modifier = Modifier.weight(1f))
-                trailing()
-            }
-            Spacer(Modifier.size(12.dp))
-            content()
+    val c = Fm.c
+    val shape = RoundedCornerShape(10.dp)
+    Column(
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 5.dp)
+            .clip(shape)
+            .background(c.card)
+            .let { if (frame != null) it.border(1.5.dp, frame, shape) else if (!c.isNight) it.border(1.dp, c.rule, shape) else it }
+            .padding(horizontal = 14.dp, vertical = 12.dp)
+            .animateContentSize(),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(IntrinsicSize.Min)) {
+            Icon(icon, null, tint = frame ?: c.ink2, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = frame ?: c.ink2, modifier = Modifier.weight(1f))
+            trailing()
         }
-        Rule()
+        Spacer(Modifier.size(10.dp))
+        content()
     }
 }
 
 /** Powierzchnia „kartonika” — pasek lotu, pole danych. */
 @Composable
 fun Panel(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
-    val shape = RoundedCornerShape(6.dp)
+    val shape = RoundedCornerShape(10.dp)
+    val c = Fm.c
     Column(
         modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(Fm.c.card)
-            .border(1.dp, Fm.c.rule, shape)
+            .background(c.card)
+            .let { if (c.isNight) it else it.border(1.dp, c.rule, shape) }
             .let { if (onClick != null) it.clickable(onClick = onClick) else it },
         content = content,
     )
@@ -183,31 +193,31 @@ fun weatherIcon(m: Metar?): ImageVector {
     }
 }
 
-/** Blok kategorii lotu na końcu paska — kolor wg konwencji VFR/MVFR/IFR/LIFR. */
+/** Kategoria lotu z ikoną pogody na końcu wiersza — jak oznaczenie stanu na wyświetlaczu. */
 @Composable
-fun CategoryBlock(metar: Metar?, modifier: Modifier = Modifier, width: Dp = 62.dp) {
+fun CategoryBlock(metar: Metar?, modifier: Modifier = Modifier, width: Dp = 64.dp) {
     val cat = metar?.flightCategory
-    val bg = if (cat == null) Fm.c.terrain else Fm.c.category(cat)
-    val fg = if (cat == null) Fm.c.ink2 else Color.White
+    val col = Fm.c.category(cat)
     Column(
-        modifier.width(width).fillMaxHeight().background(bg).padding(vertical = 10.dp),
+        modifier.width(width).fillMaxHeight().padding(vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(weatherIcon(metar), null, tint = fg, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.size(4.dp))
-        Text(cat ?: "—", color = fg, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        Icon(weatherIcon(metar), null, tint = col, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.size(5.dp))
+        CategoryTag(cat)
     }
 }
 
+/** Kategoria w obwódce w jej kolorze (konwencja wyświetlaczy: kolor = znaczenie). */
 @Composable
 fun CategoryTag(cat: String?, modifier: Modifier = Modifier) {
-    val c = Fm.c.category(cat)
+    val col = Fm.c.category(cat)
     Text(
         cat ?: "—",
-        color = if (cat == null) Fm.c.ink2 else Color.White,
+        color = col,
         fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 11.sp,
-        modifier = modifier.clip(RoundedCornerShape(3.dp)).background(if (cat == null) Fm.c.terrain else c).padding(horizontal = 6.dp, vertical = 2.dp),
+        modifier = modifier.clip(RoundedCornerShape(3.dp)).border(1.5.dp, col, RoundedCornerShape(3.dp)).padding(horizontal = 5.dp, vertical = 1.dp),
     )
 }
 
@@ -215,15 +225,14 @@ fun CategoryTag(cat: String?, modifier: Modifier = Modifier) {
 fun Pill(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null, mono: Boolean = false, onClick: () -> Unit) {
     Row(
         modifier
-            .clip(RoundedCornerShape(50))
-            .border(1.dp, Fm.c.rule, RoundedCornerShape(50))
-            .background(Fm.c.card)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Fm.c.terrain)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
-            Icon(icon, null, tint = Fm.c.magenta, modifier = Modifier.size(15.dp))
+            Icon(icon, null, tint = Fm.c.accent, modifier = Modifier.size(15.dp))
             Spacer(Modifier.width(6.dp))
         }
         Text(text, color = Fm.c.ink, fontFamily = if (mono) Mono else null, style = MaterialTheme.typography.labelMedium)
@@ -235,7 +244,7 @@ fun Pill(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null,
 fun EmptyState(icon: ImageVector, title: String, sub: String? = null, action: (@Composable () -> Unit)? = null) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(56.dp).clip(CircleShape).background(Fm.c.terrain), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = Fm.c.magenta, modifier = Modifier.size(26.dp))
+            Icon(icon, null, tint = Fm.c.accent, modifier = Modifier.size(26.dp))
         }
         Spacer(Modifier.size(12.dp))
         Text(title, style = MaterialTheme.typography.titleMedium, color = Fm.c.ink, textAlign = TextAlign.Center)
@@ -248,7 +257,7 @@ fun EmptyState(icon: ImageVector, title: String, sub: String? = null, action: (@
 
 /**
  * METAR dużym krojem kokpitowym; każda grupa jest dotykalna, a jej znaczenie
- * pojawia się pod spodem. Element, który odróżnia FreeMETAR od zwykłej listy.
+ * pojawia się pod spodem. Element, który odróżnia OpenAirBook od zwykłej listy.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -274,7 +283,7 @@ fun InteractiveMetar(raw: String, modifier: Modifier = Modifier, fontSize: Int =
                     fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                     modifier = Modifier
                         .clip(RoundedCornerShape(3.dp))
-                        .background(if (selected) c.magenta.copy(alpha = 0.14f) else Color.Transparent)
+                        .background(if (selected) c.accent.copy(alpha = 0.14f) else Color.Transparent)
                         .clickable(role = Role.Button) { sel = i }
                         .padding(horizontal = 2.dp, vertical = 1.dp),
                 )
@@ -285,7 +294,7 @@ fun InteractiveMetar(raw: String, modifier: Modifier = Modifier, fontSize: Int =
         AnimatedContent(g, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "metar-group") { cur ->
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(6.dp)).background(c.terrain).padding(horizontal = 14.dp, vertical = 12.dp)) {
                 if (cur != null) {
-                    Text(cur.token, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = c.magenta)
+                    Text(cur.token, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = c.accent)
                     Spacer(Modifier.size(2.dp))
                     Text(cur.text.takeIf { it != "—" && it.isNotBlank() } ?: "Grupa niestandardowa — bez objaśnienia.", style = MaterialTheme.typography.bodyMedium, color = c.ink)
                 }
@@ -317,7 +326,7 @@ fun RunwayWindDiagram(runways: List<Runway>, windDir: Int?, windKt: Int?, variab
         }
         listOf("N" to 0, "E" to 90, "S" to 180, "W" to 270).forEach { (s, d) ->
             val a = Math.toRadians(d.toDouble() - 90)
-            val layout = measurer.measure(s, TextStyle(color = if (s == "N") c.magenta else c.ink2, fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = Mono))
+            val layout = measurer.measure(s, TextStyle(color = if (s == "N") c.accent else c.ink2, fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = Mono))
             drawText(layout, topLeft = Offset(center.x + (r - 26) * cos(a).toFloat() - layout.size.width / 2, center.y + (r - 26) * sin(a).toFloat() - layout.size.height / 2))
         }
 

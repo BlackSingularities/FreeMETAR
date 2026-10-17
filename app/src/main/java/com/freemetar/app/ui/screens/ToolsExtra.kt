@@ -107,7 +107,7 @@ fun RouteTool(vm: MainViewModel) {
             val speed = gs.num()?.takeIf { it > 0 }
             Spacer(Modifier.size(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatTile("Dystans", "${dist.roundToInt()} NM", "${(dist * 1.852).roundToInt()} km", Modifier.weight(1f), accent = Fm.c.magenta, icon = Icons.Outlined.Straighten)
+                StatTile("Dystans", "${dist.roundToInt()} NM", "${(dist * 1.852).roundToInt()} km", Modifier.weight(1f), accent = Fm.c.accent, icon = Icons.Outlined.Straighten)
                 StatTile("Kurs", "%03d°".format(crs.roundToInt()), "powrót %03d°".format(back.roundToInt()), Modifier.weight(1f), icon = Icons.Outlined.Explore)
                 StatTile("Czas", speed?.let { val h = dist / it; "%d:%02d".format(h.toInt(), ((h - h.toInt()) * 60).roundToInt()) } ?: "—", "ETE", Modifier.weight(1f), icon = Icons.Outlined.Schedule)
             }
@@ -168,7 +168,7 @@ fun CheatSheet() {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 phonetic.forEach { (l, w) ->
                     Row(Modifier.clip(RoundedCornerShape(8.dp)).background(Fm.c.terrain).padding(horizontal = 8.dp, vertical = 5.dp)) {
-                        Text(l, fontFamily = Mono, color = Fm.c.magenta, fontWeight = FontWeight.Bold)
+                        Text(l, fontFamily = Mono, color = Fm.c.accent, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.width(6.dp))
                         Text(w, color = Fm.c.ink, fontSize = 13.sp)
                     }

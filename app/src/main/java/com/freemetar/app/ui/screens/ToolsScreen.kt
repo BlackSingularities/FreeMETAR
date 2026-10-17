@@ -194,7 +194,7 @@ private fun DescentTool() {
             val vs = g * 6076.12 / 60 * Math.tan(Math.toRadians(a))
             Spacer(Modifier.size(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatTile("Początek zniżania", "${dist.roundToInt()} NM", "przed punktem docelowym", Modifier.weight(1f), accent = Fm.c.magenta)
+                StatTile("Początek zniżania", "${dist.roundToInt()} NM", "przed punktem docelowym", Modifier.weight(1f), accent = Fm.c.accent)
                 StatTile("Prędkość pionowa", "${vs.roundToInt()} ft/min", "czas ${(dist / g * 60).roundToInt()} min", Modifier.weight(1f))
             }
             Text("Reguła kciuka: 3 × (FL/10) NM, VS ≈ GS × 5.", color = Fm.c.ink2, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
@@ -227,7 +227,7 @@ private fun FuelTool() {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 StatTile("Czas", "%d:%02d".format(h.toInt(), ((h - h.toInt()) * 60).roundToInt()), null, Modifier.weight(1f))
                 StatTile("Na trasę", trip.fmt(1), null, Modifier.weight(1f))
-                StatTile("Z rezerwą", (trip + res).fmt(1), "+${res.fmt(1)}", Modifier.weight(1f), accent = Fm.c.magenta)
+                StatTile("Z rezerwą", (trip + res).fmt(1), "+${res.fmt(1)}", Modifier.weight(1f), accent = Fm.c.accent)
             }
             Text("Jednostki paliwa takie jak zużycia (l, kg, lb, gal).", color = Fm.c.ink2, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
         }
@@ -272,7 +272,7 @@ private fun DecodeTool() {
         Spacer(Modifier.size(10.dp))
         MetarDecoder.decode(raw).filter { it.text != "—" && it.text.isNotBlank() }.forEach { d ->
             Row(Modifier.padding(vertical = 4.dp)) {
-                Text(d.token, fontFamily = Mono, color = Fm.c.magenta, fontSize = 12.sp, modifier = Modifier.width(96.dp))
+                Text(d.token, fontFamily = Mono, color = Fm.c.accent, fontSize = 12.sp, modifier = Modifier.width(96.dp))
                 Column { Text(d.text, color = Fm.c.ink, fontSize = 14.sp) }
             }
         }

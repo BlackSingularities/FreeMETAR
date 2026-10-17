@@ -57,14 +57,14 @@ jobs:
         run: |
           VERSION="1.0.${GITHUB_RUN_NUMBER}"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          cp app/build/outputs/apk/release/app-release.apk "FreeMETAR-$VERSION.apk"
+          cp app/build/outputs/apk/release/app-release.apk "OpenAirBook-$VERSION.apk"
 
       - name: Publikuj release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           NOTES=$(git log -1 --pretty=format:'%s%n%n%b')
-          gh release create "v$VERSION" "FreeMETAR-$VERSION.apk" \
-            --title "FreeMETAR $VERSION" \
+          gh release create "v$VERSION" "OpenAirBook-$VERSION.apk" \
+            --title "OpenAirBook $VERSION" \
             --notes "$NOTES" \
             --target "$GITHUB_SHA"

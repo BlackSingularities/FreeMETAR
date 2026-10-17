@@ -39,7 +39,7 @@ fun SectionCard(
             if (title != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (icon != null) {
-                        Icon(icon, null, tint = Fm.c.magenta, modifier = Modifier.size(19.dp))
+                        Icon(icon, null, tint = Fm.c.accent, modifier = Modifier.size(19.dp))
                         Spacer(Modifier.width(10.dp))
                     }
                     Text(title, style = MaterialTheme.typography.titleMedium, color = Fm.c.ink, modifier = Modifier.weight(1f))

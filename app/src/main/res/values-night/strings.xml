@@ -1,5 +1,5 @@
 <resources>
-    <style name="Theme.FreeMETAR" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">#0F161D</item>
+    <style name="Theme.OpenAirBook" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#1B2128</item>
     </style>
 </resources>

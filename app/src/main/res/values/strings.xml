@@ -1,7 +1,7 @@
 <resources>
-    <string name="app_name">FreeMETAR</string>
+    <string name="app_name">OpenAirBook</string>
     <color name="ic_bg">#16202B</color>
-    <style name="Theme.FreeMETAR" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">#EDF1EE</item>
+    <style name="Theme.OpenAirBook" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#1B2128</item>
     </style>
 </resources>

@@ -140,7 +140,7 @@ fun BriefingScreen(vm: MainViewModel, onBack: () -> Unit, onOpen: (String) -> Un
 
     Column(Modifier.fillMaxSize().background(c.paper)) {
         TopBar(detail, settings, vm, onBack)
-        if (detail.loading) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp), color = c.magenta, trackColor = c.paper)
+        if (detail.loading) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp), color = c.accent, trackColor = c.paper)
         else Spacer(Modifier.height(2.dp))
 
         if (wide) {
@@ -190,7 +190,7 @@ private fun TopBar(d: AirportDetail, s: Settings, vm: MainViewModel, onBack: () 
         d.weather?.metar?.let { m -> IconButton({ share(ctx, d, m) }) { Icon(Icons.Outlined.Share, "Udostępnij pogodę", tint = c.ink) } }
         IconButton({ vm.refreshWeather(d.ident) }) { Icon(Icons.Outlined.Refresh, "Odśwież", tint = c.ink) }
         IconButton({ vm.toggleFavorite(d.ident) }) {
-            Icon(if (fav) Icons.Outlined.Star else Icons.Outlined.StarBorder, if (fav) "Usuń z ulubionych" else "Dodaj do ulubionych", tint = if (fav) c.magenta else c.ink)
+            Icon(if (fav) Icons.Outlined.Star else Icons.Outlined.StarBorder, if (fav) "Usuń z ulubionych" else "Dodaj do ulubionych", tint = if (fav) c.accent else c.ink)
         }
     }
 }
@@ -210,7 +210,7 @@ private fun JumpBar(list: LazyListState) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(p.label, style = MaterialTheme.typography.labelLarge, color = if (on) c.ink else c.ink2, modifier = Modifier.padding(top = 10.dp, bottom = 8.dp))
-                    Box(Modifier.height(3.dp).width(28.dp).clip(RoundedCornerShape(2.dp)).background(if (on) c.magenta else Color.Transparent))
+                    Box(Modifier.height(3.dp).width(28.dp).clip(RoundedCornerShape(2.dp)).background(if (on) c.accent else Color.Transparent))
                 }
             }
         }
@@ -222,7 +222,7 @@ private fun share(ctx: Context, d: AirportDetail, m: Metar) {
     val text = buildString {
         append("${d.ident} ${d.airport?.name.orEmpty()}\n\nMETAR ${m.raw}\n")
         d.weather?.taf?.let { append("\n${it.raw}\n") }
-        append("\nFreeMETAR")
+        append("\nOpenAirBook")
     }
     ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), "Udostępnij pogodę"))
 }
@@ -338,7 +338,7 @@ private fun WeatherFacts(m: Metar, d: AirportDetail, s: Settings) {
     val ceiling = ceilingFt(m)
 
     val facts = buildList {
-        add(Fact("Pas wg wiatru", best?.let { "RWY ${it.runwayEnd}" } ?: "dowolny", accent = c.magenta,
+        add(Fact("Pas wg wiatru", best?.let { "RWY ${it.runwayEnd}" } ?: "dowolny", accent = c.accent,
             sub = best?.let { "czołowy ${it.steady.headwind.roundToInt()}, boczny ${abs(it.steady.crosswind).roundToInt()} kt" } ?: "wiatr słaby lub zmienny"))
         add(Fact("Wiatr", windShort(m) + if ((m.windKt ?: 0) > 0) " kt" else "",
             accent = if ((m.gustKt ?: m.windKt ?: 0) >= 25) c.caution else null,
@@ -383,7 +383,7 @@ private fun AtisPlayer(d: AirportDetail, m: Metar) {
 
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(6.dp)).background(c.card).border(1.dp, c.rule, RoundedCornerShape(6.dp)).padding(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(40.dp).clip(CircleShape).background(c.magenta).clickable(enabled = ready, role = Role.Button) {
+            Box(Modifier.size(40.dp).clip(CircleShape).background(c.accent).clickable(enabled = ready, role = Role.Button) {
                 if (speaking) {
                     tts.stop(); speaking = false
                 } else {
@@ -434,7 +434,7 @@ private fun Trends(hist: List<Metar>) {
     val charts = listOf<@Composable (Modifier) -> Unit>(
         { mod -> TrendChart("Temperatura °C", hist.mapNotNull { it.tempC }, "°", c.ifr, mod) },
         { mod -> TrendChart("Wiatr kt", hist.mapNotNull { it.windKt?.toDouble() }, " kt", c.blue, mod) },
-        { mod -> TrendChart("QNH hPa", hist.mapNotNull { it.altimHpa }, "", c.magenta, mod) },
+        { mod -> TrendChart("QNH hPa", hist.mapNotNull { it.altimHpa }, "", c.accent, mod) },
     )
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) { charts.forEach { it(Modifier.fillMaxWidth()) } }
 }
@@ -514,7 +514,7 @@ private fun RunwaysPart(d: AirportDetail) {
                         val head = rw.steady.headwind.roundToInt()
                         val cross = rw.steady.crosswind
                         Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(rw.runwayEnd, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = if (i == 0) c.magenta else c.ink, modifier = Modifier.weight(1f))
+                            Text(rw.runwayEnd, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = if (i == 0) c.accent else c.ink, modifier = Modifier.weight(1f))
                             Text(if (head >= 0) "↓%2d".format(head) else "↑%2d".format(-head), fontFamily = Mono, fontSize = 14.sp, color = if (head < 0) c.ifr else c.ink)
                             Spacer(Modifier.width(8.dp))
                             Text((if (cross >= 0) "→" else "←") + "%2d".format(abs(cross).roundToInt()), fontFamily = Mono, fontSize = 14.sp,
@@ -674,7 +674,7 @@ private fun NearbyPart(d: AirportDetail, onOpen: (String) -> Unit) {
                     Text("${dist.fmt(0)} NM", fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = c.ink)
                     if (brg != null) Row(verticalAlignment = Alignment.CenterVertically) {
                         // Ikona NearMe wskazuje domyślnie NE (45°)
-                        Icon(Icons.Outlined.NearMe, null, tint = c.magenta, modifier = Modifier.size(13.dp).rotate(brg.toFloat() - 45f))
+                        Icon(Icons.Outlined.NearMe, null, tint = c.accent, modifier = Modifier.size(13.dp).rotate(brg.toFloat() - 45f))
                         Spacer(Modifier.width(3.dp))
                         Text("%03d°".format(brg.roundToInt()), fontFamily = Mono, fontSize = 12.sp, color = c.ink2)
                     }

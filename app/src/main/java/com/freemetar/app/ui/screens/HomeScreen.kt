@@ -142,7 +142,7 @@ fun HomeScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
                     keyboardActions = KeyboardActions(onSearch = { if (query.length >= 3) onOpen(results.firstOrNull()?.ident ?: query.uppercase().trim()) }),
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedContainerColor = c.card, focusedContainerColor = c.card,
-                        unfocusedBorderColor = c.ink2, focusedBorderColor = c.magenta,
+                        unfocusedBorderColor = c.ink2, focusedBorderColor = c.accent,
                     ),
                 )
             }
@@ -223,13 +223,13 @@ private fun Header() {
     Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 10.dp), verticalAlignment = Alignment.Bottom) {
         Text(
             buildAnnotatedString {
-                append("Free")
-                withStyle(SpanStyle(color = c.magenta)) { append("METAR") }
+                append("Open")
+                withStyle(SpanStyle(color = c.accent)) { append("AirBook") }
             },
             style = MaterialTheme.typography.headlineLarge, color = c.ink, modifier = Modifier.weight(1f),
         )
         Column(horizontalAlignment = Alignment.End) {
-            Text(now.format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "Z", fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = c.ink)
+            Text(now.format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "Z", fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = c.green)
             Text("czas lokalny " + local.format(DateTimeFormatter.ofPattern("HH:mm")), style = MaterialTheme.typography.bodySmall, color = c.ink2)
         }
     }
@@ -243,7 +243,7 @@ private fun DbBanner(db: DbState, onRetry: () -> Unit) {
             Column(Modifier.padding(14.dp)) {
                 Text(db.message, style = MaterialTheme.typography.bodyMedium, color = c.ink)
                 Spacer(Modifier.size(8.dp))
-                LinearProgressIndicator(Modifier.fillMaxWidth(), color = c.magenta, trackColor = c.terrain)
+                LinearProgressIndicator(Modifier.fillMaxWidth(), color = c.accent, trackColor = c.terrain)
                 Spacer(Modifier.size(6.dp))
                 Text("Pierwsze uruchomienie pobiera ok. 15 MB danych lotnisk. Potem aplikacja korzysta z kopii w telefonie.", style = MaterialTheme.typography.bodySmall, color = c.ink2)
             }
@@ -270,7 +270,7 @@ private fun SearchRow(a: Airport, onClick: () -> Unit) {
         Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 when (a.type) { "seaplane_base" -> Icons.Outlined.Water; "small_airport" -> Icons.Outlined.Flight; else -> Icons.Outlined.LocalAirport },
-                null, tint = c.magenta, modifier = Modifier.size(22.dp),
+                null, tint = c.accent, modifier = Modifier.size(22.dp),
             )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.width(68.dp)) {
@@ -312,7 +312,7 @@ fun FlightStrip(
                     Spacer(Modifier.width(10.dp))
                     Text(name.orEmpty(), style = MaterialTheme.typography.bodySmall, color = c.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f).padding(bottom = 3.dp))
-                    if (trailingNote != null) Text(trailingNote, fontFamily = Mono, fontSize = 12.sp, color = c.magenta, modifier = Modifier.padding(bottom = 3.dp))
+                    if (trailingNote != null) Text(trailingNote, fontFamily = Mono, fontSize = 12.sp, color = c.accent, modifier = Modifier.padding(bottom = 3.dp))
                 }
                 Spacer(Modifier.size(7.dp))
                 Box(Modifier.fillMaxWidth().height(1.dp).background(c.rule))
@@ -371,7 +371,7 @@ private fun NearMeBlock(vm: MainViewModel, state: NearMe, onOpen: (String) -> Un
         when (state) {
             NearMe.Idle -> Panel {
                 Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.MyLocation, null, tint = c.magenta, modifier = Modifier.size(26.dp))
+                    Icon(Icons.Outlined.MyLocation, null, tint = c.accent, modifier = Modifier.size(26.dp))
                     Spacer(Modifier.width(12.dp))
                     Text("Najbliższe lotniska z bieżącą pogodą, wg przybliżonej lokalizacji telefonu.", style = MaterialTheme.typography.bodyMedium, color = c.ink, modifier = Modifier.weight(1f))
                 }
@@ -380,7 +380,7 @@ private fun NearMeBlock(vm: MainViewModel, state: NearMe, onOpen: (String) -> Un
                 }
             }
             NearMe.Locating -> Row(Modifier.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = c.magenta)
+                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = c.accent)
                 Spacer(Modifier.width(12.dp))
                 Text("Ustalanie pozycji…", style = MaterialTheme.typography.bodyMedium, color = c.ink2)
             }

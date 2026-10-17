@@ -77,11 +77,10 @@ fun SettingsScreen(vm: MainViewModel) {
             Text("Motyw", color = Fm.c.ink, style = MaterialTheme.typography.titleSmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)) {
                 listOf(
-                    com.freemetar.app.data.ThemeMode.SYSTEM to "Jak telefon",
-                    com.freemetar.app.data.ThemeMode.DAY to "Dzień",
-                    com.freemetar.app.data.ThemeMode.NIGHT to "Noc",
+                    com.freemetar.app.data.ThemeMode.SYSTEM to "Kokpit",
+                    com.freemetar.app.data.ThemeMode.DAY to "Jasny ekran",
                 ).forEach { (mode, label) ->
-                    FilterChip(s.themeMode == mode, { vm.setTheme(mode) }, { Text(label) },
+                    FilterChip(s.themeMode == mode || (mode == com.freemetar.app.data.ThemeMode.SYSTEM && s.themeMode == com.freemetar.app.data.ThemeMode.NIGHT), { vm.setTheme(mode) }, { Text(label) },
                         leadingIcon = { Icon(when (mode) { com.freemetar.app.data.ThemeMode.DAY -> Icons.Outlined.LightMode; com.freemetar.app.data.ThemeMode.NIGHT -> Icons.Outlined.DarkMode; else -> Icons.Outlined.Smartphone }, null, Modifier.size(16.dp)) })
                 }
             }
@@ -108,7 +107,7 @@ fun SettingsScreen(vm: MainViewModel) {
         com.freemetar.app.ui.components.UpdateSection(vm)
 
         SectionCard("O aplikacji", icon = Icons.Outlined.Info) {
-            Text("FreeMETAR ${BuildConfig.VERSION_NAME}", color = Fm.c.ink)
+            Text("OpenAirBook ${BuildConfig.VERSION_NAME}", color = Fm.c.ink)
             Spacer(Modifier.size(4.dp))
             Text(
                 "Pogoda: aviationweather.gov (NOAA/NWS, domena publiczna).\n" +

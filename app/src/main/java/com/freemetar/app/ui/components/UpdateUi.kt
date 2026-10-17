@@ -76,7 +76,7 @@ fun UpdateDialog(vm: MainViewModel) {
                     }
                     is UpdateState.Ready -> if (!Updater.canInstall(ctx)) {
                         Spacer(Modifier.size(10.dp))
-                        Text("Zezwól FreeMETAR na instalowanie aplikacji, wróć i naciśnij „Zainstaluj” jeszcze raz.", color = Fm.c.caution, fontSize = 12.sp)
+                        Text("Zezwól OpenAirBook na instalowanie aplikacji, wróć i naciśnij „Zainstaluj” jeszcze raz.", color = Fm.c.caution, fontSize = 12.sp)
                     }
                     else -> {}
                 }

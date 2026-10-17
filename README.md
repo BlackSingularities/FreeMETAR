@@ -1,4 +1,4 @@
-# FreeMETAR
+# OpenAirBook
 
 Aplikacja na Androida dla wirtualnych pilotów (MSFS, X-Plane, VATSIM, IVAO). Pokazuje pogodę i dane lotnisk wyłącznie z darmowych, otwartych źródeł — bez kont, kluczy API i reklam.
 

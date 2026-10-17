@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OpenAirBook — kierunki</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=B612+Mono:wght@400;700&family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;600&family=Overpass:wght@400;600;800;900&family=Overpass+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,sans-serif;background:#cfd3d6;color:#1b1f23}
+header.pick{position:sticky;top:0;z-index:5;background:#f4f5f6;border-bottom:1px solid #c3c8cc;padding:12px 16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+header.pick h1{font-size:16px;margin:0 12px 0 0}
+header.pick button{font:600 14px system-ui;padding:9px 14px;border-radius:999px;border:1px solid #9aa3aa;background:#fff;cursor:pointer}
+header.pick button[aria-pressed=true]{background:#1b1f23;color:#fff;border-color:#1b1f23}
+header.pick button:focus-visible{outline:3px solid #2563eb;outline-offset:2px}
+.desc{max-width:900px;margin:18px auto 6px;padding:0 16px;font-size:14.5px;line-height:1.55}
+.desc b{font-weight:700}
+.stage{display:flex;flex-wrap:wrap;gap:26px;justify-content:center;padding:18px 16px 50px}
+.cap{font-size:13px;color:#3d454b;text-align:center;margin-top:10px;max-width:360px}
+.ph{width:360px;height:760px;border-radius:32px;overflow:hidden;position:relative;box-shadow:0 0 0 8px #1d2125;display:flex;flex-direction:column}
+.tab{width:min(980px,100%);height:560px;border-radius:22px;overflow:hidden;box-shadow:0 0 0 8px #1d2125;display:flex}
+.sb{height:26px;flex:none}
+.sc{flex:1;overflow:auto}
+svg text{font-family:inherit}
+
+/* ============ A: GLASS COCKPIT ============ */
+[data-d=a] .ph,[data-d=a] .tab{background:#1B2128;color:#E8EDF2;font-family:'IBM Plex Sans Condensed',sans-serif}
+[data-d=a]{--bg:#1B2128;--pane:#232B34;--pane2:#2C3640;--line:#3A4652;--txt:#E8EDF2;--dim:#93A1AE;--cyan:#38D6F5;--mag:#F25CD0;--grn:#3FE07A;--amb:#FFB020;--red:#FF4D4D;--mono:'B612 Mono',monospace}
+[data-d=a] .mono{font-family:var(--mono)}
+[data-d=a] .A-top{display:flex;justify-content:space-between;align-items:center;padding:6px 16px 10px}
+[data-d=a] .A-logo{font-weight:700;font-size:20px;letter-spacing:.5px}
+[data-d=a] .A-logo span{color:var(--cyan)}
+[data-d=a] .A-utc{font-family:var(--mono);color:var(--grn);font-size:15px}
+[data-d=a] .A-search{margin:0 16px 12px;background:var(--pane);border:1px solid var(--line);border-radius:8px;padding:11px 12px;color:var(--dim);font-size:14px}
+[data-d=a] .A-row{display:grid;grid-template-columns:62px 1fr auto;gap:10px;align-items:center;margin:0 16px 8px;background:var(--pane);border-radius:8px;padding:10px 12px}
+[data-d=a] .A-row .id{font-family:var(--mono);font-size:19px;font-weight:700}
+[data-d=a] .A-row .m{font-family:var(--mono);font-size:12.5px;color:var(--dim);line-height:1.5}
+[data-d=a] .A-row .m b{color:var(--cyan);font-weight:400}
+[data-d=a] .cat{font-family:var(--mono);font-size:11px;font-weight:700;padding:3px 6px;border-radius:3px;border:1.5px solid}
+[data-d=a] .c-vfr{color:var(--grn);border-color:var(--grn)}[data-d=a] .c-mvfr{color:var(--cyan);border-color:var(--cyan)}[data-d=a] .c-ifr{color:var(--red);border-color:var(--red)}[data-d=a] .c-lifr{color:var(--mag);border-color:var(--mag)}
+[data-d=a] .A-h{font-size:12.5px;color:var(--dim);margin:14px 16px 8px;font-weight:600}
+[data-d=a] .nav{flex:none;display:flex;justify-content:space-around;background:#151A20;border-top:1px solid var(--line);padding:8px 0 14px;font-size:11px;color:var(--dim)}
+[data-d=a] .nav span{display:flex;flex-direction:column;align-items:center;gap:3px}[data-d=a] .nav .on{color:var(--cyan)}
+[data-d=a] .map{position:relative;flex:1;background:#141A1F}
+[data-d=a] .float{position:absolute;background:rgba(27,33,40,.92);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px}
+[data-d=a] .A-strip{display:grid;grid-template-columns:repeat(4,1fr);background:#151A20;border-top:1px solid var(--line);text-align:center;font-family:var(--mono);font-size:15px;padding:8px 0}
+[data-d=a] .A-strip small{display:block;font-family:'IBM Plex Sans Condensed';font-size:10.5px;color:var(--dim)}
+[data-d=a] .A-sec{margin:0 16px 10px;background:var(--pane);border-radius:8px;padding:12px}
+[data-d=a] .A-sec h3{margin:0 0 8px;font-size:13px;color:var(--dim);font-weight:600}
+[data-d=a] .A-metar{font-family:var(--mono);font-size:15px;line-height:1.7}
+[data-d=a] .A-metar i{font-style:normal;color:var(--cyan)}[data-d=a] .A-metar u{text-decoration:none;color:var(--red)}
+[data-d=a] .kv{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;font-size:12px;color:var(--dim)}
+[data-d=a] .kv b{display:block;font-family:var(--mono);font-size:17px;color:var(--txt);font-weight:400}
+
+/* ============ B: NIEBO ============ */
+[data-d=b] .ph,[data-d=b] .tab{background:#F6F8FB;color:#14213D;font-family:'Manrope',sans-serif}
+[data-d=b]{--ink:#14213D;--dim:#5B6B84;--line:#E1E7EF;--card:#fff;--acc:#2350D8;--vfr:#16A34A;--mvfr:#2350D8;--ifr:#DC2626;--lifr:#9333EA;--mono:'IBM Plex Mono',monospace}
+[data-d=b] .mono{font-family:var(--mono)}
+[data-d=b] .sky{position:relative;padding:4px 20px 22px;color:#fff;background:linear-gradient(180deg,#3E6FD8 0%,#7FA8EE 55%,#C9DCF7 100%);overflow:hidden}
+[data-d=b] .sky.dusk{background:linear-gradient(180deg,#2B2F6B 0%,#B9568A 55%,#F2A66E 100%)}
+[data-d=b] .sky.over{background:linear-gradient(180deg,#5D6E85 0%,#93A3B8 60%,#C8D2DE 100%)}
+[data-d=b] .cloud{position:absolute;border-radius:999px;background:rgba(255,255,255,.55);filter:blur(1px)}
+[data-d=b] .B-top{display:flex;justify-content:space-between;align-items:center;position:relative}
+[data-d=b] .B-logo{font-weight:800;font-size:19px;letter-spacing:-.3px}
+[data-d=b] .B-big{position:relative;margin-top:16px}
+[data-d=b] .B-big .id{font-weight:800;font-size:44px;letter-spacing:-1.5px;line-height:1}
+[data-d=b] .B-big .sub{font-size:14px;opacity:.92}
+[data-d=b] .B-big .now{display:flex;gap:18px;margin-top:14px;font-size:13px}
+[data-d=b] .B-big .now b{display:block;font-size:22px;font-weight:700}
+[data-d=b] .pill{display:inline-block;font-weight:700;font-size:12px;padding:3px 10px;border-radius:999px;color:#fff}
+[data-d=b] .p-vfr{background:var(--vfr)}[data-d=b] .p-mvfr{background:var(--mvfr)}[data-d=b] .p-ifr{background:var(--ifr)}[data-d=b] .p-lifr{background:var(--lifr)}
+[data-d=b] .B-list{padding:14px 16px}
+[data-d=b] .B-card{background:var(--card);border-radius:18px;padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+[data-d=b] .B-card .id{font-weight:800;font-size:18px}
+[data-d=b] .B-card .s{font-size:12.5px;color:var(--dim)}
+[data-d=b] .B-card .r{text-align:right;font-size:13px;color:var(--dim)}
+[data-d=b] .B-card .r b{display:block;color:var(--ink);font-size:16px}
+[data-d=b] .B-h{font-weight:700;font-size:15px;margin:6px 4px 10px}
+[data-d=b] .nav{flex:none;display:flex;justify-content:space-around;background:#fff;padding:10px 0 16px;font-size:11.5px;color:var(--dim);font-weight:600}
+[data-d=b] .nav span{display:flex;flex-direction:column;align-items:center;gap:4px}[data-d=b] .nav .on{color:var(--acc)}
+[data-d=b] .map{position:relative;flex:1;background:#E7EEF5}
+[data-d=b] .float{position:absolute;background:#fff;border-radius:16px;padding:10px 14px;font-size:12.5px;box-shadow:0 6px 20px rgba(20,33,61,.12)}
+[data-d=b] .B-sec{background:#fff;border-radius:18px;margin:0 16px 10px;padding:14px 16px}
+[data-d=b] .B-sec h3{margin:0 0 8px;font-size:14px}
+[data-d=b] .B-metar{font-family:var(--mono);font-size:14px;line-height:1.7;color:var(--ink)}
+[data-d=b] .B-metar i{font-style:normal;background:#E8EEFD;border-radius:4px;padding:0 2px}
+[data-d=b] .kv{display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;color:var(--dim)}
+[data-d=b] .kv b{display:block;font-size:17px;color:var(--ink)}
+
+/* ============ C: AIRSIDE ============ */
+[data-d=c] .ph,[data-d=c] .tab{background:#D5D6D1;color:#111;font-family:'Overpass',sans-serif}
+[data-d=c]{--yel:#FFC20E;--blk:#111111;--red:#C8102E;--wht:#FFFFFF;--con:#D5D6D1;--con2:#C4C5BF;--dim:#4B4D48;--grn:#1E7D32;--blu:#1D4ED8;--mono:'Overpass Mono',monospace}
+[data-d=c] .mono{font-family:var(--mono)}
+[data-d=c] .C-top{display:flex;align-items:stretch;margin:4px 14px 12px;height:42px}
+[data-d=c] .C-logo{background:var(--blk);color:var(--yel);font-weight:900;font-size:18px;display:flex;align-items:center;padding:0 12px;letter-spacing:.3px}
+[data-d=c] .C-logo2{background:var(--yel);color:var(--blk);font-weight:900;font-size:18px;display:flex;align-items:center;padding:0 12px}
+[data-d=c] .C-utc{margin-left:auto;font-family:var(--mono);font-weight:700;align-self:center;font-size:16px}
+[data-d=c] .C-search{margin:0 14px 14px;background:var(--wht);border:3px solid var(--blk);padding:10px 12px;font-weight:600;font-size:14px;color:var(--dim)}
+[data-d=c] .sign{display:flex;margin:0 14px 10px;height:64px;font-weight:900}
+[data-d=c] .sign .loc{background:var(--blk);color:var(--yel);width:88px;display:flex;align-items:center;justify-content:center;font-size:22px;border:3px solid var(--yel);outline:3px solid var(--blk)}
+[data-d=c] .sign .dir{flex:1;background:var(--yel);color:var(--blk);display:flex;flex-direction:column;justify-content:center;padding:0 12px;font-size:12.5px;font-weight:600}
+[data-d=c] .sign .dir b{font-size:17px;font-weight:900;font-family:var(--mono)}
+[data-d=c] .sign .cat{width:66px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px}
+[data-d=c] .k-vfr{background:var(--grn)}[data-d=c] .k-mvfr{background:var(--blu)}[data-d=c] .k-ifr{background:var(--red)}[data-d=c] .k-lifr{background:#7E22CE}
+[data-d=c] .C-h{font-weight:900;font-size:14px;margin:14px 14px 8px;text-transform:none}
+[data-d=c] .nav{flex:none;display:flex;background:var(--blk);color:#bbb;font-size:11.5px;font-weight:800}
+[data-d=c] .nav span{flex:1;text-align:center;padding:10px 0 16px}[data-d=c] .nav .on{background:var(--yel);color:var(--blk)}
+[data-d=c] .map{position:relative;flex:1;background:#BFC1BA}
+[data-d=c] .float{position:absolute;background:var(--yel);color:var(--blk);padding:6px 10px;font-weight:800;font-size:12.5px;border:3px solid var(--blk)}
+[data-d=c] .C-sec{margin:0 14px 12px;background:var(--wht);border:3px solid var(--blk)}
+[data-d=c] .C-sec h3{margin:0;background:var(--blk);color:var(--yel);font-size:13px;padding:6px 10px;font-weight:900}
+[data-d=c] .C-sec .in{padding:10px}
+[data-d=c] .C-metar{font-family:var(--mono);font-size:14.5px;line-height:1.7;font-weight:700}
+[data-d=c] .C-metar u{text-decoration:none;background:var(--red);color:#fff;padding:0 3px}
+[data-d=c] .mand{background:var(--red);color:#fff;font-weight:800;margin:0 14px 12px;padding:10px 12px;font-size:13.5px;border:3px solid var(--blk)}
+[data-d=c] .kv{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;font-size:12px;color:var(--dim);font-weight:600}
+[data-d=c] .kv b{display:block;font-family:var(--mono);font-size:18px;color:var(--blk);font-weight:700}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head><body>
+<header class="pick"><h1>OpenAirBook — wybierz kierunek</h1>
+<button data-go="a" aria-pressed="true">A. Szklany kokpit</button>
+<button data-go="b" aria-pressed="false">B. Niebo</button>
+<button data-go="c" aria-pressed="false">C. Airside</button></header>
+<p class="desc" id="desc"></p>
+<div id="root"></div>
+
+<script>
+const D={
+a:{d:"<b>Szklany kokpit.</b> Język kolorów prawdziwej awioniki, gdzie każdy kolor coś znaczy: cyjan to wartość wybrana, magenta aktywna trasa, zieleń włączony tryb, bursztyn ostrzeżenie. Grafitowe tło (nie czerń), mapa na cały ekran z panelami przyrządów na wierzchu. Najbliżej tego, co pilot widzi w kabinie, najlepiej w nocy i w trakcie lotu."},
+b:{d:"<b>Niebo.</b> Jasny i spokojny. Na górze każdego lotniska jest niebo, które rysuje się z pory dnia w tym miejscu (świt, dzień, zmierzch, noc) i z chmur w METAR. Reszta to białe, miękkie karty. Najbardziej przystępny i „aplikacyjny”, dobry przed lotem i na tablecie."},
+c:{d:"<b>Airside.</b> Język oznakowania lotniskowego: żółto-czarne tablice informacyjne, czerwone dla poleceń obowiązkowych (tu ostrzeżenia), betonowe tło, krój wywodzący się z oznaczeń drogowych. Duże, mocne, czytelne w słońcu i rzucające się w oczy. Najbardziej charakterystyczny z trzech."}};
+
+const pfd=(d)=>{ // wspólny PFD, kolory z kierunku
+ const C=d=='a'?{sky:'#2B6CB0',gnd:'#7A4B26',fg:'#E8EDF2',acc:'#38D6F5',bug:'#F25CD0',ok:'#3FE07A',tape:'rgba(20,26,32,.85)'}:
+  d=='b'?{sky:'#5D8FE6',gnd:'#8C6A49',fg:'#fff',acc:'#fff',bug:'#2350D8',ok:'#16A34A',tape:'rgba(20,33,61,.55)'}:
+  {sky:'#3A6FB8',gnd:'#6F5236',fg:'#fff',acc:'#FFC20E',bug:'#FFC20E',ok:'#FFC20E',tape:'rgba(17,17,17,.85)'};
+ return `<svg viewBox="0 0 360 330" width="100%" style="display:block">
+ <defs><clipPath id="cl${d}"><rect x="0" y="0" width="360" height="330"/></clipPath></defs>
+ <g clip-path="url(#cl${d})"><g transform="rotate(-8 180 165) translate(0 18)">
+  <rect x="-200" y="-400" width="760" height="565" fill="${C.sky}"/><rect x="-200" y="165" width="760" height="500" fill="${C.gnd}"/>
+  <line x1="-200" y1="165" x2="560" y2="165" stroke="#fff" stroke-width="2"/>
+  ${[-20,-10,10,20].map(p=>`<line x1="${180-(Math.abs(p)==10?28:44)}" y1="${165-p*3.2}" x2="${180+(Math.abs(p)==10?28:44)}" y2="${165-p*3.2}" stroke="#fff" stroke-width="1.6"/><text x="${180+54}" y="${169-p*3.2}" fill="#fff" font-size="11">${Math.abs(p)}</text>`).join('')}
+ </g></g>
+ <path d="M120 165h40l8 10M240 165h-40l-8 10" stroke="${C.ok=='#FFC20E'?'#FFC20E':'#FFC20E'}" stroke-width="5" fill="none"/><rect x="176" y="161" width="8" height="8" fill="#FFC20E"/>
+ <rect x="0" y="20" width="62" height="290" fill="${C.tape}"/><rect x="298" y="20" width="62" height="290" fill="${C.tape}"/>
+ ${[230,240,250,260,270].map((v,i)=>`<text x="10" y="${290-i*56}" fill="${C.fg}" font-size="13" class="mono">${v}</text>`).join('')}
+ ${[7600,7700,7800,7900,8000].map((v,i)=>`<text x="304" y="${290-i*56}" fill="${C.fg}" font-size="12" class="mono">${v}</text>`).join('')}
+ <rect x="2" y="150" width="58" height="28" fill="#000" stroke="${C.fg}"/><text x="9" y="170" fill="${C.fg}" font-size="16" font-weight="700" class="mono">248</text>
+ <rect x="300" y="150" width="58" height="28" fill="#000" stroke="${C.fg}"/><text x="303" y="170" fill="${C.fg}" font-size="15" font-weight="700" class="mono">7840</text>
+ <text x="308" y="14" fill="${C.bug}" font-size="12" class="mono">FL100</text><text x="10" y="14" fill="${C.bug}" font-size="12" class="mono">250</text>
+ <rect x="62" y="0" width="236" height="20" fill="${C.tape}"/>
+ <text x="75" y="14" fill="${C.ok}" font-size="11.5" class="mono" font-weight="700">A/THR  SPEED   ALT*   NAV   AP1</text>
+ <rect x="62" y="310" width="236" height="20" fill="${C.tape}"/><text x="150" y="325" fill="${C.fg}" font-size="13" class="mono" font-weight="700">HDG 287</text>
+ </svg>`};
+
+const mapSvg=(d)=>{
+ const L=d=='a'?{sea:'#101820',land:'#1C252D',rd:'#2A3540',route:'#F25CD0',txt:'#93A1AE'}:d=='b'?{sea:'#CFE0F2',land:'#EEF2F6',rd:'#DCE3EB',route:'#2350D8',txt:'#5B6B84'}:{sea:'#9FB3C2',land:'#D5D6D1',rd:'#BDBEB7',route:'#111',txt:'#333'};
+ const ap=(x,y,c,id)=>{const col={vfr:d=='c'?'#1E7D32':d=='a'?'#3FE07A':'#16A34A',mvfr:d=='c'?'#1D4ED8':d=='a'?'#38D6F5':'#2350D8',ifr:d=='c'?'#C8102E':d=='a'?'#FF4D4D':'#DC2626'}[c];
+  return d=='c'?`<rect x="${x-16}" y="${y-9}" width="32" height="18" fill="${col}" stroke="#111" stroke-width="2"/><text x="${x-13}" y="${y+5}" fill="#fff" font-size="10" font-weight="900">${id}</text>`
+   :`<circle cx="${x}" cy="${y}" r="7" fill="none" stroke="${col}" stroke-width="3"/><text x="${x+10}" y="${y+4}" fill="${L.txt}" font-size="10.5" font-weight="700">${id}</text>`};
+ return `<svg viewBox="0 0 360 480" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0">
+ <rect width="360" height="480" fill="${L.land}"/><path d="M0 0H360V70C300 95 250 60 190 88S90 70 0 100Z" fill="${L.sea}"/>
+ <path d="M30 470L120 300 200 260 330 120" stroke="${L.rd}" stroke-width="6" fill="none"/>
+ <path d="M240 380C210 300 190 220 170 120" stroke="${L.route}" stroke-width="3.5" fill="none" ${d=='c'?'stroke-dasharray="10 6"':''}/>
+ ${ap(240,384,'mvfr','EPWA')}${ap(168,112,'ifr','EPGD')}${ap(96,300,'vfr','EPLL')}${ap(300,250,'vfr','EPSY')}${ap(70,180,'vfr','EPBY')}
+ <g transform="translate(205 250) rotate(-20)"><path d="M0-14l4 10 12 5v3l-12-2-1 8 5 3v2l-8-2-8 2v-2l5-3-1-8-12 2v-3l12-5z" fill="${d=='a'?'#FFB020':d=='b'?'#14213D':'#FFC20E'}" stroke="${d=='c'?'#111':'none'}" stroke-width="1.5"/></g>
+ <path d="M250 150L320 140 340 210 280 230Z" fill="${d=='a'?'rgba(255,176,32,.18)':d=='b'?'rgba(220,38,38,.12)':'rgba(200,16,46,.3)'}" stroke="${d=='a'?'#FFB020':d=='b'?'#DC2626':'#C8102E'}" stroke-width="2" stroke-dasharray="6 4"/>
+ </svg>`};
+
+const navA=`<div class="nav"><span class="on">✈<br>Lotniska</span><span>◎<br>Mapa</span><span>△<br>Lot</span><span>☰<br>Plan</span><span>⋯<br>Więcej</span></div>`;
+const nav=(on)=>`<div class="nav">${['Lotniska','Mapa','Lot','Plan','Więcej'].map((t,i)=>`<span class="${i==on?'on':''}">${['✈','◎','△','☰','⋯'][i]}<br>${t}</span>`).join('')}</div>`;
+
+function A(){return `
+<div><div class="ph"><div class="sb"></div><div class="sc">
+ <div class="A-top"><div class="A-logo">Open<span>AirBook</span></div><div class="A-utc">10:42:17Z</div></div>
+ <div class="A-search">Szukaj lotniska: ICAO, IATA, miasto</div>
+ <div class="A-h">Ulubione · 4 lotniska</div>
+ ${[['EPWA','mvfr','24012G24KT 9999 BKN025CB','Q1008 12/09'],['EPKK','vfr','27008KT CAVOK','Q1010 14/06'],['EPGD','ifr','18006KT 2500 BR OVC004','Q1006 09/08'],['LOWI','lifr','VRB02KT 0800 FG VV002','Q1019 03/03']].map(r=>`<div class="A-row"><div class="id">${r[0]}</div><div class="m"><b>${r[2]}</b><br>${r[3]}</div><span class="cat c-${r[1]}">${r[1].toUpperCase()}</span></div>`).join('')}
+ <div class="A-h">W pobliżu · 3 NM</div>
+ <div class="A-row"><div class="id">EPBC</div><div class="m"><b>22010KT 9999 FEW030</b><br>Babice, 3 NM na 315°</div><span class="cat c-vfr">VFR</span></div>
+</div>${nav(0)}</div><div class="cap">Lotniska: zwarta lista jak na ekranie FMS, kolor kategorii jak w awionice.</div></div>
+
+<div><div class="ph"><div class="sb"></div><div class="map">${mapSvg('a')}
+ <div class="float" style="top:10px;left:10px;right:10px;display:flex;justify-content:space-between"><span class="mono" style="color:var(--mag)">EPWA → EPGD</span><span class="mono">ETA 11:24Z</span></div>
+ <div class="float" style="top:150px;right:10px;color:var(--amb)">SIGMET TS<br><span style="color:var(--dim)">FL100–FL350</span></div>
+ <div class="float" style="bottom:12px;left:10px"><span style="color:var(--dim)">Warstwy</span><br>Kategoria · SIGMET · Trasa</div>
+</div><div class="A-strip"><div>248<small>IAS</small></div><div>7840<small>ALT</small></div><div>287<small>HDG</small></div><div>+1200<small>V/S</small></div></div>${nav(1)}</div>
+<div class="cap">Mapa: ciemna, trasa w magencie, samolot z symulatora, pasek danych lotu na dole.</div></div>
+
+<div><div class="ph"><div class="sb"></div><div class="sc">
+ ${pfd('a')}
+ <div class="A-sec" style="margin-top:10px"><h3>Autopilot</h3>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-family:var(--mono);text-align:center;font-size:12px">
+  ${[['SPD','250'],['HDG','287'],['ALT','10000'],['V/S','+1200']].map(x=>`<div style="background:var(--pane2);border-radius:6px;padding:8px 0;color:var(--dim)">${x[0]}<div style="color:var(--cyan);font-size:16px">${x[1]}</div></div>`).join('')}</div>
+  <div style="display:flex;gap:6px;margin-top:8px">${['AP1','FD','A/THR','NAV','APR'].map((x,i)=>`<span style="flex:1;text-align:center;border:1.5px solid ${i<4?'var(--grn)':'var(--line)'};color:${i<4?'var(--grn)':'var(--dim)'};border-radius:5px;padding:7px 0;font-family:var(--mono);font-size:12px">${x}</span>`).join('')}</div></div>
+ <div class="A-sec"><h3>Radio</h3><div class="kv"><div>COM1<b style="color:var(--grn)">118.300</b></div><div>STBY<b style="color:var(--cyan)">121.900</b></div></div></div>
+</div>${nav(2)}</div><div class="cap">Lot: PFD na żywo z symulatora, autopilot i radio pod kciukiem.</div></div>
+
+<div><div class="ph"><div class="sb"></div><div class="sc">
+ <div class="A-top"><div><div class="A-logo mono">EPWA</div><div style="color:var(--dim);font-size:12.5px">Warszawa Chopin</div></div><span class="cat c-mvfr">MVFR</span></div>
+ <div class="A-sec"><h3>METAR · 12 min temu</h3><div class="A-metar">EPWA 171030Z <i>24012G24KT</i> 210V280 9999 -SHRA FEW012 <u>BKN025CB</u> 12/09 Q1008</div></div>
+ <div class="A-sec"><div class="kv"><div>Pas wg wiatru<b style="color:var(--mag)">RWY 29</b></div><div>Pułap<b>2500 ft</b></div><div>Czołowy / boczny<b>8 / 9 kt</b></div><div>QNH<b style="color:var(--cyan)">1008</b></div></div></div>
+ <div class="A-sec" style="border:1.5px solid var(--amb)"><h3 style="color:var(--amb)">Zagrożenia</h3><div style="font-size:13px">SIGMET: burze, FL100–FL350, 30 NM na N</div></div>
+ <div class="A-sec"><h3>Wiatr na wysokościach</h3><div class="mono" style="font-size:12.5px;line-height:1.7">FL050  250/18  +04<br>FL100  260/27  −05<br>FL180  265/41  −19<br>FL340  270/78  −51</div></div>
+</div>${nav(0)}</div><div class="cap">Briefing: dane jak w kabinie, zagrożenia w bursztynie.</div></div>
+
+<div style="width:100%;display:flex;flex-direction:column;align-items:center"><div class="tab"><div class="map" style="flex:1.3">${mapSvg('a')}</div><div style="flex:1;display:flex;flex-direction:column;border-left:1px solid var(--line)">${pfd('a')}<div class="A-sec" style="margin-top:10px"><h3>Postęp lotu</h3><div class="kv"><div>Do celu<b>142 NM</b></div><div>TOD<b style="color:var(--cyan)">za 18 NM</b></div></div></div></div></div><div class="cap" style="max-width:none">Tablet / poziomo: mapa i PFD obok siebie.</div></div>`}
+
+function B(){return `
+<div><div class="ph"><div class="sky"><div class="cloud" style="width:140px;height:34px;top:60px;left:170px"></div><div class="cloud" style="width:90px;height:24px;top:100px;left:30px"></div>
+ <div class="sb"></div><div class="B-top"><div class="B-logo">OpenAirBook</div><div style="font-weight:700">10:42Z</div></div>
+ <div class="B-big"><div class="sub">Najbliżej Ciebie</div><div class="id">EPWA</div><div class="sub">Warszawa Chopin · dzień, chmury burzowe</div>
+ <div class="now"><div><b>12°</b>temp.</div><div><b>240/12</b>wiatr</div><div><b>1008</b>QNH</div><div><span class="pill p-mvfr" style="margin-top:6px">MVFR</span></div></div></div></div>
+ <div class="sc B-list"><div class="B-h">Ulubione</div>
+ ${[['EPKK','Kraków','vfr','14°','270/08'],['EPGD','Gdańsk','ifr','9°','180/06'],['LOWI','Innsbruck','lifr','3°','VRB02']].map(r=>`<div class="B-card"><div><div class="id">${r[0]} <span class="pill p-${r[2]}">${r[2].toUpperCase()}</span></div><div class="s">${r[1]}</div></div><div class="r"><b>${r[3]}</b>${r[4]} kt</div></div>`).join('')}
+ </div>${nav(0)}</div><div class="cap">Lotniska: niebo nad najbliższym lotniskiem, liczy się z pory dnia i METAR.</div></div>
+
+<div><div class="ph"><div class="sb" style="background:#E7EEF5"></div><div class="map">${mapSvg('b')}
+ <div class="float" style="top:10px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:center"><b>EPWA → EPGD</b><span style="color:var(--dim)">przylot 11:24Z</span></div>
+ <div class="float" style="top:140px;right:12px"><b style="color:var(--ifr)">Burze</b><br><span style="color:var(--dim)">SIGMET do 12:00Z</span></div>
+ <div class="float" style="bottom:14px;left:12px;right:12px;display:flex;justify-content:space-around;text-align:center"><div><b style="font-size:17px">248</b><br><span style="color:var(--dim)">węzłów</span></div><div><b style="font-size:17px">7 840</b><br><span style="color:var(--dim)">stóp</span></div><div><b style="font-size:17px">142</b><br><span style="color:var(--dim)">NM do celu</span></div></div>
+</div>${nav(1)}</div><div class="cap">Mapa: jasna, pływające karty z najważniejszymi liczbami.</div></div>
+
+<div><div class="ph"><div class="sb"></div><div class="sc">
+ <div style="padding:0 16px 8px"><div class="B-h" style="margin:4px 0">Lot EPWA → EPGD</div><div style="font-size:12.5px;color:var(--dim)">A320neo · połączono z MSFS 2024</div></div>
+ <div style="margin:0 16px;border-radius:18px;overflow:hidden">${pfd('b')}</div>
+ <div class="B-sec" style="margin-top:10px"><h3>Autopilot</h3><div style="display:flex;gap:8px;flex-wrap:wrap">${['AP1','FD','A/THR','NAV','APR'].map((x,i)=>`<span style="padding:8px 14px;border-radius:999px;font-weight:700;font-size:13px;${i<4?'background:var(--acc);color:#fff':'background:#EEF2F8;color:var(--dim)'}">${x}</span>`).join('')}</div>
+ <div class="kv" style="margin-top:12px"><div>Wysokość<b>10 000 ft</b></div><div>Kurs<b>287°</b></div></div></div>
+</div>${nav(2)}</div><div class="cap">Lot: PFD w zaokrąglonej karcie, przyciski jak w zwykłej aplikacji.</div></div>
+
+<div><div class="ph"><div class="sky dusk" style="padding-bottom:18px"><div class="sb"></div><div class="B-top"><div style="font-weight:700">‹ Wróć</div><div>☆</div></div>
+ <div class="B-big"><div class="id">EPGD</div><div class="sub">Gdańsk · zmierzch, zamglenie</div><div class="now"><div><b>9°</b>temp.</div><div><b>400 ft</b>pułap</div><div><b>2,5 km</b>widz.</div><div><span class="pill p-ifr" style="margin-top:6px">IFR</span></div></div></div></div>
+ <div class="sc" style="padding-top:12px">
+ <div class="B-sec"><h3>METAR</h3><div class="B-metar">EPGD 171030Z 18006KT 2500 <i>BR</i> <i>OVC004</i> 09/08 Q1006</div></div>
+ <div class="B-sec"><h3>Pas wg wiatru: RWY 29</h3><div class="kv"><div>Czołowy<b>3 kt</b></div><div>Boczny<b>5 kt z lewej</b></div></div></div>
+ <div class="B-sec"><h3>Wiatr na wysokościach</h3><div style="display:flex;gap:6px;align-items:flex-end;height:60px">${[18,27,41,55,78].map(v=>`<div style="flex:1;background:#E8EEFD;border-radius:6px;height:${v*0.7}px;position:relative"><span style="position:absolute;top:-16px;left:0;right:0;text-align:center;font-size:10.5px;font-weight:700">${v}</span></div>`).join('')}</div><div style="display:flex;gap:6px;font-size:10.5px;color:var(--dim);margin-top:4px">${['FL050','FL100','FL180','FL260','FL340'].map(x=>`<span style="flex:1;text-align:center">${x}</span>`).join('')}</div></div>
+ </div></div><div class="cap">Briefing: niebo w kolorach zmierzchu nad Gdańskiem, bo tam jest teraz zmierzch.</div></div>
+
+<div style="width:100%;display:flex;flex-direction:column;align-items:center"><div class="tab"><div style="width:360px;display:flex;flex-direction:column"><div class="sky over"><div class="sb"></div><div class="B-big"><div class="id">EPGD</div><div class="sub">Gdańsk · zachmurzenie całkowite</div></div></div><div class="B-list"><div class="B-card"><div><div class="id">Do celu</div><div class="s">142 NM</div></div><div class="r"><b>11:24Z</b>przylot</div></div></div></div><div class="map" style="flex:1">${mapSvg('b')}</div></div><div class="cap" style="max-width:none">Tablet / poziomo: niebo celu i mapa trasy obok siebie.</div></div>`}
+
+function Cf(){return `
+<div><div class="ph"><div class="sb"></div><div class="sc">
+ <div class="C-top"><div class="C-logo">OPEN</div><div class="C-logo2">AIRBOOK</div><div class="C-utc">10:42Z</div></div>
+ <div class="C-search">Szukaj lotniska: ICAO, IATA, miasto</div>
+ <div class="C-h">Ulubione</div>
+ ${[['EPWA','mvfr','240/12G24','Q1008 · 12°'],['EPKK','vfr','270/08','Q1010 · 14°'],['EPGD','ifr','180/06','Q1006 · 9°'],['LOWI','lifr','VRB/02','Q1019 · 3°']].map(r=>`<div class="sign"><div class="loc">${r[0]}</div><div class="dir"><b>${r[2]}</b>${r[3]}</div><div class="cat k-${r[1]}">${r[1].toUpperCase()}</div></div>`).join('')}
+</div>${nav(0)}</div><div class="cap">Lotniska: każde ulubione jako tablica lotniskowa: lokalizacja w czerni, dane na żółtym.</div></div>
+
+<div><div class="ph"><div class="sb"></div><div class="map">${mapSvg('c')}
+ <div class="float" style="top:10px;left:10px">EPWA ▸ EPGD</div>
+ <div class="float" style="top:150px;right:10px;background:#C8102E;color:#fff">BURZE FL100–350</div>
+ <div style="position:absolute;bottom:0;left:0;right:0;display:grid;grid-template-columns:repeat(3,1fr);background:#111;color:#FFC20E;font-family:var(--mono);font-weight:700;text-align:center;padding:8px 0;font-size:17px"><div>248<div style="font:800 10px Overpass;color:#bbb">IAS</div></div><div>7840<div style="font:800 10px Overpass;color:#bbb">ALT</div></div><div>142<div style="font:800 10px Overpass;color:#bbb">NM</div></div></div>
+</div>${nav(1)}</div><div class="cap">Mapa: lotniska jako małe tablice w kolorze kategorii, trasa przerywaną linią.</div></div>
+
+<div><div class="ph"><div class="sb"></div><div class="sc">
+ ${pfd('c')}
+ <div class="C-sec" style="margin-top:12px"><h3>AUTOPILOT</h3><div class="in" style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px">${['AP1','FD','A/THR','NAV','APR'].map((x,i)=>`<span style="text-align:center;padding:10px 0;font-weight:900;font-size:12px;border:3px solid #111;${i<4?'background:#FFC20E':'background:#fff;color:#777'}">${x}</span>`).join('')}</div></div>
+ <div class="C-sec"><h3>RADIO</h3><div class="in kv"><div>COM1<b>118.300</b></div><div>STBY<b>121.900</b></div></div></div>
+</div>${nav(2)}</div><div class="cap">Lot: duże, kanciaste przyciski, trudno nie trafić palcem w trakcie lotu.</div></div>
+
+<div><div class="ph"><div class="sb"></div><div class="sc">
+ <div class="sign" style="margin-top:4px"><div class="loc">EPWA</div><div class="dir"><b>WARSZAWA</b>Chopin</div><div class="cat k-mvfr">MVFR</div></div>
+ <div class="mand">⚠ CB NA 2500 FT · BURZA W PROGNOZIE</div>
+ <div class="C-sec"><h3>METAR · 12 MIN</h3><div class="in C-metar">EPWA 171030Z 24012G24KT 210V280 9999 -SHRA FEW012 <u>BKN025CB</u> 12/09 Q1008</div></div>
+ <div class="C-sec"><h3>PAS WG WIATRU</h3><div class="in" style="display:flex;align-items:center;gap:12px"><div style="background:#111;color:#FFC20E;font-weight:900;font-size:26px;padding:4px 12px;font-family:var(--mono)">29</div><div class="kv" style="flex:1"><div>Czołowy<b>8 kt</b></div><div>Boczny<b>9 kt</b></div></div></div></div>
+ <div class="C-sec"><h3>WIATR NA WYSOKOŚCIACH</h3><div class="in mono" style="font-size:13px;line-height:1.7;font-weight:700">FL050 250/18 +04<br>FL100 260/27 −05<br>FL340 270/78 −51</div></div>
+</div>${nav(0)}</div><div class="cap">Briefing: ostrzeżenie jak czerwona tablica obowiązkowa, pas jak oznaczenie na progu.</div></div>
+
+<div style="width:100%;display:flex;flex-direction:column;align-items:center"><div class="tab"><div class="map" style="flex:1.2">${mapSvg('c')}</div><div style="flex:1;display:flex;flex-direction:column;background:#D5D6D1">${pfd('c')}<div class="sign" style="margin-top:12px"><div class="loc">EPGD</div><div class="dir"><b>142 NM</b>przylot 11:24Z</div><div class="cat k-ifr">IFR</div></div></div></div><div class="cap" style="max-width:none">Tablet / poziomo: mapa i PFD, cel jako tablica.</div></div>`}
+
+const R={a:A,b:B,c:Cf};
+function show(k){document.getElementById('root').innerHTML=`<div data-d="${k}" class="stage">${R[k]()}</div>`;document.getElementById('desc').innerHTML=D[k].d;
+ document.querySelectorAll('[data-go]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.go==k))}
+document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>show(b.dataset.go));
+show('a');
+</script></body></html>

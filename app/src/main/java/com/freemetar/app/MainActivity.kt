@@ -25,6 +25,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.FlightTakeoff
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.outlined.FlightTakeoff
+import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.filled.LocalAirport
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.outlined.Explore
@@ -57,18 +61,22 @@ import com.freemetar.app.ui.components.Rule
 import com.freemetar.app.ui.components.UpdateDialog
 import com.freemetar.app.ui.components.isWide
 import com.freemetar.app.ui.screens.BriefingScreen
+import com.freemetar.app.ui.screens.FlightScreen
+import com.freemetar.app.ui.screens.MapScreen
 import com.freemetar.app.ui.screens.HomeScreen
 import com.freemetar.app.ui.screens.SettingsScreen
 import com.freemetar.app.ui.screens.ToolsScreen
 import com.freemetar.app.ui.theme.Fm
-import com.freemetar.app.ui.theme.FreeMetarTheme
+import com.freemetar.app.ui.theme.OpenAirBookTheme
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector, val selectedIcon: ImageVector)
 
 private val tabs = listOf(
     Tab("home", "Lotniska", Icons.Outlined.LocalAirport, Icons.Filled.LocalAirport),
-    Tab("tools", "Planowanie", Icons.Outlined.Explore, Icons.Filled.Explore),
-    Tab("settings", "Ustawienia", Icons.Outlined.Tune, Icons.Filled.Tune),
+    Tab("map", "Mapa", Icons.Outlined.Map, Icons.Filled.Map),
+    Tab("flight", "Lot", Icons.Outlined.FlightTakeoff, Icons.Filled.FlightTakeoff),
+    Tab("tools", "Plan", Icons.Outlined.Explore, Icons.Filled.Explore),
+    Tab("settings", "Więcej", Icons.Outlined.Tune, Icons.Filled.Tune),
 )
 
 private fun NavHostController.goTab(route: String) = navigate(route) {
@@ -84,7 +92,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val vm: MainViewModel = viewModel()
             val settings by vm.settings.collectAsStateWithLifecycle()
-            FreeMetarTheme(settings.themeMode) {
+            OpenAirBookTheme(settings.themeMode) {
                 val night = Fm.c.isNight
                 // Ikony paska stanu muszą pasować do motywu wybranego w aplikacji, nie do systemu
                 LaunchedEffect(night) {
@@ -118,7 +126,7 @@ class MainActivity : ComponentActivity() {
                                         icon = { Icon(if (sel) t.selectedIcon else t.icon, null) },
                                         label = { Text(t.label) },
                                         colors = NavigationBarItemDefaults.colors(
-                                            indicatorColor = c.terrain, selectedIconColor = c.magenta, selectedTextColor = c.ink,
+                                            indicatorColor = c.terrain, selectedIconColor = c.accent, selectedTextColor = c.ink,
                                             unselectedIconColor = c.ink2, unselectedTextColor = c.ink2,
                                         ),
                                     )
@@ -132,7 +140,7 @@ class MainActivity : ComponentActivity() {
                         if (wide) {
                             NavigationRail(containerColor = c.paper, modifier = Modifier.fillMaxHeight()) {
                                 Spacer(Modifier.statusBarsPadding().size(16.dp))
-                                Icon(Icons.Filled.LocalAirport, null, tint = c.magenta, modifier = Modifier.size(28.dp))
+                                Icon(Icons.Filled.LocalAirport, null, tint = c.accent, modifier = Modifier.size(28.dp))
                                 Spacer(Modifier.size(24.dp))
                                 tabs.forEach { t ->
                                     val sel = activeTab == t.route
@@ -142,7 +150,7 @@ class MainActivity : ComponentActivity() {
                                         icon = { Icon(if (sel) t.selectedIcon else t.icon, null) },
                                         label = { Text(t.label) },
                                         colors = NavigationRailItemDefaults.colors(
-                                            indicatorColor = c.terrain, selectedIconColor = c.magenta, selectedTextColor = c.ink,
+                                            indicatorColor = c.terrain, selectedIconColor = c.accent, selectedTextColor = c.ink,
                                             unselectedIconColor = c.ink2, unselectedTextColor = c.ink2,
                                         ),
                                     )
@@ -177,6 +185,8 @@ class MainActivity : ComponentActivity() {
                                         nav.navigate("airport/$id")
                                     })
                                 }
+                                composable("map") { MapScreen() }
+                                composable("flight") { FlightScreen() }
                                 composable("tools") { ToolsScreen(vm) }
                                 composable("settings") { SettingsScreen(vm) }
                             }

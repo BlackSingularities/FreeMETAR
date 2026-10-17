@@ -59,7 +59,7 @@ object Updater {
     suspend fun download(context: Context, info: UpdateInfo, onProgress: (Float) -> Unit): File = withContext(Dispatchers.IO) {
         val dir = File(context.cacheDir, "updates").apply { mkdirs() }
         dir.listFiles()?.forEach { it.delete() }
-        val target = File(dir, "FreeMETAR-${info.versionName}.apk")
+        val target = File(dir, "OpenAirBook-${info.versionName}.apk")
         val req = Request.Builder().url(info.apkUrl).build()
         Http.client.newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) throw IOException("HTTP ${resp.code}")
@@ -84,7 +84,7 @@ object Updater {
 
     fun canInstall(context: Context) = context.packageManager.canRequestPackageInstalls()
 
-    /** Otwiera ustawienia „Instaluj nieznane aplikacje” dla FreeMETAR. */
+    /** Otwiera ustawienia „Instaluj nieznane aplikacje” dla OpenAirBook. */
     fun openInstallPermission(context: Context) {
         context.startActivity(
             Intent(AndroidSettings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}"))
