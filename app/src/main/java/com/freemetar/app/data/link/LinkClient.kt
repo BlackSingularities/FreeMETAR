@@ -22,7 +22,18 @@ import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetSocketAddress
 import java.net.SocketTimeoutException
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import java.util.concurrent.atomic.AtomicLong
 
 sealed interface LinkStatus {
@@ -152,7 +163,17 @@ class LinkClient(private val context: Context, private val tokens: LinkTokenStor
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
-            val m = runCatching { LinkJson.decodeFromString(Incoming.serializer(), text) }.getOrNull() ?: return
+            // Odpowiedzi na zapytania o dane nawigacyjne trafiają do oczekującego wywołania po id
+            val obj = runCatching { LinkJson.parseToJsonElement(text).jsonObject }.getOrNull() ?: return
+            val type = obj["type"]?.jsonPrimitive?.contentOrNull
+            val id = obj["id"]?.jsonPrimitive?.contentOrNull
+            if (id != null && pending.containsKey(id) && (type == "navdata" || type == "error")) {
+                val waiter = pending.remove(id) ?: return
+                if (type == "navdata") waiter.complete(obj["data"] ?: JsonNull)
+                else waiter.completeExceptionally(LinkException(obj["code"]?.jsonPrimitive?.contentOrNull ?: "error", obj["message"]?.jsonPrimitive?.contentOrNull))
+                return
+            }
+            val m = runCatching { LinkJson.decodeFromJsonElement(Incoming.serializer(), obj) }.getOrNull() ?: return
             when (m.type) {
                 "hello_ok" -> {
                     m.token?.let { t -> scope.launch { tokens.saveToken(ip, t) } }
@@ -203,6 +224,40 @@ class LinkClient(private val context: Context, private val tokens: LinkTokenStor
         }
     }
 
+    // ---------- dane nawigacyjne ----------
+
+    private val pending = ConcurrentHashMap<String, CompletableDeferred<JsonElement>>()
+
+    /**
+     * Zapytanie `navdata_request` (kind: airport / procedures / procedure_legs / fix).
+     * Zwraca pole `data` odpowiedzi; rzuca [LinkException] przy błędzie albo braku połączenia.
+     */
+    suspend fun navdata(kind: String, params: Map<String, Any?>): JsonElement {
+        val ws = socket
+        if (ws == null || _status.value !is LinkStatus.Connected) throw LinkException("not_connected", "Brak połączenia z OpenAirBook Link")
+        val id = "n${ids.getAndIncrement()}"
+        val msg = buildJsonObject {
+            put("v", 1); put("type", "navdata_request"); put("id", id); put("kind", kind)
+            params.forEach { (k, v) ->
+                when (v) {
+                    null -> {}
+                    is Number -> put(k, v)
+                    is Boolean -> put(k, v)
+                    else -> put(k, v.toString())
+                }
+            }
+        }
+        val waiter = CompletableDeferred<JsonElement>()
+        pending[id] = waiter
+        if (!ws.send(msg.toString())) { pending.remove(id); throw LinkException("send_failed", "Nie wysłano zapytania") }
+        return try {
+            withTimeout(10_000) { waiter.await() }
+        } catch (e: TimeoutCancellationException) {
+            pending.remove(id)
+            throw LinkException("timeout", "OpenAirBook Link nie odpowiedział w 10 s")
+        }
+    }
+
     // ---------- komendy ----------
 
     fun command(name: String, value: Double? = null): Boolean {
@@ -223,3 +278,6 @@ class LinkClient(private val context: Context, private val tokens: LinkTokenStor
     /** Ile ms minęło od ostatniego `state` — do wykrywania zamrożonego strumienia. */
     fun stateAgeMs() = if (lastStateAt == 0L) Long.MAX_VALUE else System.currentTimeMillis() - lastStateAt
 }
+
+/** Błąd zwrócony przez OpenAirBook Link (kod z protokołu) albo brak połączenia. */
+class LinkException(val code: String, message: String?) : Exception(message ?: code)

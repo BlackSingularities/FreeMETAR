@@ -549,6 +549,10 @@ private fun RunwaysPart(d: AirportDetail) {
                             listOf(rw.le, rw.he).firstNotNullOfOrNull { e -> e.displacedFt?.takeIf { it > 0 }?.let { "przesunięty próg ${e.ident}: $it ft" } }).joinToString(", "),
                         style = MaterialTheme.typography.bodySmall, color = c.ink2,
                     )
+                    listOf(rw.le.ident, rw.he.ident).mapNotNull { id -> d.nav?.ilsFor(id)?.takeIf { it.freqMhz != null }?.let { id to it } }.forEach { (id, ils) ->
+                        Text("ILS $id: ${ils.ident ?: ""} %.2f".format(Locale.US, ils.freqMhz) + (ils.locCourseDeg?.let { ", kurs %03d°".format(it.roundToInt()) } ?: ""),
+                            fontFamily = Mono, fontSize = 12.sp, color = c.blue)
+                    }
                 }
             }
             Rule()
@@ -611,6 +615,14 @@ private fun RadioPart(d: AirportDetail, vm: MainViewModel) {
         if (d.frequencies.isNotEmpty()) Text(
             if (connected) "Dotknij częstotliwości, aby ustawić ją w radiu samolotu." else "Dotknij częstotliwości, aby ją skopiować.",
             style = MaterialTheme.typography.bodySmall, color = c.ink2, modifier = Modifier.padding(top = 8.dp),
+        )
+        MsfsRadioBlock(
+            d, connected,
+            onRefresh = { vm.loadNav(d.ident, refresh = true) },
+            onSetNav = { mhz, active ->
+                com.freemetar.app.domain.ControlMath.navHz(mhz)?.let { hz -> vm.link.command(if (active) "NAV1_RADIO_SET_HZ" else "NAV1_STBY_SET_HZ", hz.toDouble()) }
+            },
+            onCopy = { mhz -> clip.setText(AnnotatedString("%.2f".format(Locale.US, mhz))) },
         )
         if (d.navaids.isNotEmpty()) {
             Text("Radiolatarnie do 40 NM", style = MaterialTheme.typography.titleMedium, color = c.ink, modifier = Modifier.padding(top = 18.dp, bottom = 4.dp))

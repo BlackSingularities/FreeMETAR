@@ -27,6 +27,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
 import com.freemetar.app.data.Locator
+import com.freemetar.app.data.nav.AirportNav
+import com.freemetar.app.data.nav.NavDataStore
+import com.freemetar.app.data.nav.NavRepository
 import com.freemetar.app.data.link.FlightLog
 import com.freemetar.app.data.link.FlightLogStore
 import com.freemetar.app.data.link.FlightRecorder
@@ -71,6 +74,9 @@ data class AirportDetail(
     val sigmets: List<Pair<Sigmet, Double>> = emptyList(),
     val pireps: List<Pirep> = emptyList(),
     val aloft: WindsAloft? = null,
+    /** Dane z bazy MSFS (pasy z ILS, częstotliwości, procedury) — z pamięci telefonu lub z Link. */
+    val nav: AirportNav? = null,
+    val navLoading: Boolean = false,
     val loading: Boolean = true,
     val error: String? = null,
 )
@@ -250,6 +256,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val linkStatus = link.status
     val linkServers = link.servers
     val flightState = link.state
+    val nav = NavRepository(link, NavDataStore(app))
     private val recorder = FlightRecorder { lat, lon -> db.nearby(lat, lon, radiusNm = 5.0, limit = 1).firstOrNull()?.first?.ident }
     private val flightLogStore = FlightLogStore(app)
     private val _flightLogs = MutableStateFlow<List<FlightLog>>(emptyList())
@@ -303,6 +310,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             link.status.collect { s ->
                 if (s !is LinkStatus.Connected && s !is LinkStatus.Lost) saveFlight(recorder.finish())
+            }
+        }
+        // Po połączeniu z MSFS: dane nawigacyjne lotnisk trasy, ulubionych i otwartego briefingu
+        viewModelScope.launch {
+            link.status.collect { s ->
+                if (s is LinkStatus.Connected && s.source == "msfs" || s is LinkStatus.Connected && s.source == "simulation") {
+                    val ids = buildList {
+                        activeRoute()?.let { r -> add(r.origin); add(r.destination); addAll(r.alternates) }
+                        _detail.value?.ident?.let(::add)
+                        addAll(settings.value.favorites.take(6))
+                    }.distinct()
+                    ids.forEach { id -> runCatching { nav.airport(id) } }
+                    _detail.value?.ident?.let { id ->
+                        val cached = nav.cached(id)
+                        _detail.update { d -> if (d?.ident == id) d.copy(nav = cached) else d }
+                    }
+                }
             }
         }
         // Automatyczne połączenie z komputerem, z którym telefon już się sparował
@@ -446,6 +470,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         )
         viewModelScope.launch { prefs.addRecent(key) }
         refreshWeather(key)
+        loadNav(key, refresh = false)
+    }
+
+    /** Dane nawigacyjne MSFS dla briefingu: najpierw kopia lokalna, potem (po połączeniu) pobranie brakujących. */
+    fun loadNav(icao: String, refresh: Boolean) = viewModelScope.launch {
+        val cached = nav.cached(icao)
+        _detail.update { if (it?.ident == icao) it.copy(nav = cached, navLoading = nav.connected) else it }
+        val fresh = runCatching { nav.airport(icao, refresh) }.getOrNull()
+        _detail.update { if (it?.ident == icao) it.copy(nav = fresh ?: it.nav, navLoading = false) else it }
     }
 
     fun refreshWeather(ident: String) = viewModelScope.launch {

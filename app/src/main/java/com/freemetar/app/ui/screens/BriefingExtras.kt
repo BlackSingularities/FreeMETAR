@@ -180,3 +180,69 @@ private fun Cell(text: String, header: Boolean = false, width: Int, strong: Bool
         )
     }
 }
+
+/**
+ * ILS i częstotliwości z bazy MSFS (przez OpenAirBook Link, zapisane w telefonie).
+ * Przy połączeniu dotknięcie ILS ustawia go w NAV1; bez połączenia kopiuje częstotliwość.
+ */
+@Composable
+fun MsfsRadioBlock(d: AirportDetail, connected: Boolean, onRefresh: () -> Unit, onSetNav: (Double, Boolean) -> Unit, onCopy: (Double) -> Unit) {
+    val c = Fm.c
+    val nav = d.nav
+    Spacer(Modifier.size(16.dp))
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text("ILS i lokalizery", style = MaterialTheme.typography.titleMedium, color = c.ink, modifier = Modifier.weight(1f))
+        if (connected) androidx.compose.material3.TextButton(onRefresh, enabled = !d.navLoading) {
+            Text(if (d.navLoading) "Pobieranie…" else "Pobierz z MSFS")
+        }
+    }
+    val ils = nav?.airport?.runways.orEmpty().filter { it.ils?.freqMhz != null }
+    when {
+        nav?.airport == null -> Text(
+            if (connected) "Pobieranie danych lotniska z bazy MSFS…" else "Częstotliwości ILS pochodzą z bazy MSFS 2024. Połącz się z OpenAirBook Link — dane zostaną zapisane w telefonie i będą dostępne bez symulatora.",
+            style = MaterialTheme.typography.bodySmall, color = c.ink2,
+        )
+        ils.isEmpty() -> Text("Baza MSFS nie ma ILS dla tego lotniska (lotniska dodatkowe bywają niekompletne).", style = MaterialTheme.typography.bodySmall, color = c.ink2)
+    }
+    var menuFor by remember { mutableStateOf<Double?>(null) }
+    ils.forEach { rw ->
+        val i = rw.ils!!
+        Box {
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { if (connected) menuFor = i.freqMhz else onCopy(i.freqMhz!!) }.padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("RWY ${rw.ident}", fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = c.ink, modifier = Modifier.width(78.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(listOfNotNull(i.ident, i.locCourseDeg?.let { "kurs %03d°".format(it.roundToInt()) }).joinToString(" · ").ifBlank { "ILS" },
+                        style = MaterialTheme.typography.bodyMedium, color = c.ink)
+                    i.gsAngleDeg?.let { Text("ścieżka %.1f°".format(it), style = MaterialTheme.typography.bodySmall, color = c.ink2) }
+                }
+                Text("%.2f".format(java.util.Locale.US, i.freqMhz), fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 19.sp, color = c.blue)
+            }
+            androidx.compose.material3.DropdownMenu(expanded = menuFor == i.freqMhz, onDismissRequest = { menuFor = null }) {
+                androidx.compose.material3.DropdownMenuItem(text = { Text("Ustaw w NAV1 jako zapasową") }, onClick = { onSetNav(i.freqMhz!!, false); menuFor = null })
+                androidx.compose.material3.DropdownMenuItem(text = { Text("Ustaw w NAV1 jako aktywną") }, onClick = { onSetNav(i.freqMhz!!, true); menuFor = null })
+                androidx.compose.material3.DropdownMenuItem(text = { Text("Kopiuj") }, onClick = { onCopy(i.freqMhz!!); menuFor = null })
+            }
+        }
+        Rule()
+    }
+    // Częstotliwości, których brakuje w OurAirports, a są w MSFS
+    val known = d.frequencies.map { it.mhz }
+    val extra = nav?.airport?.frequencies.orEmpty().filter { f -> known.none { kotlin.math.abs(it - f.mhz) < 0.003 } }
+    if (extra.isNotEmpty()) {
+        Text("Dodatkowe częstotliwości z MSFS", style = MaterialTheme.typography.labelMedium, color = c.ink2, modifier = Modifier.padding(top = 12.dp, bottom = 2.dp))
+        extra.forEach { f ->
+            Row(Modifier.fillMaxWidth().clickable { onCopy(f.mhz) }.padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(f.type, fontFamily = Mono, fontSize = 12.sp, color = c.ink2, modifier = Modifier.width(64.dp))
+                Text(f.name.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = c.ink, modifier = Modifier.weight(1f), maxLines = 1)
+                Text("%.3f".format(java.util.Locale.US, f.mhz), fontFamily = Mono, fontSize = 16.sp, color = c.blue)
+            }
+        }
+    }
+    nav?.let {
+        Text("Baza MSFS, pobrano ${java.text.DateFormat.getDateInstance(java.text.DateFormat.SHORT).format(java.util.Date(it.fetchedAt))}",
+            style = MaterialTheme.typography.labelSmall, color = c.ink2, modifier = Modifier.padding(top = 8.dp))
+    }
+}
