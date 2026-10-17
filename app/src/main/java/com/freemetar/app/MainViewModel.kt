@@ -669,6 +669,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun clearRecent() = viewModelScope.launch { prefs.clearRecent() }
     fun setPressure(u: com.freemetar.app.data.PressureUnit) = viewModelScope.launch { prefs.setPressure(u) }
     fun setAlt(u: com.freemetar.app.data.AltUnit) = viewModelScope.launch { prefs.setAlt(u) }
+    fun setAircraftProfile(p: com.freemetar.app.domain.AircraftProfile?) = viewModelScope.launch { prefs.setAircraftProfile(p?.name) }
     fun setTheme(m: com.freemetar.app.data.ThemeMode) = viewModelScope.launch { prefs.setTheme(m) }
     fun setAutoRefresh(v: Boolean) = viewModelScope.launch { prefs.setAutoRefresh(v) }
 }

@@ -155,7 +155,7 @@ private enum class LiveView(val label: String, val instrument: Boolean) {
 
 /** Widoki na żywo: PFD, mapa nawigacyjna, silniki i paliwo, postęp lotu. Na tablecie PFD i mapa obok siebie. */
 @Composable
-fun LiveSection(s: FlightState, route: SavedRoute?, link: LinkClient) {
+fun LiveSection(s: FlightState, route: SavedRoute?, link: LinkClient, profile: com.freemetar.app.domain.AircraftProfile? = null, onProfile: (com.freemetar.app.domain.AircraftProfile?) -> Unit = {}) {
     val c = Fm.c
     var view by rememberSaveable { mutableStateOf(LiveView.PFD) }
     var panel by rememberSaveable { mutableStateOf(LiveView.AP) }
@@ -176,7 +176,7 @@ fun LiveSection(s: FlightState, route: SavedRoute?, link: LinkClient) {
                 LiveView.entries.filterNot { it.instrument }.forEach { v -> FilterChip(panel == v, { panel = v }, { Text(v.label) }) }
             }
             Spacer(Modifier.size(10.dp))
-            PanelFor(panel, s, link)
+            PanelFor(panel, s, link, profile, onProfile)
         } else {
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 LiveView.entries.forEach { v -> FilterChip(view == v, { view = v }, { Text(v.label) }) }
@@ -187,7 +187,7 @@ fun LiveSection(s: FlightState, route: SavedRoute?, link: LinkClient) {
                     Box(Modifier.clip(RoundedCornerShape(8.dp))) { NavDisplay(s, route?.fullPath().orEmpty(), range) }
                     RangeRow(range) { range = it }
                 }
-                else -> PanelFor(view, s, link)
+                else -> PanelFor(view, s, link, profile, onProfile)
             }
             // Postęp lotu pod przyrządami; przy panelach sterowania nie zabiera miejsca
             if (view.instrument) { Spacer(Modifier.size(12.dp)); Progress(s, route) }
@@ -196,11 +196,12 @@ fun LiveSection(s: FlightState, route: SavedRoute?, link: LinkClient) {
 }
 
 @Composable
-private fun PanelFor(v: LiveView, s: FlightState, link: LinkClient) {
+private fun PanelFor(v: LiveView, s: FlightState, link: LinkClient, profile: com.freemetar.app.domain.AircraftProfile?, onProfile: (com.freemetar.app.domain.AircraftProfile?) -> Unit) {
+    val effective = profile ?: com.freemetar.app.domain.AircraftProfile.detect(s.aircraft.title, s.aircraft.atcModel, s.aircraft.category, s.aircraft.engineType)
     when (v) {
-        LiveView.AP -> AutopilotPanel(link, s)
+        LiveView.AP -> AutopilotPanelV2(link, s, profile, onProfile)
         LiveView.RADIO -> RadioPanel(link, s)
-        LiveView.CONTROLS -> SystemsPanel(link, s)
+        LiveView.CONTROLS -> SystemsPanel(link, s, effective)
         LiveView.YOKE -> YokePanel(link, s)
         LiveView.ENGINES -> Systems(s)
         else -> {}

@@ -137,7 +137,7 @@ private fun SelectorRow(
 
 /** Okno wpisania liczby (kurs, wysokość, częstotliwość, kod transpondera). */
 @Composable
-private fun EnterDialog(title: String, hint: String, keyboard: KeyboardType, validate: (String) -> Boolean, onDone: (String) -> Unit, onDismiss: () -> Unit) {
+internal fun EnterDialog(title: String, hint: String, keyboard: KeyboardType, validate: (String) -> Boolean, onDone: (String) -> Unit, onDismiss: () -> Unit) {
     var text by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -282,7 +282,7 @@ private fun RadioRow(name: String, r: Radio?, fmt: String, onSwap: () -> Unit, o
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun SystemsPanel(link: LinkClient, s: FlightState) {
+fun SystemsPanel(link: LinkClient, s: FlightState, profile: com.freemetar.app.domain.AircraftProfile? = null) {
     val c = Fm.c
     fun cmd(n: String, v: Number? = null) { link.command(n, v?.toDouble()) }
     val ctl = s.controls
@@ -309,7 +309,8 @@ fun SystemsPanel(link: LinkClient, s: FlightState) {
         RepeatKey("▼", "Klapy w dół", action = { cmd("FLAPS_INCR") })
     }
     Spacer(Modifier.size(8.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    // Spoilery tylko w samolotach, które je mają (bez GA i turbośmigłowych)
+    if (profile?.hasSpoilers != false) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         ModeKey("SPOILERY UZBR.", ctl.spoilersArmed == true, Modifier.weight(1f)) { cmd("SPOILERS_ARM_TOGGLE") }
         ModeKey("SPOILERY ${(ctl.spoilersPct ?: 0.0).roundToInt()}%", (ctl.spoilersPct ?: 0.0) > 1, Modifier.weight(1f)) { cmd("SPOILERS_TOGGLE") }
     }
