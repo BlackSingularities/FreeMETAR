@@ -62,6 +62,13 @@ public static class CommandAllowlist
         new("AP_SPD_VAR_SET", CommandGroup.Autopilot, Min: 0, Max: 500),
         new("AP_SPD_VAR_INC", CommandGroup.Autopilot),
         new("AP_SPD_VAR_DEC", CommandGroup.Autopilot),
+        new("AP_AIRSPEED_HOLD", CommandGroup.Autopilot),
+        new("AP_N1_HOLD", CommandGroup.Autopilot),
+        new("AP_PANEL_MACH_HOLD", CommandGroup.Autopilot),
+        // Mach × 100 (np. 78 = M0.78)
+        new("AP_MACH_VAR_SET", CommandGroup.Autopilot, Min: 10, Max: 99),
+        new("AP_BANK_HOLD", CommandGroup.Autopilot),
+        new("AP_WING_LEVELER", CommandGroup.Autopilot),
 
         // Radia
         new("COM_RADIO_SET_HZ", CommandGroup.Radio, Min: ComMinHz, Max: ComMaxHz),

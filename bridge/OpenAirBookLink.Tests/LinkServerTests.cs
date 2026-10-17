@@ -134,6 +134,113 @@ public sealed class LinkServerTests : IAsyncLifetime
         Assert.Equal(ErrorCodes.InvalidValue, (await ReceiveTypeAsync(ws, "error")).GetProperty("code").GetString());
     }
 
+    [Fact]
+    public async Task Hello_ok_advertises_navdata_and_touchdown()
+    {
+        using var ws = await ConnectAsync();
+        await SendAsync(ws, new { v = 1, type = "hello", id = "h", code = _pairing.Code });
+        var ok = await ReceiveTypeAsync(ws, "hello_ok");
+        var features = ok.GetProperty("features").EnumerateArray().Select(f => f.GetString()).ToList();
+        Assert.Contains("navdata", features);
+        Assert.Contains("touchdown", features);
+        Assert.Equal(10, ok.GetProperty("limits").GetProperty("navdataPerSecond").GetInt32());
+    }
+
+    [Fact]
+    public async Task Navdata_for_EPWA_and_EPGD_in_simulation()
+    {
+        using var ws = await PairedAsync();
+
+        await SendAsync(ws, new { v = 1, type = "navdata_request", id = "a1", kind = "airport", icao = "epwa" });
+        var airport = await ReceiveTypeAsync(ws, "navdata");
+        Assert.Equal("a1", airport.GetProperty("id").GetString());
+        Assert.Equal("airport", airport.GetProperty("kind").GetString());
+        var data = airport.GetProperty("data");
+        Assert.Equal("EPWA", data.GetProperty("icao").GetString());
+        Assert.Equal(4, data.GetProperty("runways").GetArrayLength());
+
+        await SendAsync(ws, new { v = 1, type = "navdata_request", id = "p1", kind = "procedures", icao = "EPGD" });
+        var procs = (await ReceiveTypeAsync(ws, "navdata")).GetProperty("data");
+        Assert.Equal(2, procs.GetProperty("departures").GetArrayLength());
+        Assert.Equal(2, procs.GetProperty("arrivals").GetArrayLength());
+        Assert.Equal("ILS 29", procs.GetProperty("approaches")[0].GetProperty("name").GetString());
+
+        await SendAsync(ws, new { v = 1, type = "navdata_request", id = "l1", kind = "procedure_legs", icao = "EPGD", procType = "approach", name = "ILS 29" });
+        var legs = await ReceiveTypeAsync(ws, "navdata");
+        Assert.Equal("l1", legs.GetProperty("id").GetString());
+        Assert.Equal("RW29", legs.GetProperty("data").GetProperty("legs")[2].GetProperty("fix").GetString());
+        Assert.Equal(2, legs.GetProperty("data").GetProperty("missed").GetArrayLength());
+
+        await SendAsync(ws, new { v = 1, type = "navdata_request", id = "f1", kind = "fix", ident = "WAR", nearLat = 52.2, nearLon = 21.0 });
+        var fix = (await ReceiveTypeAsync(ws, "navdata")).GetProperty("data").GetProperty("results")[0];
+        Assert.Equal("vor", fix.GetProperty("type").GetString());
+
+        await SendAsync(ws, new { v = 1, type = "navdata_request", id = "x1", kind = "airport", icao = "KJFK" });
+        var err = await ReceiveTypeAsync(ws, "error");
+        Assert.Equal("x1", err.GetProperty("id").GetString());
+        Assert.Equal(ErrorCodes.NotFound, err.GetProperty("code").GetString());
+
+        await SendAsync(ws, new { v = 1, type = "navdata_request", id = "x2", kind = "weather", icao = "EPWA" });
+        Assert.Equal(ErrorCodes.InvalidValue, (await ReceiveTypeAsync(ws, "error")).GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task Navdata_is_limited_to_ten_per_second()
+    {
+        using var ws = await PairedAsync();
+        for (var i = 0; i < 15; i++)
+            await SendAsync(ws, new { v = 1, type = "navdata_request", id = $"r{i}", kind = "airport", icao = "EPGD" });
+
+        int ok = 0, limited = 0;
+        while (ok + limited < 15)
+        {
+            var m = await ReceiveAnyAsync(ws, "navdata", "error");
+            if (m.GetProperty("type").GetString() == "navdata") ok++;
+            else if (m.GetProperty("code").GetString() == ErrorCodes.RateLimited) limited++;
+        }
+        Assert.InRange(ok, 10, 11);
+        Assert.InRange(limited, 4, 5);
+    }
+
+    [Fact]
+    public async Task Navdata_without_source_is_sim_unavailable()
+    {
+        using var ws = await PairedAsync();
+        _server.Source = null;
+        await SendAsync(ws, new { v = 1, type = "navdata_request", id = "n", kind = "airport", icao = "EPWA" });
+        Assert.Equal(ErrorCodes.SimUnavailable, (await ReceiveTypeAsync(ws, "error")).GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task Touchdown_reaches_client_in_simulation()
+    {
+        using var server = new LinkServer(_pairing, _axes, "test", port: 0);
+        using var sim = new SimulationSource(new AxisController(), timeScale: 20, startOnFinalNm: 1.5);
+        sim.Start();
+        server.Start();
+        server.Source = sim;
+
+        using var ws = new ClientWebSocket();
+        await ws.ConnectAsync(new Uri($"ws://127.0.0.1:{server.Port}/"), CancellationToken.None);
+        await SendAsync(ws, new { v = 1, type = "hello", id = "h", code = _pairing.Code, rateHz = 20 });
+        await ReceiveTypeAsync(ws, "hello_ok");
+
+        var deadline = DateTime.UtcNow.AddSeconds(20);
+        while (true)
+        {
+            var data = (await ReceiveTypeAsync(ws, "state")).GetProperty("data");
+            if (data.TryGetProperty("touchdown", out var td))
+            {
+                Assert.Equal(1, td.GetProperty("seq").GetInt64());
+                Assert.Equal(-180, td.GetProperty("vsFpm").GetDouble());
+                Assert.Equal(1.2, td.GetProperty("gForce").GetDouble());
+                Assert.Equal("airliner", data.GetProperty("aircraft").GetProperty("category").GetString());
+                break;
+            }
+            Assert.True(DateTime.UtcNow < deadline, "Brak touchdown w state");
+        }
+    }
+
     private async Task<ClientWebSocket> ConnectAsync()
     {
         var ws = new ClientWebSocket();
@@ -152,7 +259,9 @@ public sealed class LinkServerTests : IAsyncLifetime
     private static Task SendAsync(ClientWebSocket ws, object message) =>
         ws.SendAsync(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message)), WebSocketMessageType.Text, true, CancellationToken.None);
 
-    internal static async Task<JsonElement> ReceiveTypeAsync(ClientWebSocket ws, string type)
+    internal static Task<JsonElement> ReceiveTypeAsync(ClientWebSocket ws, string type) => ReceiveAnyAsync(ws, type);
+
+    internal static async Task<JsonElement> ReceiveAnyAsync(ClientWebSocket ws, params string[] types)
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         var buffer = new byte[64 * 1024];
@@ -167,7 +276,7 @@ public sealed class LinkServerTests : IAsyncLifetime
             } while (!r.EndOfMessage);
             var root = JsonDocument.Parse(Encoding.UTF8.GetString(buffer, 0, length)).RootElement;
             Assert.Equal(1, root.GetProperty("v").GetInt32());
-            if (root.GetProperty("type").GetString() == type) return root;
+            if (types.Contains(root.GetProperty("type").GetString())) return root;
         }
     }
 

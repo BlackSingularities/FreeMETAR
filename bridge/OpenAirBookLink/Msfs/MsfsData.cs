@@ -110,4 +110,19 @@ public struct MsfsData
     [SimConnect("AMBIENT WIND VELOCITY", "knots")] public double WindSpd;
     [SimConnect("AMBIENT TEMPERATURE", "celsius")] public double Oat;
     [SimConnect("KOHLSMAN SETTING MB:1", "millibars")] public double Qnh;
+
+    // Profil samolotu
+    [SimConnect("ENGINE TYPE", "Enum")] public double EngineType;
+    [SimConnect("MAX GROSS WEIGHT", "pounds")] public double MaxGrossWeightLbs;
+    [SimConnect("ATC MODEL", null, SimConnectDataType.String64)] public string AtcModel;
+    [SimConnect("ATC TYPE", null, SimConnectDataType.String64)] public string AtcType;
+    [SimConnect("CATEGORY", null, SimConnectDataType.String64)] public string SimCategory;
+
+    // Przyziemienie (wartości ostatniego kontaktu z ziemią, trzymane przez MSFS)
+    [SimConnect("G FORCE", "GForce")] public double GForce;
+    [SimConnect("PLANE TOUCHDOWN NORMAL VELOCITY", "feet per minute")] public double TdVs;
+    [SimConnect("PLANE TOUCHDOWN PITCH DEGREES", "degrees")] public double TdPitch;
+    [SimConnect("PLANE TOUCHDOWN BANK DEGREES", "degrees")] public double TdBank;
+    [SimConnect("PLANE TOUCHDOWN LATITUDE", "degrees")] public double TdLat;
+    [SimConnect("PLANE TOUCHDOWN LONGITUDE", "degrees")] public double TdLon;
 }

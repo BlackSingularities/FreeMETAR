@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using OpenAirBookLink.Core.Control;
+using OpenAirBookLink.Core.NavData;
 using OpenAirBookLink.Core.Protocol;
 using OpenAirBookLink.Core.Sources;
 using SimConnect.NET;
@@ -26,6 +27,9 @@ public sealed class MsfsSource : IFlightSource
 
     private readonly object _lock = new();
     private readonly Dictionary<string, uint> _eventIds = new(StringComparer.Ordinal);
+    private readonly MsfsNavData _navData = new();
+    private readonly TouchdownLatch _touchdown = new();
+    private TouchdownData? _lastTouchdown;
     private CancellationTokenSource? _cts;
     private SimConnectClient? _client;
     private ISimVarSubscription? _subscription;
@@ -41,12 +45,14 @@ public sealed class MsfsSource : IFlightSource
         uint id = FirstClientEventId;
         foreach (var spec in CommandAllowlist.All.Where(s => s.Target == CommandTarget.Event)) _eventIds[spec.Name] = id++;
         foreach (var axis in CommandAllowlist.AxisEvents) _eventIds[axis] = id++;
+        _navData.Log += m => Log?.Invoke(m);
     }
 
     public string Kind => "msfs";
     public bool IsConnected => _connected && _last != null;
     public string StatusText => _status;
     public AxisController Axes { get; }
+    public INavDataProvider NavData => _navData;
 
     public event Action? StatusChanged;
     public event Action<string>? Log;
@@ -62,13 +68,17 @@ public sealed class MsfsSource : IFlightSource
     {
         MsfsData d;
         bool paused;
+        TouchdownData? touchdown;
         lock (_lock)
         {
             if (_last == null) return null;
             d = _last.Value;
             paused = _paused;
+            touchdown = Copy(_lastTouchdown);
         }
-        return Map(d, paused, Axes.IsActive);
+        var state = Map(d, paused, Axes.IsActive);
+        state.Touchdown = touchdown;
+        return state;
     }
 
     public async Task<CommandResult> ExecuteAsync(ValidatedCommand command, CancellationToken ct)
@@ -148,9 +158,19 @@ public sealed class MsfsSource : IFlightSource
             {
                 first = _last == null;
                 _last = data;
+                _lastTouchdown = _touchdown.Update(TouchdownSampleOf(data));
             }
             if (first) StatusChanged?.Invoke();
         }, cancellationToken: ct);
+
+        try
+        {
+            _navData.Attach(client);
+        }
+        catch (Exception e) when (e is InvalidOperationException or EntryPointNotFoundException)
+        {
+            Log?.Invoke($"Dane nawigacyjne MSFS niedostępne: {e.Message}");
+        }
 
         var sim = client.IsMSFS2024 ? "MSFS 2024" : "MSFS";
         _lastError = null;
@@ -162,6 +182,7 @@ public sealed class MsfsSource : IFlightSource
     {
         var client = _client;
         _client = null;
+        _navData.Detach();
         _subscription?.Dispose();
         _subscription = null;
         lock (_lock) _last = null;
@@ -214,6 +235,17 @@ public sealed class MsfsSource : IFlightSource
         if (changed) StatusChanged?.Invoke();
     }
 
+    private static TouchdownSample TouchdownSampleOf(in MsfsData d) => new(
+        Environment.TickCount64, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), B(d.OnGround),
+        d.Vs, d.GForce, -d.Pitch, -d.Bank, d.HdgTrue, d.Lat, d.Lon, d.Ias, d.Gs,
+        TdVsFpm: d.TdVs, TdPitchDeg: -d.TdPitch, TdBankDeg: -d.TdBank, TdLat: d.TdLat, TdLon: d.TdLon);
+
+    private static TouchdownData? Copy(TouchdownData? t) => t == null ? null : new TouchdownData
+    {
+        Seq = t.Seq, T = t.T, VsFpm = t.VsFpm, GForce = t.GForce, PitchDeg = t.PitchDeg, BankDeg = t.BankDeg,
+        HeadingTrueDeg = t.HeadingTrueDeg, Lat = Math.Round(t.Lat, 6), Lon = Math.Round(t.Lon, 6), IasKt = t.IasKt, GsKt = t.GsKt,
+    };
+
     internal static FlightState Map(MsfsData d, bool paused, bool axesActive)
     {
         var lbsPerGal = d.FuelLbsPerGal > 0 ? d.FuelLbsPerGal : 6.7;
@@ -243,7 +275,7 @@ public sealed class MsfsSource : IFlightSource
         return new FlightState
         {
             Source = "msfs",
-            Aircraft = new AircraftInfo { Title = d.Title ?? "", OnGround = B(d.OnGround), Paused = paused },
+            Aircraft = Aircraft(d, paused),
             SimTimeUtc = simTime,
             Position = new PositionData { Lat = d.Lat, Lon = d.Lon, AltMslFt = R(d.AltMsl, 0), AltAglFt = R(d.AltAgl, 0), AltIndFt = R(d.AltInd, 0) },
             Speed = new SpeedData { IasKt = R(d.Ias, 1), TasKt = R(d.Tas, 1), GsKt = R(d.Gs, 1), Mach = R(d.Mach, 3), VsFpm = R(d.Vs, 0) },
@@ -302,6 +334,21 @@ public sealed class MsfsSource : IFlightSource
             Engines = engines,
             Environment = new EnvironmentData { WindDirDeg = R(d.WindDir, 0), WindSpdKt = R(d.WindSpd, 0), OatC = R(d.Oat, 1), QnhHpa = R(d.Qnh, 1) },
             Axes = new AxesData { Active = axesActive },
+        };
+    }
+
+    private static AircraftInfo Aircraft(in MsfsData d, bool paused)
+    {
+        var engineType = AircraftClassifier.EngineTypeName((int)d.EngineType);
+        var title = d.Title ?? "";
+        return new AircraftInfo
+        {
+            Title = title, OnGround = B(d.OnGround), Paused = paused,
+            EngineType = engineType,
+            AtcModel = AircraftClassifier.CleanAtcString(d.AtcModel),
+            AtcType = AircraftClassifier.CleanAtcString(d.AtcType),
+            Category = AircraftClassifier.Classify(engineType, (int)d.EngineCount, d.MaxGrossWeightLbs,
+                $"{title} {AircraftClassifier.CleanAtcString(d.AtcModel)} {AircraftClassifier.CleanAtcString(d.AtcType)}", d.SimCategory ?? ""),
         };
     }
 

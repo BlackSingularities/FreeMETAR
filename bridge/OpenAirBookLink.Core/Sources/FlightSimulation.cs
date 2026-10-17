@@ -22,6 +22,7 @@ public sealed class FlightSimulation
     private double _targetCruiseFt = 24000;
     private double _targetSpdKt = 290;
     private bool _manualSpeed;
+    private long _touchdownSeq;
 
     public FlightSimulation()
     {
@@ -41,7 +42,11 @@ public sealed class FlightSimulation
         _targetSpdKt = 290;
         _manualSpeed = false;
 
-        _s.Aircraft = new AircraftInfo { Title = "OpenAirBook Sim A320 (symulacja)", OnGround = true };
+        _s.Aircraft = new AircraftInfo
+        {
+            Title = "OpenAirBook Sim A320 (symulacja)", OnGround = true,
+            EngineType = "jet", AtcModel = "A320", AtcType = "AIRBUS", Category = "airliner",
+        };
         _s.Position = new PositionData { Lat = Departure.Lat, Lon = Departure.Lon, AltMslFt = Departure.ElevFt, AltIndFt = Departure.ElevFt };
         _s.Speed = new SpeedData();
         _s.Attitude = new AttitudeData { HdgTrueDeg = Departure.RwyTrue, HdgMagDeg = Norm(Departure.RwyTrue - MagVar), TrackTrueDeg = Departure.RwyTrue };
@@ -139,7 +144,11 @@ public sealed class FlightSimulation
                 if (dist < 10 && _s.Controls.FlapsIndex < 2) SetFlaps(2);
                 if (dist < 5 && _s.Controls.FlapsIndex < 4) SetFlaps(4);
                 if (dist < 1 && ap.Master) { ap.Master = false; ap.Athr = false; }
-                if (_s.Position.AltAglFt < 5 || dist < 0.2) Advance(SimPhase.Rollout);
+                if (_s.Position.AltAglFt < 5 || dist < 0.2)
+                {
+                    Advance(SimPhase.Rollout);
+                    LatchTouchdown(utcNow);
+                }
                 break;
 
             case SimPhase.Rollout:
@@ -269,6 +278,12 @@ public sealed class FlightSimulation
             case "AP_VS_HOLD": ap.Modes.Vs = !ap.Modes.Vs; break;
             case "FLIGHT_LEVEL_CHANGE": ap.Modes.Flc = !ap.Modes.Flc; break;
             case "AP_PANEL_SPEED_HOLD": _manualSpeed = !_manualSpeed; break;
+            case "AP_AIRSPEED_HOLD": _manualSpeed = !_manualSpeed; break;
+            case "AP_N1_HOLD": ap.Athr = !ap.Athr; break;
+            case "AP_PANEL_MACH_HOLD": break;
+            case "AP_MACH_VAR_SET": SetSpeed(MachToIas(v / 100.0)); break;
+            case "AP_BANK_HOLD": break;
+            case "AP_WING_LEVELER": ap.Modes.Hdg = false; ap.Modes.Nav = false; break;
             case "HEADING_BUG_SET": ap.HdgDeg = v; break;
             case "HEADING_BUG_INC": ap.HdgDeg = Norm(ap.HdgDeg + 1); break;
             case "HEADING_BUG_DEC": ap.HdgDeg = Norm(ap.HdgDeg - 1); break;
@@ -338,6 +353,57 @@ public sealed class FlightSimulation
                 return CommandResult.Fail(ErrorCodes.NotAllowed, $"Symulacja nie obsługuje {cmd.Spec.Name}");
         }
         return CommandResult.Success;
+    }
+
+    // Ustaw samolot na prostej do EPGD RWY 29 (ścieżka 3°, podwozie i klapy wypuszczone).
+    public void PositionOnFinal(double distNm)
+    {
+        Reset();
+        Phase = SimPhase.Approach;
+        var back = Norm(Arrival.RwyTrue + 180);
+        var p = _s.Position;
+        p.Lat = Arrival.Lat + distNm * Math.Cos(back * Math.PI / 180) / NmPerDegLat;
+        p.Lon = Arrival.Lon + distNm * Math.Sin(back * Math.PI / 180) / (NmPerDegLat * Math.Cos(p.Lat * Math.PI / 180));
+        p.AltMslFt = Arrival.ElevFt + 50 + distNm * 318;
+        p.AltAglFt = p.AltMslFt - Arrival.ElevFt;
+        p.AltIndFt = p.AltMslFt;
+        _s.Speed = new SpeedData { IasKt = 145, TasKt = 147, GsKt = 140, VsFpm = -750 };
+        _s.Attitude = new AttitudeData { HdgTrueDeg = Arrival.RwyTrue, HdgMagDeg = Norm(Arrival.RwyTrue - MagVar), TrackTrueDeg = Arrival.RwyTrue, PitchDeg = 2.5 };
+        _s.Autopilot.Master = true;
+        _s.Autopilot.Athr = true;
+        _s.Autopilot.AltFt = 3000;
+        _s.Aircraft.OnGround = false;
+        _s.Lights.Landing = true;
+        _s.Radios.Nav1 = new RadioPair { ActiveMhz = 109.300, StandbyMhz = 110.900 };
+        SetGear(true);
+        SetFlaps(4);
+        UpdateEngines(55, 0);
+    }
+
+    // Przyziemienie w symulacji: stałe, wiarygodne wartości (−180 ft/min, 1,2 g).
+    private void LatchTouchdown(DateTime utcNow)
+    {
+        _s.Touchdown = new TouchdownData
+        {
+            Seq = ++_touchdownSeq,
+            T = new DateTimeOffset(utcNow).ToUnixTimeMilliseconds(),
+            VsFpm = -180,
+            GForce = 1.2,
+            PitchDeg = 3.5,
+            BankDeg = -0.4,
+            HeadingTrueDeg = Math.Round(_s.Attitude.HdgTrueDeg, 1),
+            Lat = Math.Round(_s.Position.Lat, 6),
+            Lon = Math.Round(_s.Position.Lon, 6),
+            IasKt = Math.Round(_s.Speed.IasKt, 1),
+            GsKt = Math.Round(_s.Speed.GsKt, 1),
+        };
+    }
+
+    private double MachToIas(double mach)
+    {
+        var oatC = _s.Environment.OatC;
+        var tas = mach * 661.47 * Math.Sqrt((oatC + 273.15) / 288.15);
+        return tas / (1 + 0.02 * _s.Position.AltMslFt / 1000);
     }
 
     private void Advance(SimPhase next)

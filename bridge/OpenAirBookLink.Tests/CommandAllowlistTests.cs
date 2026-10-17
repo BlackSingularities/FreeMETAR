@@ -15,6 +15,12 @@ public class CommandAllowlistTests
     [InlineData("SPOILERS_ARM_TOGGLE")]
     [InlineData("ELEV_TRIM_UP")]
     [InlineData("COM_STBY_RADIO_SWAP")]
+    [InlineData("AP_N1_HOLD")]
+    [InlineData("AP_PANEL_MACH_HOLD")]
+    [InlineData("AP_BANK_HOLD")]
+    [InlineData("AP_WING_LEVELER")]
+    [InlineData("YAW_DAMPER_TOGGLE")]
+    [InlineData("AP_AIRSPEED_HOLD")]
     public void Accepts_allowed_commands_without_value(string name)
     {
         var r = CommandAllowlist.Validate(name, null);
@@ -47,6 +53,26 @@ public class CommandAllowlistTests
             CommandAllowlist.Validate("HEADING_BUG_SET", JsonDocument.Parse("\"90\"").RootElement).ErrorCode);
         Assert.True(CommandAllowlist.Validate("HEADING_BUG_SET", Num(270)).Ok);
         Assert.Equal(270u, CommandAllowlist.Validate("HEADING_BUG_SET", Num(270)).Command!.Data);
+    }
+
+    [Fact]
+    public void Mach_set_takes_mach_times_100_between_10_and_99()
+    {
+        Assert.Equal(ErrorCodes.InvalidValue, CommandAllowlist.Validate("AP_MACH_VAR_SET", null).ErrorCode);
+        Assert.Equal(ErrorCodes.InvalidValue, CommandAllowlist.Validate("AP_MACH_VAR_SET", Num(9)).ErrorCode);
+        Assert.Equal(ErrorCodes.InvalidValue, CommandAllowlist.Validate("AP_MACH_VAR_SET", Num(100)).ErrorCode);
+        Assert.Equal(ErrorCodes.InvalidValue, CommandAllowlist.Validate("AP_MACH_VAR_SET", Num(0.78)).ErrorCode);
+        Assert.True(CommandAllowlist.Validate("AP_MACH_VAR_SET", Num(10)).Ok);
+        Assert.Equal(78u, CommandAllowlist.Validate("AP_MACH_VAR_SET", Num(78)).Command!.Data);
+        Assert.True(CommandAllowlist.Validate("AP_MACH_VAR_SET", Num(99)).Ok);
+    }
+
+    [Fact]
+    public void New_autopilot_commands_do_not_take_value_and_are_listed_once()
+    {
+        foreach (var name in new[] { "AP_N1_HOLD", "AP_PANEL_MACH_HOLD", "AP_BANK_HOLD", "AP_WING_LEVELER", "YAW_DAMPER_TOGGLE", "AP_AIRSPEED_HOLD" })
+            Assert.False(CommandAllowlist.All.Single(s => s.Name == name).NeedsValue);
+        Assert.Equal(CommandAllowlist.All.Count, CommandAllowlist.All.Select(s => s.Name).Distinct().Count());
     }
 
     [Fact]

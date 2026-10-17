@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using OpenAirBookLink.Core.Control;
+using OpenAirBookLink.Core.NavData;
 using OpenAirBookLink.Core.Protocol;
 
 namespace OpenAirBookLink.Core.Sources;
@@ -14,16 +15,20 @@ public sealed class SimulationSource : IFlightSource
     private Timer? _timer;
     private long _lastTickMs;
 
-    public SimulationSource(AxisController axes, double timeScale = 1.0)
+    // startOnFinalNm: zacznij od podejścia ILS 29 do EPGD z tej odległości (szybki test przyziemienia).
+    public SimulationSource(AxisController axes, double timeScale = 1.0, double? startOnFinalNm = null)
     {
         Axes = axes;
         _timeScale = timeScale;
+        if (startOnFinalNm is { } nm) _sim.PositionOnFinal(nm);
     }
 
     public string Kind => "simulation";
     public bool IsConnected => _timer != null;
     public string StatusText => $"Symulacja: {PhaseName(_sim.Phase)}, {Math.Round(_sim.DistanceToArrivalNm)} NM do EPGD";
     public AxisController Axes { get; }
+    public INavDataProvider NavData { get; } = new SimulationNavData();
+    INavDataProvider? IFlightSource.NavData => NavData;
 
     public event Action? StatusChanged;
 

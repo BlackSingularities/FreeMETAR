@@ -69,8 +69,12 @@ Telefon nasłuchuje na UDP 47811, a adres serwera bierze z adresu nadawcy datagr
 ```json
 { "v": 1, "type": "hello_ok", "id": "1", "token": "Qm9n...", "server": "OpenAirBook Link",
   "version": "1.0.12", "source": "msfs", "rateHz": 10,
-  "limits": { "maxDeflection": 0.8, "axisTimeoutMs": 500 } }
+  "limits": { "maxDeflection": 0.8, "axisTimeoutMs": 500, "navdataPerSecond": 10 },
+  "features": ["navdata", "touchdown", "aircraft_category"] }
 ```
+
+   `features` (od Link 1.1) wymienia funkcje dodane do protokołu v1 po pierwszym wydaniu.
+   Brak pola = starszy Link bez `navdata_request`, `touchdown` i pól profilu samolotu.
 
    Telefon zapisuje `token` i używa go przy kolejnych połączeniach. Token jest ważny,
    dopóki użytkownik nie kliknie w programie „Unieważnij sparowania”.
@@ -96,7 +100,8 @@ serwera w ms od epoki Unix.
   "v": 1, "type": "state", "seq": 1234, "t": 1792231234567,
   "data": {
     "source": "msfs",
-    "aircraft": { "title": "Airbus A320neo", "onGround": false, "paused": false },
+    "aircraft": { "title": "Airbus A320neo", "onGround": false, "paused": false,
+                  "engineType": "jet", "atcModel": "A20N", "atcType": "AIRBUS", "category": "airliner" },
     "simTimeUtc": "2026-10-17T12:34:56Z",
     "position": { "lat": 52.1657, "lon": 20.9671, "altMslFt": 12000, "altAglFt": 11630, "altIndFt": 12010 },
     "speed": { "iasKt": 250, "tasKt": 298, "gsKt": 310, "mach": 0.46, "vsFpm": 1800 },
@@ -122,7 +127,10 @@ serwera w ms od epoki Unix.
     "fuel": { "totalKg": 5400, "tanks": { "leftKg": 2500, "centerKg": 400, "rightKg": 2500 } },
     "engines": [ { "n1Pct": 85.1, "n2Pct": 93.0, "rpm": 0, "egtC": 620, "fuelFlowKgH": 1250 } ],
     "environment": { "windDirDeg": 270, "windSpdKt": 25, "oatC": -9.5, "qnhHpa": 1013.2 },
-    "axes": { "active": false }
+    "axes": { "active": false },
+    "touchdown": { "seq": 3, "t": 1792231200123, "vsFpm": -182, "gForce": 1.21, "pitchDeg": 3.4,
+                   "bankDeg": -0.6, "headingTrueDeg": 291.8, "lat": 54.378512, "lon": 18.481730,
+                   "iasKt": 136.5, "gsKt": 131.0 }
   }
 }
 ```
@@ -132,6 +140,24 @@ serwera w ms od epoki Unix.
 - `engines`: tyle elementów, ile silników ma samolot (maks. 4). `rpm` dla tłokowych/śmigłowych,
   `n1Pct`/`n2Pct` dla turbinowych (u innych 0).
 - `axes.active`: `true`, gdy serwer właśnie steruje osiami z telefonu.
+- `aircraft.engineType`: `piston`, `jet`, `turboprop`, `helicopter`, `none` (SimVar `ENGINE TYPE`;
+  `none` także dla szybowców i nieobsługiwanych napędów).
+- `aircraft.atcModel` / `aircraft.atcType`: `ATC MODEL` / `ATC TYPE` z MSFS; z kluczy lokalizacji
+  (`TT:ATCCOM.AC_MODEL_A320.0.text`) zostaje sama nazwa (`A320`). Pusty tekst, gdy MSFS nie podaje.
+- `aircraft.category`: `airliner`, `bizjet`, `turboprop`, `ga`, `helicopter` — heurystyka do wyboru
+  profilu paneli: śmigłowiec po typie napędu/kategorii MSFS; odrzutowiec = `airliner` przy nazwie
+  liniowca w tytule, ≥ 3 silnikach lub MTOW ≥ 100 000 lb, inaczej `bizjet`; turbośmigłowy = `airliner`
+  (ATR, Dash 8…) przy MTOW ≥ 35 000 lb, inaczej `turboprop`; tłokowy i reszta = `ga`.
+- `touchdown` — **zatrzaśnięte ostatnie przyziemienie**. Pole pojawia się po pierwszym lądowaniu
+  od uruchomienia Link (wcześniej go nie ma) i zostaje do następnego. `seq` rośnie przy każdym
+  przyziemieniu, także przy odbiciu (kontakt po ≥ 250 ms w powietrzu), więc telefon wykrywa nowe
+  lądowanie i odbicia po zmianie `seq`. `t` — czas kontaktu (ms od epoki Unix).
+  `vsFpm` (ujemne = opadanie), `pitchDeg`, `bankDeg`, `lat`, `lon` z SimVarów
+  `PLANE TOUCHDOWN NORMAL VELOCITY / PITCH DEGREES / BANK DEGREES / LATITUDE / LONGITUDE`
+  (gdy MSFS ich nie odświeży — z ostatniej klatki w powietrzu); `gForce` to szczyt `G FORCE`
+  od ostatniej klatki w powietrzu do 0,6 s po kontakcie; `headingTrueDeg`, `iasKt`, `gsKt` — z chwili
+  kontaktu. Wartości mogą się jeszcze zmienić w ciągu 0,6 s po kontakcie (ten sam `seq`).
+  Tryb symulacji: przyziemienie w EPGD na pasie 29, −180 ft/min, 1,2 g.
 
 ### `status`
 
@@ -157,17 +183,133 @@ Wysyłany po `hello_ok` i przy każdej zmianie źródła danych:
 | `unknown_type` | Nieznany `type` |
 | `not_paired` | Wiadomość przed `hello_ok` |
 | `pairing_failed` | Zły kod lub token |
-| `rate_limited` | Za dużo prób parowania / komend (limit 50 komend/s) |
+| `rate_limited` | Za dużo prób parowania / komend (limit 50 komend/s) / zapytań `navdata_request` (10/s) |
 | `not_allowed` | Komenda spoza listy dozwolonych |
 | `invalid_value` | Brak wartości lub wartość poza zakresem |
 | `sim_unavailable` | Brak MSFS i wyłączony tryb symulacji |
 | `sim_error` | SimConnect odrzucił wywołanie |
+| `not_found` | `navdata_request`: nie ma takiego lotniska, procedury, przejścia lub punktu |
 
 ### `pong`
 
 ```json
 { "v": 1, "type": "pong", "id": "p7", "t": 1792231234000, "serverT": 1792231234012 }
 ```
+
+### `navdata`
+
+Odpowiedź na `navdata_request` (opis zapytań w p. 4). `id` i `kind` przepisane z zapytania,
+`data` zależy od `kind`. Pola opcjonalne mają w JSON jawne `null` (kształt jest stały).
+Kursy `courseDeg` w odcinkach i `locCourseDeg` ILS są takie, jak w bazie MSFS (magnetyczne,
+jak na mapach); `headingTrueDeg` pasa — rzeczywisty. Wysokości w stopach, odległości w NM.
+
+**`kind: "airport"`**
+
+```json
+{ "v": 1, "type": "navdata", "id": "n1", "kind": "airport",
+  "data": {
+    "icao": "EPGD", "name": "Gdansk Lech Walesa", "lat": 54.3776, "lon": 18.4662, "elevFt": 489,
+    "runways": [
+      { "ident": "11", "headingTrueDeg": 112, "lengthFt": 9186, "widthFt": 148,
+        "thresholdLat": 54.3884, "thresholdLon": 18.448, "elevFt": 470,
+        "ils": { "ident": "IGDB", "freqMhz": 110.9, "locCourseDeg": 106, "gsAngleDeg": 3.0 } },
+      { "ident": "29", "headingTrueDeg": 292, "lengthFt": 9186, "widthFt": 148,
+        "thresholdLat": 54.379, "thresholdLon": 18.488, "elevFt": 489,
+        "ils": { "ident": "IGDA", "freqMhz": 109.3, "locCourseDeg": 286, "gsAngleDeg": 3.0 } }
+    ],
+    "frequencies": [
+      { "type": "ATIS", "name": "Rebiechowo Information", "mhz": 126.775 },
+      { "type": "TWR", "name": "Rebiechowo Tower", "mhz": 118.1 }
+    ]
+  } }
+```
+
+- `runways` — każdy **koniec** pasa osobno (`ident`: `"29"`, `"11L"`, `"09"`, także `"N"`…`"NW"`
+  dla pasów wodnych/kierunkowych). Próg = koniec pasa wyliczony ze środka, kursu i długości
+  (przesunięty próg nie jest odejmowany). `elevFt` — wysokość środka pasa.
+- `ils` — z obiektu lokalizera wskazanego przez `PRIMARY_ILS_ICAO`/`SECONDARY_ILS_ICAO` pasa;
+  `null`, gdy koniec pasa nie ma ILS. `gsAngleDeg` = `null` dla LOC bez ścieżki schodzenia.
+- `frequencies[].type`: `ATIS`, `CLR` (także pre-taxi i zdalne clearance), `GND`, `TWR`, `APP`,
+  `DEP`, `CTR`, `UNICOM` (także CTAF i multicom), `OTHER` (AWOS, ASOS, FSS…).
+
+**`kind: "procedures"`**
+
+```json
+{ "v": 1, "type": "navdata", "id": "n2", "kind": "procedures",
+  "data": {
+    "icao": "EPWA",
+    "departures": [ { "name": "LOGDA1K", "runways": ["11", "15"], "transitions": ["NEPOX"] } ],
+    "arrivals":   [ { "name": "AGAVA1W", "runways": ["33", "29"], "transitions": [] } ],
+    "approaches": [
+      { "name": "ILS 33", "type": "ILS", "runway": "33", "suffix": null, "transitions": ["WA412"] },
+      { "name": "RNAV Z 29", "type": "RNAV", "runway": "29", "suffix": "Z", "transitions": ["BAMSO"] }
+    ]
+  } }
+```
+
+- `runways` SID/STAR — pasy, dla których procedura ma przejście pasowe (`"ALL"` = przejście dla
+  wszystkich pasów); pusta lista = procedura bez przejść pasowych.
+- `transitions` SID/STAR — przejścia trasowe (enroute); podejścia — przejścia (IAF).
+- `approaches[].type`: `ILS`, `LOC` (także LOC BC), `RNAV`, `VOR` (także VOR/DME), `NDB`
+  (także NDB/DME), `GPS`, `OTHER` (SDF, LDA…). `name` jest unikalne w lotnisku i służy do
+  `procedure_legs` (np. `"ILS Z 29"`, `"LOC BC 11"`, `"VORDME 33"`). `runway` = `null` dla podejść
+  okrężnych.
+
+**`kind: "procedure_legs"`**
+
+```json
+{ "v": 1, "type": "navdata", "id": "n3", "kind": "procedure_legs",
+  "data": {
+    "icao": "EPGD", "procType": "approach", "name": "ILS 29", "runway": "29", "transition": "GD401",
+    "legs": [
+      { "fix": "GD401", "lat": 54.15, "lon": 19.0, "legType": "IF", "altDesc": "AT", "alt1Ft": 6000,
+        "alt2Ft": null, "speedKt": null, "courseDeg": null, "distNm": null, "flyOver": false },
+      { "fix": "GD291", "lat": 54.3166, "lon": 18.7533, "legType": "TF", "altDesc": "AT", "alt1Ft": 3500,
+        "alt2Ft": null, "speedKt": null, "courseDeg": null, "distNm": null, "flyOver": false },
+      { "fix": "FI29", "lat": 54.3415, "lon": 18.6472, "legType": "CF", "altDesc": "AT", "alt1Ft": 2400,
+        "alt2Ft": null, "speedKt": 180, "courseDeg": 286, "distNm": null, "flyOver": false },
+      { "fix": "RW29", "lat": 54.379, "lon": 18.488, "legType": "CF", "altDesc": "AT", "alt1Ft": 540,
+        "alt2Ft": null, "speedKt": null, "courseDeg": 286, "distNm": null, "flyOver": true }
+    ],
+    "missed": [
+      { "fix": "", "lat": null, "lon": null, "legType": "CA", "altDesc": "ABOVE", "alt1Ft": 1500,
+        "alt2Ft": null, "speedKt": null, "courseDeg": 292, "distNm": null, "flyOver": false },
+      { "fix": "GD510", "lat": 54.45, "lon": 18.3, "legType": "DF", "altDesc": "AT", "alt1Ft": 4000,
+        "alt2Ft": null, "speedKt": null, "courseDeg": null, "distNm": null, "flyOver": false }
+    ]
+  } }
+```
+
+- Kolejność odcinków: SID = przejście pasowe → część wspólna → przejście trasowe;
+  STAR = przejście trasowe → część wspólna → przejście pasowe; podejście = przejście (gdy podane)
+  → odcinek końcowy. Punkt `IF` powtarzający ostatni punkt poprzedniej części jest pomijany.
+- `missed` — odcinki nieudanego podejścia (tylko podejścia; dla SID/STAR pusta lista).
+- `runway` w odpowiedzi: dla SID/STAR pas użytego przejścia (gdy procedura ma jedno przejście
+  pasowe, zostaje użyte bez podawania `runway`); dla podejścia — pas podejścia.
+- `legType` — typ odcinka ARINC 424: `IF`, `TF`, `CF`, `DF`, `RF`, `AF`, `CA`, `CD`, `CI`, `CR`,
+  `FA`, `FC`, `FD`, `FM`, `HA`, `HF`, `HM`, `PI`, `VA`, `VD`, `VI`, `VM`, `VR` (`UNKNOWN` przy nieznanym).
+- `fix` = `""` (oraz `lat`/`lon` = `null`) dla odcinków bez punktu końcowego (`CA`, `VA`, `VM`…).
+  Współrzędne z pól `FIX_LATITUDE/LONGITUDE` odcinka, a gdy MSFS ich nie poda — z obiektu
+  WAYPOINT/VOR/NDB tego punktu.
+- `altDesc`: `AT`, `ABOVE` (na lub powyżej), `BELOW` (na lub poniżej), `BETWEEN` (`alt1Ft` = górna,
+  `alt2Ft` = dolna granica) albo `null` (bez ograniczenia; wtedy `alt1Ft` = `null`).
+- `speedKt` — ograniczenie prędkości (IAS) albo `null`. `distNm` — długość odcinka z bazy, jeśli
+  podana w NM (odcinki czasowe → `null`). `flyOver` — punkt do przelotu nad nim (fly-over).
+
+**`kind: "fix"`**
+
+```json
+{ "v": 1, "type": "navdata", "id": "n4", "kind": "fix",
+  "data": { "results": [
+    { "ident": "WAR", "type": "vor", "lat": 52.188, "lon": 20.962, "freqMhz": 113.45, "region": "EP" },
+    { "ident": "WAR", "type": "waypoint", "lat": 48.1, "lon": 11.2, "freqMhz": null, "region": "ED" }
+  ] } }
+```
+
+- `type`: `waypoint`, `vor` (także ILS/DME), `ndb`, `airport`. `freqMhz` — dla VOR i NDB
+  (NDB w MHz, np. `0.389` = 389 kHz), inaczej `null`. `region` — kod regionu ICAO albo `null`.
+- Wyniki posortowane rosnąco po odległości od `nearLat`/`nearLon` (bez nich — po typie i regionie).
+- Brak wyników = `error` `not_found` (nie pusta lista).
 
 ## 4. Wiadomości telefon → serwer
 
@@ -198,6 +340,9 @@ Wartość musi być liczbą całkowitą (lub liczbą z zerową częścią ułamk
 | `AP_ALT_VAR_SET_ENGLISH` | 0–50000 (ft) |
 | `AP_VS_VAR_SET_ENGLISH` | −8000–8000 (ft/min) |
 | `AP_SPD_VAR_SET` | 0–500 (kt) |
+| `AP_AIRSPEED_HOLD` (utrzymanie prędkości), `AP_N1_HOLD` (utrzymanie N1/ciągu), `AP_PANEL_MACH_HOLD` (utrzymanie Macha) | — |
+| `AP_MACH_VAR_SET` | 10–99 (Mach × 100, np. `78` = M0,78) |
+| `AP_BANK_HOLD` (utrzymanie przechylenia), `AP_WING_LEVELER` (poziomowanie skrzydeł) | — |
 
 **Radia** (częstotliwości w Hz)
 
@@ -242,6 +387,48 @@ Wartość musi być liczbą całkowitą (lub liczbą z zerową częścią ułamk
 
 Odpowiedź: `ack` po przekazaniu do symulatora (nie oznacza, że samolot zareagował — skutek
 widać w kolejnych `state`), albo `error`.
+
+### `navdata_request` — dane nawigacyjne z bazy MSFS
+
+Telefon pyta Link o lotniska, procedury i punkty. Źródłem jest baza nawigacyjna MSFS 2024
+(SimConnect Facilities API: `SimConnect_AddToFacilityDefinition`, `SimConnect_RequestFacilityData`,
+`SimConnect_RequestFacilityData_EX1`), więc dane zgadzają się z tym, co widzi symulator.
+Telefon zapisuje odpowiedzi u siebie i nie musi pytać ponownie.
+
+```json
+{ "v": 1, "type": "navdata_request", "id": "n1", "kind": "airport", "icao": "EPGD" }
+{ "v": 1, "type": "navdata_request", "id": "n2", "kind": "procedures", "icao": "EPWA" }
+{ "v": 1, "type": "navdata_request", "id": "n3", "kind": "procedure_legs", "icao": "EPGD",
+  "procType": "approach", "name": "ILS 29", "transition": "GD401" }
+{ "v": 1, "type": "navdata_request", "id": "n5", "kind": "procedure_legs", "icao": "EPWA",
+  "procType": "departure", "name": "LOGDA1K", "runway": "15", "transition": "NEPOX" }
+{ "v": 1, "type": "navdata_request", "id": "n4", "kind": "fix", "ident": "WAR", "nearLat": 52.2, "nearLon": 21.0 }
+```
+
+| `kind` | Pola | Odpowiedź `data` |
+|---|---|---|
+| `airport` | `icao` | lotnisko, pasy z ILS, częstotliwości |
+| `procedures` | `icao` | listy SID, STAR i podejść (bez odcinków) |
+| `procedure_legs` | `icao`, `procType` (`departure` / `arrival` / `approach`), `name`, opcjonalnie `runway`, `transition` | odcinki procedury + `missed` |
+| `fix` | `ident`, opcjonalnie `nearLat` + `nearLon` (razem) | wszystkie punkty o tej nazwie |
+
+- `icao`: 2–8, `ident`: 1–8 liter/cyfr; wielkość liter bez znaczenia. `name`, `transition`:
+  1–16 znaków, bez rozróżniania wielkości liter. `runway` w dowolnej postaci (`"RW29"`, `"9"`,
+  `"11l"`) — serwer normalizuje do `"29"`, `"09"`, `"11L"`.
+- Odpowiedź: `navdata` (p. 3) z tym samym `id`, albo `error`:
+  `invalid_value` (zły `kind` lub pola), `not_found` (brak lotniska / procedury / pasa / przejścia /
+  punktu albo MSFS nie odpowiedział w 10 s), `sim_unavailable` (brak MSFS i trybu symulacji),
+  `rate_limited` (ponad **10 zapytań/s** na telefon), `sim_error` (inny błąd SimConnect).
+- Zapytania są obsługiwane w tle (do 4 naraz na telefon, kolejne czekają w kolejce), więc
+  odpowiedzi mogą przyjść w innej kolejności niż zapytania — paruj je po `id`.
+- Link trzyma odpowiedzi w pamięci przez **10 minut** (osobno dla MSFS i trybu symulacji);
+  `procedures` i `procedure_legs` jednego lotniska korzystają z jednego pobrania z MSFS.
+  Pierwsze zapytanie o procedury dużego lotniska może trwać kilka sekund.
+- **Tryb symulacji** zwraca stałe, przykładowe dane dla **EPWA** i **EPGD** (pasy z ILS,
+  po 2 SID i 2 STAR, podejścia ILS i RNAV z odcinkami w realistycznych miejscach; nazwy procedur
+  i punktów są wymyślone — nie do prawdziwej nawigacji). Inne lotniska → `not_found`.
+  Punkty dla `fix`: m.in. `WAR` (VOR 113.45), `GDA` (VOR), `WA`/`GD` (NDB), `SOXER` (dwa wyniki:
+  EP i ED — do sprawdzenia sortowania po odległości) oraz wszystkie punkty procedur.
 
 ### `axis` — sterowanie przechylaniem telefonu
 

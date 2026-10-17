@@ -18,6 +18,8 @@ public sealed class FlightState
     public List<EngineData> Engines { get; set; } = new();
     public EnvironmentData Environment { get; set; } = new();
     public AxesData Axes { get; set; } = new();
+    // Ostatnie przyziemienie (zatrzaśnięte); brak pola, dopóki samolot nie wylądował od startu Link.
+    public TouchdownData? Touchdown { get; set; }
 
     public FlightState Clone()
     {
@@ -31,6 +33,29 @@ public sealed class AircraftInfo
     public string Title { get; set; } = "";
     public bool OnGround { get; set; }
     public bool Paused { get; set; }
+    // "piston" | "jet" | "turboprop" | "helicopter" | "none"
+    public string EngineType { get; set; } = "none";
+    public string AtcModel { get; set; } = "";
+    public string AtcType { get; set; } = "";
+    // "airliner" | "bizjet" | "turboprop" | "ga" | "helicopter" — heurystyka AircraftClassifier
+    public string Category { get; set; } = "ga";
+}
+
+public sealed class TouchdownData
+{
+    // Rośnie przy każdym przyziemieniu (także odbiciu) — telefon wykrywa nowe przyziemienie po zmianie seq.
+    public long Seq { get; set; }
+    // Czas przyziemienia, ms od epoki Unix (UTC)
+    public long T { get; set; }
+    public double VsFpm { get; set; }
+    public double GForce { get; set; }
+    public double PitchDeg { get; set; }
+    public double BankDeg { get; set; }
+    public double HeadingTrueDeg { get; set; }
+    public double Lat { get; set; }
+    public double Lon { get; set; }
+    public double IasKt { get; set; }
+    public double GsKt { get; set; }
 }
 
 public sealed class PositionData

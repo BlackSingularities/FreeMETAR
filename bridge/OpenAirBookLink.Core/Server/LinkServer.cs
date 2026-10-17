@@ -4,6 +4,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using OpenAirBookLink.Core.Control;
+using OpenAirBookLink.Core.NavData;
 using OpenAirBookLink.Core.Pairing;
 using OpenAirBookLink.Core.Protocol;
 using OpenAirBookLink.Core.Sources;
@@ -18,6 +19,7 @@ public sealed class LinkServer : IDisposable
     public static readonly TimeSpan HelloTimeout = TimeSpan.FromSeconds(10);
     public static readonly TimeSpan IdleTimeout = TimeSpan.FromSeconds(30);
     public const int MaxCommandsPerSecond = 50;
+    public const int MaxNavdataInFlight = 4;
 
     private readonly PairingManager _pairing;
     private readonly string _version;
@@ -27,6 +29,7 @@ public sealed class LinkServer : IDisposable
     private TcpListener? _listener;
     private IFlightSource? _source;
     private long _seq;
+    private readonly NavDataService _navData = new();
 
     public LinkServer(PairingManager pairing, AxisController axes, string version, int port = LinkProtocol.WebSocketPort)
     {
@@ -260,6 +263,9 @@ public sealed class LinkServer : IDisposable
             case "axis":
                 await HandleAxisAsync(session, msg);
                 break;
+            case "navdata_request":
+                await HandleNavdataAsync(session, msg, ct);
+                break;
             default:
                 await SendError(session, msg.Id, ErrorCodes.UnknownType, $"Nieznany typ wiadomości: {msg.Type}");
                 break;
@@ -350,6 +356,64 @@ public sealed class LinkServer : IDisposable
             Log?.Invoke($"{session.Name}: {cmd.Spec.Name} nie powiodło się — {result.ErrorMessage}");
             await SendError(session, msg.Id, result.ErrorCode ?? ErrorCodes.SimError, result.ErrorMessage ?? "Błąd symulatora");
         }
+    }
+
+    private async Task HandleNavdataAsync(Session session, IncomingMessage msg, CancellationToken ct)
+    {
+        if (!session.NavBucket.TryTake())
+        {
+            await SendError(session, msg.Id, ErrorCodes.RateLimited, $"Maksymalnie {LinkProtocol.MaxNavdataPerSecond} zapytań navdata na sekundę");
+            return;
+        }
+
+        var query = NavdataQuery.Parse(msg, out var error);
+        if (query == null)
+        {
+            await SendError(session, msg.Id, ErrorCodes.InvalidValue, error!);
+            return;
+        }
+
+        var source = Source;
+        if (source is not { IsConnected: true } || source.NavData is not { } provider)
+        {
+            await SendError(session, msg.Id, ErrorCodes.SimUnavailable, "Brak połączenia z MSFS (włącz symulator albo tryb symulacji)");
+            return;
+        }
+
+        // Zapytanie do MSFS może trwać kilka sekund — nie blokuj odbioru kolejnych wiadomości.
+        // Najwyżej MaxNavdataInFlight naraz na telefon, reszta czeka w kolejce.
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await session.NavSlots.WaitAsync(ct);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            try
+            {
+                var data = await _navData.ExecuteAsync(query, provider, source.Kind, ct);
+                await SendAsync(session, new NavdataMessage { Id = msg.Id, Kind = query.Kind, Data = data });
+            }
+            catch (NavDataException e)
+            {
+                await SendError(session, msg.Id, e.Code, e.Message);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+            }
+            catch (Exception e)
+            {
+                Log?.Invoke($"{session.Name}: navdata {query.Kind} — {e.Message}");
+                await SendError(session, msg.Id, ErrorCodes.SimError, e.Message);
+            }
+            finally
+            {
+                session.NavSlots.Release();
+            }
+        }, CancellationToken.None);
     }
 
     private async Task HandleAxisAsync(Session session, IncomingMessage msg)
@@ -466,9 +530,7 @@ public sealed class LinkServer : IDisposable
 
     internal sealed class Session
     {
-        private readonly object _bucketLock = new();
-        private double _tokens = MaxCommandsPerSecond;
-        private long _lastRefillMs = Environment.TickCount64;
+        private readonly TokenBucket _commands = new(MaxCommandsPerSecond);
 
         public Session(WebSocket socket, string remoteIp)
         {
@@ -486,17 +548,9 @@ public sealed class LinkServer : IDisposable
         public int RateHz { get; set; } = LinkProtocol.DefaultRateHz;
         public SemaphoreSlim SendLock { get; } = new(1, 1);
 
-        public bool TakeCommandToken()
-        {
-            lock (_bucketLock)
-            {
-                var now = Environment.TickCount64;
-                _tokens = Math.Min(MaxCommandsPerSecond, _tokens + (now - _lastRefillMs) * MaxCommandsPerSecond / 1000.0);
-                _lastRefillMs = now;
-                if (_tokens < 1) return false;
-                _tokens -= 1;
-                return true;
-            }
-        }
+        public TokenBucket NavBucket { get; } = new(LinkProtocol.MaxNavdataPerSecond);
+        public SemaphoreSlim NavSlots { get; } = new(MaxNavdataInFlight, MaxNavdataInFlight);
+
+        public bool TakeCommandToken() => _commands.TryTake();
     }
 }

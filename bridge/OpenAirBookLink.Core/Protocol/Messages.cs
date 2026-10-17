@@ -12,6 +12,8 @@ public static class LinkProtocol
     public const int DefaultRateHz = 10;
     public const int MinRateHz = 1;
     public const int MaxRateHz = 20;
+    public const int MaxNavdataPerSecond = 10;
+    public static readonly IReadOnlyList<string> Features = new[] { "navdata", "touchdown", "aircraft_category" };
 }
 
 public static class ErrorCodes
@@ -26,6 +28,7 @@ public static class ErrorCodes
     public const string InvalidValue = "invalid_value";
     public const string SimUnavailable = "sim_unavailable";
     public const string SimError = "sim_error";
+    public const string NotFound = "not_found";
 }
 
 public static class LinkJson
@@ -66,12 +69,15 @@ public sealed class HelloOkMessage : LinkMessage
     public required string Source { get; init; }
     public int RateHz { get; init; }
     public required LimitsInfo Limits { get; init; }
+    // Funkcje dodane po pierwszym wydaniu protokołu v1 — telefon może sprawdzić, czy Link je obsługuje.
+    public IReadOnlyList<string> Features { get; init; } = LinkProtocol.Features;
 }
 
 public sealed class LimitsInfo
 {
     public double MaxDeflection { get; init; }
     public int AxisTimeoutMs { get; init; }
+    public int NavdataPerSecond { get; init; } = LinkProtocol.MaxNavdataPerSecond;
 }
 
 public sealed class StatusMessage : LinkMessage

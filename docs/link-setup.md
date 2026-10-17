@@ -52,9 +52,30 @@ Przełącznik **Tryb symulacji** uruchamia lot testowy bez MSFS: start z EPWA (p
 na FL240, przelot, zniżanie i lądowanie w EPGD (pas 29), po czym lot zaczyna się od nowa.
 Symulacja przyjmuje komendy z telefonu (autopilot, radia, transponder, światła, podwozie, klapy,
 osie), więc da się sprawdzić aplikację bez uruchamiania symulatora. Hamulec postojowy włączony
-z telefonu wstrzymuje start.
+z telefonu wstrzymuje start. Po lądowaniu w EPGD telefon dostaje dane przyziemienia
+(−180 ft/min, 1,2 g) do oceny lądowania.
 
-## 5. Sterowanie przechylaniem telefonu
+W trybie symulacji Link podaje też przykładowe dane nawigacyjne dla **EPWA** i **EPGD** (pasy z ILS,
+częstotliwości, po dwa SID i STAR, podejścia ILS i RNAV) — wystarczą do sprawdzenia edytora planu
+lotu w aplikacji. Nazwy procedur w symulacji są wymyślone.
+
+## 5. Dane nawigacyjne z MSFS
+
+Edytor planu lotu w aplikacji (SID, STAR, podejścia, częstotliwości ILS) pobiera dane z bazy
+nawigacyjnej **Twojego MSFS 2024** przez Link — tej samej, której używa symulator, łącznie
+z aktualizacjami AIRAC zainstalowanymi w MSFS. Działa to tylko przy połączonym MSFS (zielona kropka
+w sekcji **Symulator**); bez symulatora telefon korzysta z danych zapisanych wcześniej.
+Telefon zapamiętuje pobrane lotniska i procedury, a Link trzyma je w pamięci przez 10 minut.
+Pierwsze pobranie procedur dużego lotniska może trwać kilka sekund.
+
+## 6. Ocena lądowania i profile samolotów
+
+Link wykrywa każde przyziemienie (także odbicie) i wysyła telefonowi prędkość opadania,
+przeciążenie, pochylenie, przechylenie i miejsce kontaktu z pasem. Rozpoznaje też typ samolotu
+(liniowiec, odrzutowiec biznesowy, turbośmigłowy, GA, śmigłowiec), żeby aplikacja pokazała
+pasujący panel autopilota (np. N1, Mach i bank hold w liniowcach).
+
+## 7. Sterowanie przechylaniem telefonu
 
 Telefon wysyła wychylenia lotek, steru wysokości i kierunku. Program ogranicza je do 80% pełnego
 wychylenia, a gdy przez pół sekundy nie dostanie aktualizacji (np. zerwane Wi-Fi), sam ustawia
@@ -68,5 +89,6 @@ stery w neutrum i oddaje sterowanie joystickowi. Naraz osiami steruje tylko jede
 | Telefon nie widzi komputera | Profil sieci „Prywatna”, reguła zapory z punktu 2, wyłączona izolacja klientów Wi-Fi w routerze; ewentualnie wpisz IP ręcznie. |
 | „Zły kod parowania” | Kod zmienia się przy każdym uruchomieniu programu — przepisz aktualny z okna. |
 | Port 47810 zajęty | Inna kopia programu działa w zasobniku albo inny program używa portu. |
+| Brak procedur / „nie znaleziono” w edytorze planu | MSFS musi być połączony i w pełni załadowany. W trybie symulacji dostępne są tylko EPWA i EPGD. |
 
 Szczegóły techniczne: [link-protocol.md](link-protocol.md).

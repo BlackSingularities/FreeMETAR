@@ -1,4 +1,5 @@
 using OpenAirBookLink.Core.Control;
+using OpenAirBookLink.Core.NavData;
 using OpenAirBookLink.Core.Protocol;
 
 namespace OpenAirBookLink.Core.Sources;
@@ -29,6 +30,9 @@ public interface IFlightSource : IDisposable
 
     // Wspólny kontroler osi — źródło samo okresowo woła Tick() i wysyła wynik.
     AxisController Axes { get; }
+
+    // Dane nawigacyjne (lotniska, procedury, punkty) albo null, gdy źródło ich nie udostępnia.
+    INavDataProvider? NavData { get; }
 
     void Start();
 }
