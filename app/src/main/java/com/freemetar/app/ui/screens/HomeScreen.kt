@@ -120,6 +120,10 @@ fun HomeScreen(vm: MainViewModel, onFlight: () -> Unit = {}, onOpen: (String) ->
     var query by rememberSaveable { mutableStateOf("") }
     var editing by rememberSaveable { mutableStateOf(false) }
     val c = Fm.c
+    val routes by vm.routes.collectAsStateWithLifecycle()
+    val live by vm.flightState.collectAsStateWithLifecycle()
+    // Puste elementy siatki też dostają odstęp, więc karty bez treści w ogóle nie dodajemy
+    val hasFlight = live != null || routes.any { it.id == settings.activeRouteId }
 
     PullToRefreshBox(isRefreshing = loading, onRefresh = { vm.refreshFavorites() }, modifier = Modifier.fillMaxSize()) {
         LazyVerticalStaggeredGrid(
@@ -148,7 +152,7 @@ fun HomeScreen(vm: MainViewModel, onFlight: () -> Unit = {}, onOpen: (String) ->
                     ),
                 )
             }
-            item(span = Full) { DbBanner(db) { vm.loadDb(force = true) } }
+            if (db is DbState.Loading || db is DbState.Error) item(span = Full) { DbBanner(db) { vm.loadDb(force = true) } }
 
             if (query.length >= 2) {
                 if (results.isEmpty()) item(span = Full) {
@@ -159,7 +163,7 @@ fun HomeScreen(vm: MainViewModel, onFlight: () -> Unit = {}, onOpen: (String) ->
                 }
                 items(results, key = { "s" + it.ident }) { a -> SearchRow(a) { onOpen(a.ident) } }
             } else {
-                item(span = Full) { YourFlightCard(vm, onFlight, onOpen) }
+                if (hasFlight) item(span = Full) { YourFlightCard(vm, onFlight, onOpen) }
                 if (settings.recent.isNotEmpty()) item(span = Full) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 6.dp)) {
                         settings.recent.forEach { id -> Pill(id, icon = Icons.Outlined.History, mono = true) { onOpen(id) } }

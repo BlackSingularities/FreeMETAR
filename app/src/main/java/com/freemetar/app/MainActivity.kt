@@ -104,6 +104,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // ViewModel startuje (baza lotnisk, komunikaty) zanim wczytają się ustawienia — do tego czasu język systemu
+        com.freemetar.app.domain.Lang.current = com.freemetar.app.domain.Lang.resolve(null)
         enableEdgeToEdge()
         setContent {
             val vm: MainViewModel = viewModel()
@@ -170,17 +172,23 @@ class MainActivity : ComponentActivity() {
                 ) { pad ->
                     Row(Modifier.fillMaxSize().padding(pad)) {
                         if (wide) {
+                            // Telefon poziomo (mało wysokości): bez logo i podpisów, żeby zmieściło się 5 zakładek
+                            val compactRail = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 520
                             NavigationRail(containerColor = c.paper, modifier = Modifier.fillMaxHeight()) {
-                                Spacer(Modifier.statusBarsPadding().size(16.dp))
-                                Icon(Icons.Filled.LocalAirport, null, tint = c.ink, modifier = Modifier.size(28.dp))
-                                Spacer(Modifier.size(24.dp))
+                                if (compactRail) Spacer(Modifier.statusBarsPadding().size(4.dp))
+                                else {
+                                    Spacer(Modifier.statusBarsPadding().size(16.dp))
+                                    Icon(Icons.Filled.LocalAirport, null, tint = c.ink, modifier = Modifier.size(28.dp))
+                                    Spacer(Modifier.size(24.dp))
+                                }
                                 tabs.forEach { t ->
                                     val sel = activeTab == t.route
                                     NavigationRailItem(
                                         selected = sel,
                                         onClick = { nav.goTab(t.route) },
                                         icon = { tabIcon(t, sel) },
-                                        label = { Text(t.label) },
+                                        label = if (compactRail) null else ({ Text(t.label) }),
+                                        alwaysShowLabel = !compactRail,
                                         colors = NavigationRailItemDefaults.colors(
                                             indicatorColor = c.ink, selectedIconColor = c.paper, selectedTextColor = c.ink,
                                             unselectedIconColor = c.ink2, unselectedTextColor = c.ink2,
