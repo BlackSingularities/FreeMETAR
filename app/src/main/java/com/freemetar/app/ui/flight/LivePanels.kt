@@ -51,6 +51,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.freemetar.app.MainViewModel
 import com.freemetar.app.data.SavedRoute
 import com.freemetar.app.data.link.FlightState
+import com.freemetar.app.data.link.LinkClient
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import com.freemetar.app.data.link.LinkStatus
 import com.freemetar.app.domain.Geo
 import com.freemetar.app.ui.components.Fact
@@ -145,13 +148,17 @@ fun ConnectionSection(vm: MainViewModel) {
     }
 }
 
-private enum class LiveView(val label: String) { PFD("PFD"), ND("Mapa"), SYS("Silniki") }
+private enum class LiveView(val label: String, val instrument: Boolean) {
+    PFD("PFD", true), ND("Mapa", true), AP("Autopilot", false), RADIO("Radio", false),
+    CONTROLS("Systemy", false), YOKE("Wolant", false), ENGINES("Silniki", false),
+}
 
 /** Widoki na żywo: PFD, mapa nawigacyjna, silniki i paliwo, postęp lotu. Na tablecie PFD i mapa obok siebie. */
 @Composable
-fun LiveSection(s: FlightState, route: SavedRoute?) {
+fun LiveSection(s: FlightState, route: SavedRoute?, link: LinkClient) {
     val c = Fm.c
     var view by rememberSaveable { mutableStateOf(LiveView.PFD) }
+    var panel by rememberSaveable { mutableStateOf(LiveView.AP) }
     var range by rememberSaveable { mutableStateOf(40) }
     val wide = isWide()
     Section(s.aircraft.title ?: "Lot na żywo", Icons.Outlined.Speed) {
@@ -162,8 +169,16 @@ fun LiveSection(s: FlightState, route: SavedRoute?) {
                 Box(Modifier.weight(1f).clip(RoundedCornerShape(8.dp))) { NavDisplay(s, route?.points.orEmpty(), range) }
             }
             RangeRow(range) { range = it }
+            Spacer(Modifier.size(12.dp))
+            Progress(s, route)
+            Spacer(Modifier.size(12.dp))
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                LiveView.entries.filterNot { it.instrument }.forEach { v -> FilterChip(panel == v, { panel = v }, { Text(v.label) }) }
+            }
+            Spacer(Modifier.size(10.dp))
+            PanelFor(panel, s, link)
         } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 8.dp)) {
+            Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 LiveView.entries.forEach { v -> FilterChip(view == v, { view = v }, { Text(v.label) }) }
             }
             when (view) {
@@ -172,12 +187,23 @@ fun LiveSection(s: FlightState, route: SavedRoute?) {
                     Box(Modifier.clip(RoundedCornerShape(8.dp))) { NavDisplay(s, route?.points.orEmpty(), range) }
                     RangeRow(range) { range = it }
                 }
-                LiveView.SYS -> Systems(s)
+                else -> PanelFor(view, s, link)
             }
+            // Postęp lotu pod przyrządami; przy panelach sterowania nie zabiera miejsca
+            if (view.instrument) { Spacer(Modifier.size(12.dp)); Progress(s, route) }
         }
-        Spacer(Modifier.size(12.dp))
-        Progress(s, route)
-        if (wide) { Spacer(Modifier.size(12.dp)); Systems(s) }
+    }
+}
+
+@Composable
+private fun PanelFor(v: LiveView, s: FlightState, link: LinkClient) {
+    when (v) {
+        LiveView.AP -> AutopilotPanel(link, s)
+        LiveView.RADIO -> RadioPanel(link, s)
+        LiveView.CONTROLS -> SystemsPanel(link, s)
+        LiveView.YOKE -> YokePanel(link, s)
+        LiveView.ENGINES -> Systems(s)
+        else -> {}
     }
 }
 

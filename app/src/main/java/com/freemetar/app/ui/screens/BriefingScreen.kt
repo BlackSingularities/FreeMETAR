@@ -54,6 +54,8 @@ import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.Icon
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -155,7 +157,7 @@ fun BriefingScreen(vm: MainViewModel, onBack: () -> Unit, onOpen: (String) -> Un
                 Box(Modifier.width(1.dp).fillMaxSize().background(c.rule))
                 LazyColumn(Modifier.weight(1f).fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
                     item { RunwaysPart(detail) }
-                    item { RadioPart(detail) }
+                    item { RadioPart(detail, vm) }
                     item { AirportPart(detail, settings) }
                     item { NearbyPart(detail, onOpen) }
                 }
@@ -169,7 +171,7 @@ fun BriefingScreen(vm: MainViewModel, onBack: () -> Unit, onOpen: (String) -> Un
                 item(key = Part.TAF) { TafPart(detail) }
                 item(key = Part.ALOFT) { AloftPart(detail, settings) }
                 item(key = Part.RUNWAYS) { RunwaysPart(detail) }
-                item(key = Part.RADIO) { RadioPart(detail) }
+                item(key = Part.RADIO) { RadioPart(detail, vm) }
                 item(key = Part.AIRPORT) { AirportPart(detail, settings) }
                 item(key = Part.NEARBY) { NearbyPart(detail, onOpen) }
             }
@@ -563,16 +565,23 @@ private fun freqIcon(f: Frequency): ImageVector = when (f.type.uppercase()) {
 }
 
 @Composable
-private fun RadioPart(d: AirportDetail) {
+private fun RadioPart(d: AirportDetail, vm: MainViewModel) {
     val c = Fm.c
     val clip = LocalClipboardManager.current
+    val link by vm.linkStatus.collectAsStateWithLifecycle()
+    val connected = link is com.freemetar.app.data.link.LinkStatus.Connected
+    var menuFor by remember { mutableStateOf<Frequency?>(null) }
     Section("Radio", Icons.Outlined.Radio) {
         if (d.frequencies.isEmpty()) {
             Text("Brak częstotliwości w bazie. W VATSIM i IVAO sprawdź aktywnych kontrolerów na mapie sieci.", style = MaterialTheme.typography.bodyMedium, color = c.ink2)
         }
         d.frequencies.forEach { f ->
+            Box {
             Row(
-                Modifier.fillMaxWidth().clickable { clip.setText(AnnotatedString("%.3f".format(Locale.US, f.mhz))) }.padding(vertical = 9.dp),
+                Modifier.fillMaxWidth().clickable {
+                    // Z symulatorem: ustaw w radiu; bez niego: skopiuj
+                    if (connected) menuFor = f else clip.setText(AnnotatedString("%.3f".format(Locale.US, f.mhz)))
+                }.padding(vertical = 9.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(freqIcon(f), null, tint = c.ink2, modifier = Modifier.size(18.dp))
@@ -583,9 +592,26 @@ private fun RadioPart(d: AirportDetail) {
                 }
                 Text("%.3f".format(Locale.US, f.mhz), fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = c.blue)
             }
+            DropdownMenu(expanded = menuFor == f, onDismissRequest = { menuFor = null }) {
+                val hz = com.freemetar.app.domain.ControlMath.comHz(f.mhz)
+                listOf(
+                    "COM1 zapasowa" to "COM_STBY_RADIO_SET_HZ", "COM1 aktywna" to "COM_RADIO_SET_HZ",
+                    "COM2 zapasowa" to "COM2_STBY_RADIO_SET_HZ", "COM2 aktywna" to "COM2_RADIO_SET_HZ",
+                ).forEach { (label, event) ->
+                    DropdownMenuItem(text = { Text("Ustaw jako $label") }, enabled = hz != null, onClick = {
+                        hz?.let { vm.link.command(event, it.toDouble()) }
+                        menuFor = null
+                    })
+                }
+                DropdownMenuItem(text = { Text("Kopiuj") }, onClick = { clip.setText(AnnotatedString("%.3f".format(Locale.US, f.mhz))); menuFor = null })
+            }
+            }
             Rule()
         }
-        if (d.frequencies.isNotEmpty()) Text("Dotknij częstotliwości, aby ją skopiować.", style = MaterialTheme.typography.bodySmall, color = c.ink2, modifier = Modifier.padding(top = 8.dp))
+        if (d.frequencies.isNotEmpty()) Text(
+            if (connected) "Dotknij częstotliwości, aby ustawić ją w radiu samolotu." else "Dotknij częstotliwości, aby ją skopiować.",
+            style = MaterialTheme.typography.bodySmall, color = c.ink2, modifier = Modifier.padding(top = 8.dp),
+        )
         if (d.navaids.isNotEmpty()) {
             Text("Radiolatarnie do 40 NM", style = MaterialTheme.typography.titleMedium, color = c.ink, modifier = Modifier.padding(top = 18.dp, bottom = 4.dp))
             d.navaids.forEach { (n, dist) ->

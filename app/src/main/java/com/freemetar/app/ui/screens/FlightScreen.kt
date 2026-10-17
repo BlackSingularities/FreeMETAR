@@ -107,7 +107,7 @@ fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> U
             Text("Lot", style = MaterialTheme.typography.headlineLarge, color = c.ink, modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp))
 
             val live by vm.flightState.collectAsStateWithLifecycle()
-            live?.let { LiveSection(it, active) }
+            live?.let { LiveSection(it, active, vm.link) }
             ConnectionSection(vm)
 
             if (active != null) ActivePlan(active, briefing, onOpen, onShowMap) { vm.refreshRouteBriefing() }
