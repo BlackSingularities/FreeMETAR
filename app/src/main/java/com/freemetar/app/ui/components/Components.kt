@@ -1,5 +1,7 @@
 package com.freemetar.app.ui.components
 
+import com.freemetar.app.domain.loc
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
@@ -296,7 +298,7 @@ fun InteractiveMetar(raw: String, modifier: Modifier = Modifier, fontSize: Int =
                 if (cur != null) {
                     Text(cur.token, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = c.ink)
                     Spacer(Modifier.size(2.dp))
-                    Text(cur.text.takeIf { it != "—" && it.isNotBlank() } ?: "Grupa niestandardowa — bez objaśnienia.", style = MaterialTheme.typography.bodyMedium, color = c.ink)
+                    Text(cur.text.takeIf { it != "—" && it.isNotBlank() } ?: loc("Grupa niestandardowa — bez objaśnienia.", "Non-standard group — no explanation."), style = MaterialTheme.typography.bodyMedium, color = c.ink)
                 }
             }
         }
@@ -390,7 +392,7 @@ fun TrendChart(label: String, values: List<Double>, unit: String, color: Color, 
         }
         Spacer(Modifier.size(6.dp))
         if (values.size < 2) {
-            Text("Za mało obserwacji", style = MaterialTheme.typography.bodySmall, color = c.ink2)
+            Text(loc("Za mało obserwacji", "Not enough observations"), style = MaterialTheme.typography.bodySmall, color = c.ink2)
             return@Column
         }
         Canvas(Modifier.fillMaxWidth().height(64.dp)) {

@@ -1,5 +1,7 @@
 package com.freemetar.app.data
 
+import com.freemetar.app.domain.loc
+
 /** Lotnisko z bazy OurAirports. */
 data class Airport(
     val ident: String,
@@ -18,12 +20,12 @@ data class Airport(
 ) {
     val typeLabel: String
         get() = when (type) {
-            "large_airport" -> "Duże lotnisko"
-            "medium_airport" -> "Średnie lotnisko"
-            "small_airport" -> "Małe lotnisko"
-            "seaplane_base" -> "Baza hydroplanów"
+            "large_airport" -> loc("Duże lotnisko", "Large airport")
+            "medium_airport" -> loc("Średnie lotnisko", "Medium airport")
+            "small_airport" -> loc("Małe lotnisko", "Small airport")
+            "seaplane_base" -> loc("Baza hydroplanów", "Seaplane base")
             "heliport" -> "Heliport"
-            "balloonport" -> "Balonowisko"
+            "balloonport" -> loc("Balonowisko", "Balloon port")
             else -> type
         }
 }
@@ -52,13 +54,13 @@ data class Runway(
         get() {
             val s = surface.uppercase()
             return when {
-                s.startsWith("ASP") || s.contains("ASPH") -> "Asfalt"
-                s.startsWith("CON") -> "Beton"
-                s.startsWith("GRS") || s.contains("GRASS") || s.startsWith("TURF") -> "Trawa"
-                s.startsWith("GRV") || s.contains("GRAVEL") -> "Żwir"
-                s.startsWith("DIRT") || s.startsWith("CLAY") -> "Grunt"
-                s.startsWith("WAT") -> "Woda"
-                s.startsWith("SNOW") || s.startsWith("ICE") -> "Śnieg/lód"
+                s.startsWith("ASP") || s.contains("ASPH") -> loc("Asfalt", "Asphalt")
+                s.startsWith("CON") -> loc("Beton", "Concrete")
+                s.startsWith("GRS") || s.contains("GRASS") || s.startsWith("TURF") -> loc("Trawa", "Grass")
+                s.startsWith("GRV") || s.contains("GRAVEL") -> loc("Żwir", "Gravel")
+                s.startsWith("DIRT") || s.startsWith("CLAY") -> loc("Grunt", "Dirt")
+                s.startsWith("WAT") -> loc("Woda", "Water")
+                s.startsWith("SNOW") || s.startsWith("ICE") -> loc("Śnieg/lód", "Snow/ice")
                 s.isBlank() -> "—"
                 else -> surface
             }
@@ -69,13 +71,13 @@ data class Frequency(val type: String, val description: String, val mhz: Double)
     val label: String
         get() = when (type.uppercase()) {
             "ATIS" -> "ATIS"
-            "TWR" -> "Wieża"
-            "GND" -> "Ziemia"
-            "APP" -> "Zbliżanie"
-            "DEP" -> "Odloty"
-            "CTR", "CNTR" -> "Kontrola obszaru"
+            "TWR" -> loc("Wieża", "Tower")
+            "GND" -> loc("Ziemia", "Ground")
+            "APP" -> loc("Zbliżanie", "Approach")
+            "DEP" -> loc("Odloty", "Departure")
+            "CTR", "CNTR" -> loc("Kontrola obszaru", "Area control")
             "DEL", "CLD" -> "Delivery"
-            "AFIS", "INFO" -> "Informacja"
+            "AFIS", "INFO" -> loc("Informacja", "Information")
             "UNIC", "CTAF" -> "UNICOM/CTAF"
             "RDO" -> "Radio"
             else -> type

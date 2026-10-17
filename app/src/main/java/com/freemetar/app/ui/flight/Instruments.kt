@@ -1,5 +1,7 @@
 package com.freemetar.app.ui.flight
 
+import com.freemetar.app.domain.loc
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -59,7 +61,7 @@ fun Pfd(s: FlightState, modifier: Modifier = Modifier) {
     val c = Fm.c
     val ias = s.speed.iasKt ?: 0.0
     val alt = s.position.altIndFt ?: s.position.altMslFt ?: 0.0
-    val desc = "PFD: prędkość ${ias.roundToInt()} węzłów, wysokość ${alt.roundToInt()} stóp, kurs ${(s.attitude.hdgMagDeg ?: 0.0).roundToInt()}"
+    val desc = loc("PFD: prędkość ${ias.roundToInt()} węzłów, wysokość ${alt.roundToInt()} stóp, kurs ${(s.attitude.hdgMagDeg ?: 0.0).roundToInt()}", "PFD: speed ${ias.roundToInt()} knots, altitude ${alt.roundToInt()} feet, heading ${(s.attitude.hdgMagDeg ?: 0.0).roundToInt()}")
     Canvas(modifier.fillMaxWidth().aspectRatio(1.12f).semantics { contentDescription = desc }) {
         val w = size.width; val h = size.height
         val fmaH = h * 0.085f
@@ -216,7 +218,7 @@ private fun DrawScope.readout(m: TextMeasurer, r: Rect, text: String, color: Col
 fun NavDisplay(s: FlightState, route: List<RoutePoint>, rangeNm: Int, modifier: Modifier = Modifier) {
     val m = rememberTextMeasurer()
     val c = Fm.c
-    Canvas(modifier.fillMaxWidth().aspectRatio(1f).semantics { contentDescription = "Mapa nawigacyjna, zasięg $rangeNm mil" }) {
+    Canvas(modifier.fillMaxWidth().aspectRatio(1f).semantics { contentDescription = loc("Mapa nawigacyjna, zasięg $rangeNm mil", "Navigation display, range $rangeNm miles") }) {
         val w = size.width; val h = size.height
         val ac = Offset(w / 2, h * 0.78f)
         val radius = h * 0.7f

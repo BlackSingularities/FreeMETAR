@@ -1,36 +1,43 @@
 # OpenAirBook
 
-Aplikacja na Androida dla wirtualnych pilotów (MSFS, X-Plane, VATSIM, IVAO). Pokazuje pogodę i dane lotnisk wyłącznie z darmowych, otwartych źródeł — bez kont, kluczy API i reklam.
+Aplikacja na Androida dla wirtualnych pilotów (MSFS, X-Plane, VATSIM, IVAO). Pogoda, dane lotnisk, plan lotu i kokpit na telefonie — wyłącznie z darmowych, otwartych źródeł, bez kont, kluczy API i reklam. Interfejs po polsku i angielsku.
+
+**Pomysł i wykonanie: [redzikowski.com](https://redzikowski.com)**
+
+*English: free aviation weather, airport data, flight planning and a phone cockpit for flight-sim pilots. Free and open data only. Polish and English UI (follows the system language or can be set manually).*
 
 ## Funkcje
 
-- **Briefing lotniska** czytany z góry na dół: pogoda, prognoza, pasy, radio, lotnisko, okolica, z paskiem skoków do rozdziałów
-- **Interaktywny METAR**: dotknij dowolnej grupy (np. `BKN025CB`), a pod spodem pojawi się jej znaczenie po polsku
-- **ATIS na głos**: komunikat w stylu ATIS złożony z METAR, czytany po angielsku przez syntezator mowy telefonu
-- **TAF podzielony na okresy** z kategorią lotu dla każdego (VFR/MVFR/IFR/LIFR)
-- Ostrzeżenia: burza i CB, oblodzenie, silne porywy, ryzyko mgły; oznaczenie nieaktualnych depesz
-- Pas wg wiatru, składowe czołowe i boczne dla każdego kierunku, schemat lotniska ze strzałką wiatru
-- Częstotliwości (dotknij, aby skopiować), radiolatarnie do 40 NM, wschód/zachód słońca i zmierzch cywilny
-- Trendy temperatury, wiatru i QNH z 12 godzin, wcześniejsze depesze
-- **Paski lotu** na ekranie startowym jak na stanowisku kontrolera; ulubione z układaniem kolejności
-- **W pobliżu Ciebie**: najbliższe lotniska z pogodą wg przybliżonej lokalizacji (bez usług Google)
-- Planowanie: trasa z pogodą na obu końcach, kalkulator wiatru, wysokość gęstościowa i TAS, zniżanie (TOD), paliwo, jednostki, dekoder METAR/TAF, ściąga radiowa
-- Motyw dzienny (kolory map VFR) i nocny (kokpit), układ na telefon i tablet, automatyczne aktualizacje z GitHuba
+- **Briefing lotniska**: pogoda, interaktywny METAR (dotknij grupy, by zobaczyć jej znaczenie), TAF w okresach z kategorią lotu, SIGMET/PIREP, wiatry na wysokościach, pasy ze składowymi wiatru, częstotliwości i ILS, okolica
+- **ATIS na głos** z bieżącego METAR
+- **Mapa** (MapLibre + OpenFreeMap): lotniska z kategorią lotu, trasa, zagrożenia
+- **Plan lotu**: import z SimBrief, wpisana trasa lub plik; edytor z wyborem SID/STAR/podejścia (dane z MSFS przez Link), eksport i import tras
+- **Charty FAA** (USA) z przeglądarką PDF
+- **Kokpit** po połączeniu z MSFS 2024 przez OpenAirBook Link: PFD zawsze na widoku, ND, autopilot zależny od samolotu (Airbus FCU, Boeing MCP, Garmin, GA), radio, systemy, silniki
+- **Sterowanie**: drążek na ekranie, przechylanie telefonu albo fizyczny kontroler/joystick Bluetooth lub USB (osie i przyciski przekazywane do symulatora)
+- **Historia lotów** z torem, wykresami i oceną lądowania (prędkość pionowa, przeciążenie, oś pasa)
+- Narzędzia: kalkulator wiatru, wysokość gęstościowa, zniżanie, paliwo, jednostki, dekoder METAR/TAF, ściąga radiowa
+- Motyw AMOLED, grafitowy i jasny; układ na telefon i tablet; automatyczne aktualizacje z GitHuba
 
 ## Źródła danych
 
 | Dane | Źródło | Licencja |
 |---|---|---|
-| METAR, TAF | [aviationweather.gov Data API](https://aviationweather.gov/data/api/) | domena publiczna (NOAA) |
+| METAR, TAF, SIGMET, PIREP | [aviationweather.gov Data API](https://aviationweather.gov/data/api/) | domena publiczna (NOAA) |
 | Lotniska, pasy, częstotliwości, navaidy | [OurAirports](https://ourairports.com/data/) | domena publiczna |
+| Wiatr i temperatura na wysokościach | [Open-Meteo](https://open-meteo.com/) | CC BY 4.0 |
+| Podkład mapy | [OpenFreeMap](https://openfreemap.org/) / OpenStreetMap | ODbL |
+| Charty (USA) | [FAA d-TPP](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/dtpp/) | domena publiczna |
+| Plan lotu | [SimBrief](https://www.simbrief.com/) (publiczny eksport planu) | — |
+| Procedury, ILS, stan lotu | baza i SimConnect Twojego MSFS przez OpenAirBook Link | — |
 
-Baza OurAirports (~15 MB) pobiera się raz przy pierwszym uruchomieniu i odświeża co 30 dni.
+Baza OurAirports pobiera się raz przy pierwszym uruchomieniu i odświeża co 30 dni.
 
 > Tylko do symulacji lotów. Nie używaj do rzeczywistej nawigacji.
 
 ## Budowanie
 
-Kotlin + Jetpack Compose + Material 3, minSdk 26.
+Kotlin + Jetpack Compose + Material 3, minSdk 26. Lokalnie: `tools/build-local.ps1` (APK, testy JVM, OpenAirBook Link).
 
 ```bash
 gradle :app:assembleRelease

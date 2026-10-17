@@ -1,5 +1,7 @@
 package com.freemetar.app.data
 
+import com.freemetar.app.domain.loc
+
 import android.content.Context
 import android.net.Uri
 import com.freemetar.app.domain.Geo
@@ -46,7 +48,7 @@ data class ProcSelection(
     val label: String? = null,      // np. „ILS 29”
     val points: List<RoutePoint> = emptyList(),
 ) {
-    val display: String get() = listOfNotNull(label ?: name, transition?.let { "przez $it" }).joinToString(" ")
+    val display: String get() = listOfNotNull(label ?: name, transition?.let { loc("przez $it", "via $it") }).joinToString(" ")
 }
 
 @Serializable
@@ -162,7 +164,7 @@ object RouteImport {
             val el = RouteJson.json.parseToJsonElement(t).jsonObject
             if (el["app"] != null && el["routes"] != null) return RouteJson.json.decodeFromString(RouteExport.serializer(), t).routes
             if (el["origin"] != null && el["destination"] != null) return listOf(SimBrief.parse(t))
-            error("Nieznany format pliku JSON")
+            error(loc("Nieznany format pliku JSON", "Unknown JSON file format"))
         }
         return listOf(fromText(t, null, resolver))
     }
@@ -173,7 +175,7 @@ object RouteImport {
      */
     fun fromText(text: String, cruiseFl: Int?, resolver: FixResolver): SavedRoute {
         val tokens = text.uppercase().split(Regex("[\\s,]+")).filter { it.isNotBlank() && it != "DCT" }
-        require(tokens.size >= 2) { "Podaj co najmniej lotnisko startowe i docelowe, np. „EPWA EPGD”." }
+        require(tokens.size >= 2) { loc("Podaj co najmniej lotnisko startowe i docelowe, np. „EPWA EPGD”.", "Enter at least the departure and destination airports, e.g. \"EPWA EPGD\".") }
         var fl = cruiseFl
         val pts = ArrayList<RoutePoint>()
         var airway: String? = null
@@ -221,8 +223,8 @@ object SimBrief {
     fun parse(body: String): SavedRoute {
         val root = RouteJson.json.parseToJsonElement(body).jsonObject
         root.obj("fetch")?.str("status")?.let { st -> if (!st.equals("Success", true)) error("SimBrief: $st") }
-        val origin = root.obj("origin") ?: error("SimBrief: brak lotniska startowego w planie")
-        val dest = root.obj("destination") ?: error("SimBrief: brak lotniska docelowego w planie")
+        val origin = root.obj("origin") ?: error(loc("SimBrief: brak lotniska startowego w planie", "SimBrief: the plan has no departure airport"))
+        val dest = root.obj("destination") ?: error(loc("SimBrief: brak lotniska docelowego w planie", "SimBrief: the plan has no destination airport"))
         val general = root.obj("general")
         val alternates = root["alternate"].asList().mapNotNull { it.str("icao_code") }
         val fixes = root.obj("navlog")?.get("fix").asList()

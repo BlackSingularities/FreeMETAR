@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Fragment d-TPP_Metafile.xml cyklu 2610 (aeronav.faa.gov/d-tpp/2610/xml_data/), skrócony do testów -->
+<digital_tpp cycle="2610" from_edate="0901Z  10/01/26" to_edate="0901Z  10/29/26">
+  <state_code ID="AK" state_fullname="ALASKA">
+    <city_name ID="JUNEAU" volume="AK-1">
+      <airport_name ID="JUNEAU INTL" military="N" apt_ident="JNU" icao_ident="PAJN" alnum="1191">
+        <record>
+          <chartseq>10100</chartseq>
+          <chart_code>MIN</chart_code>
+          <chart_name>TAKEOFF MINIMUMS</chart_name>
+          <useraction></useraction>
+          <pdf_name>AKTO.PDF</pdf_name>
+          <cn_flg>N</cn_flg>
+          <amdtnum></amdtnum>
+          <amdtdate></amdtdate>
+        </record>
+        <record>
+          <chartseq>53525</chartseq>
+          <chart_code>IAP</chart_code>
+          <chart_name>RNAV (GPS) Z RWY 08</chart_name>
+          <useraction></useraction>
+          <pdf_name>01191RZ8.PDF</pdf_name>
+          <cn_flg>N</cn_flg>
+          <amdtnum>3</amdtnum>
+          <amdtdate>06/12/2025</amdtdate>
+        </record>
+        <record>
+          <chartseq>70000</chartseq>
+          <chart_code>APD</chart_code>
+          <chart_name>AIRPORT DIAGRAM</chart_name>
+          <useraction></useraction>
+          <pdf_name>01191AD.PDF</pdf_name>
+          <cn_flg>N</cn_flg>
+          <amdtnum></amdtnum>
+          <amdtdate></amdtdate>
+        </record>
+        <record>
+          <chartseq>80000</chartseq>
+          <chart_code>ODP</chart_code>
+          <chart_name>JUNEAU SEVEN (OBSTACLE)</chart_name>
+          <useraction></useraction>
+          <pdf_name>01191JUNEAU.PDF</pdf_name>
+          <cn_flg>N</cn_flg>
+          <amdtnum></amdtnum>
+          <amdtdate></amdtdate>
+        </record>
+      </airport_name>
+    </city_name>
+  </state_code>
+  <state_code ID="AL" state_fullname="ALABAMA">
+    <city_name ID="ANDALUSIA" volume="SE-4">
+      <airport_name ID="SOUTH ALABAMA RGNL AT BILL BENTON FLD" military="N" apt_ident="79J" icao_ident="" alnum="6524">
+        <record>
+          <chartseq>53525</chartseq>
+          <chart_code>IAP</chart_code>
+          <chart_name>RNAV (GPS) RWY 11</chart_name>
+          <useraction></useraction>
+          <pdf_name>06524R11.PDF</pdf_name>
+          <cn_flg>N</cn_flg>
+          <amdtnum></amdtnum>
+          <amdtdate></amdtdate>
+        </record>
+        <record>
+          <chartseq>53525</chartseq>
+          <chart_code>IAP</chart_code>
+          <chart_name>RNAV (GPS) RWY 29</chart_name>
+          <useraction>D</useraction>
+          <pdf_name>DELETED_JOB.PDF</pdf_name>
+          <cn_flg>Y</cn_flg>
+          <amdtnum></amdtnum>
+          <amdtdate></amdtdate>
+        </record>
+      </airport_name>
+    </city_name>
+  </state_code>
+  <state_code ID="NY" state_fullname="NEW YORK">
+    <city_name ID="NEW YORK" volume="NE-2">
+      <airport_name ID="JOHN F KENNEDY INTL" military="N" apt_ident="JFK" icao_ident="KJFK" alnum="610">
+        <record>
+          <chartseq>10100</chartseq>
+          <chart_code>MIN</chart_code>
+          <chart_name>TAKEOFF MINIMUMS</chart_name>
+          <useraction></useraction>
+          <pdf_name>NE2TO.PDF</pdf_name>
+          <cn_flg>N</cn_flg>
+          <amdtnum></amdtnum>
+          <amdtdate></amdtdate>
+        </record>
+        <record>
+          <chartseq>10600</chartseq>
+          <chart_code>LAH</chart_code>
+          <chart_name>LAHSO</chart_name>
+          <useraction></useraction>
+          <pdf_name>NE2LAHSO.PDF</pdf_name>
+          <cn_flg>N</cn_flg>
+          <amdtnum></amdtnum>
+          <amdtdate></amdtdate>
+        </record>
+        <record>
+          <chartseq>10800</chartseq>
+          <chart_code>HOT</chart_code>
+          <chart_name>HOT SPOT</chart_name>
+          <useraction></useraction>
+          <pdf_name>NE2HOTSPOT.PDF</pdf_name>
+          <cn_flg>N</cn_flg>
+          <amdtnum></amdtnum>
+          <amdtdate></amdtdate>
+        </record>
+        <record>
+          <chartseq>20000</chartseq>
+          <chart_code>STR</chart_code>
+          <chart_name>CAMRN FIVE</chart_name>
+          <useraction></useraction>
+          <pdf_name>00610CAMRN.PDF</pdf_name>
+          <cn_flg>N</cn_flg>
+          <amdtnum></amdtnum>
+          <amdtdate></amdtdate>
+        </record>
+        <record>
+          <chartseq>50750</chartseq>
+          <chart_code>IAP</chart_code>
+          <chart_name>ILS OR LOC RWY 04L</chart_name>
+          <useraction>C</useraction>
+          <pdf_name>00610IL4L.PDF</pdf_name>
+          <cn_flg>Y</cn_flg>
+          <amdtnum>5</amdtnum>
+          <amdtdate>10/01/2026</amdtdate>
+        </record>
+        <record>
+          <chartseq>70000</chartseq>
+          <chart_code>APD</chart_code>
+          <chart_name>AIRPORT DIAGRAM</chart_name>
+          <useraction></useraction>
+          <pdf_name>00610AD.PDF</pdf_name>
+          <cn_flg>N</cn_flg>
+          <amdtnum></amdtnum>
+          <amdtdate></amdtdate>
+        </record>
+        <record>
+          <chartseq>80000</chartseq>
+          <chart_code>DP</chart_code>
+          <chart_name>KENNEDY FIVE</chart_name>
+          <useraction></useraction>
+          <pdf_name>00610KENNEDY.PDF</pdf_name>
+          <cn_flg>N</cn_flg>
+          <amdtnum></amdtnum>
+          <amdtdate></amdtdate>
+        </record>
+        <record>
+          <chartseq>80000</chartseq>
+          <chart_code>DP</chart_code>
+          <chart_name>KENNEDY FIVE, CONT.1</chart_name>
+          <useraction></useraction>
+          <pdf_name>00610KENNEDY_C.PDF</pdf_name>
+          <cn_flg>N</cn_flg>
+          <amdtnum></amdtnum>
+          <amdtdate></amdtdate>
+        </record>
+      </airport_name>
+    </city_name>
+  </state_code>
+</digital_tpp>

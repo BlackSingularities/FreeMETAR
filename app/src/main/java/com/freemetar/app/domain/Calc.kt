@@ -80,7 +80,7 @@ object Geo {
 
 data class WindComponents(val headwind: Double, val crosswind: Double) {
     /** Dodatni = wiatr z prawej. */
-    val crossSide get() = if (crosswind >= 0) "z prawej" else "z lewej"
+    val crossSide get() = if (crosswind >= 0) loc("z prawej", "from the right") else loc("z lewej", "from the left")
 }
 
 data class RunwayWind(val runwayEnd: String, val heading: Double, val steady: WindComponents, val gust: WindComponents?)
@@ -153,9 +153,9 @@ object Atmo {
     fun carbIceRisk(tC: Double, dpC: Double): String {
         val spread = tC - dpC
         return when {
-            tC in -10.0..30.0 && spread <= 5 -> "Wysokie"
-            tC in -10.0..30.0 && spread <= 12 -> "Umiarkowane"
-            else -> "Niskie"
+            tC in -10.0..30.0 && spread <= 5 -> loc("Wysokie", "High")
+            tC in -10.0..30.0 && spread <= 12 -> loc("Umiarkowane", "Moderate")
+            else -> loc("Niskie", "Low")
         }
     }
 

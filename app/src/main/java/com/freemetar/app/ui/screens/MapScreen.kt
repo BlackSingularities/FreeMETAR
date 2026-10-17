@@ -1,5 +1,7 @@
 package com.freemetar.app.ui.screens
 
+import com.freemetar.app.domain.loc
+
 import android.graphics.PointF
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -261,7 +263,7 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
 
         Row(Modifier.statusBarsPadding().padding(12.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MapChip("SIGMET", showSigmets, Icons.Outlined.WarningAmber) { showSigmets = !showSigmets }
-            if (live != null) MapChip("Śledź samolot", follow, Icons.Outlined.MyLocation) { follow = !follow }
+            if (live != null) MapChip(loc("Śledź samolot", "Follow aircraft"), follow, Icons.Outlined.MyLocation) { follow = !follow }
             Spacer(Modifier.weight(1f))
             Legend()
         }
@@ -277,11 +279,11 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
                     Spacer(Modifier.width(10.dp))
                     CategoryTag(m.flightCategory)
                     Spacer(Modifier.weight(1f))
-                    Icon(Icons.Outlined.Close, "Zamknij", tint = c.ink2, modifier = Modifier.size(22.dp).clickable { picked = null })
+                    Icon(Icons.Outlined.Close, loc("Zamknij", "Close"), tint = c.ink2, modifier = Modifier.size(22.dp).clickable { picked = null })
                 }
                 Text(m.name.orEmpty(), style = MaterialTheme.typography.bodySmall, color = c.ink2)
                 Text(m.raw, fontFamily = Mono, fontSize = 12.sp, color = c.accent, modifier = Modifier.padding(top = 6.dp))
-                Text("Dotknij, aby otworzyć briefing", style = MaterialTheme.typography.labelSmall, color = c.ink2, modifier = Modifier.padding(top = 6.dp))
+                Text(loc("Dotknij, aby otworzyć briefing", "Tap to open the briefing"), style = MaterialTheme.typography.labelSmall, color = c.ink2, modifier = Modifier.padding(top = 6.dp))
             }
         }
     }

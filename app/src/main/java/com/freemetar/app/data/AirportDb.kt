@@ -1,5 +1,7 @@
 package com.freemetar.app.data
 
+import com.freemetar.app.domain.loc
+
 import android.content.Context
 import com.freemetar.app.domain.Geo
 import kotlinx.coroutines.Dispatchers
@@ -37,7 +39,7 @@ class AirportDb(context: Context) {
             val f = File(dir, name)
             val stale = !f.exists() || System.currentTimeMillis() - f.lastModified() > maxAge
             if (force || stale) {
-                onProgress("Pobieranie $name…")
+                onProgress(loc("Pobieranie $name…", "Downloading $name…"))
                 try {
                     Http.download("$BASE/$name", f)
                 } catch (e: Exception) {

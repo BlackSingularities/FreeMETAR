@@ -1,5 +1,7 @@
 package com.freemetar.app.ui.components
 
+import com.freemetar.app.domain.loc
+
 import com.freemetar.app.ui.theme.Fm
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -58,10 +60,10 @@ fun UpdateDialog(vm: MainViewModel) {
     AlertDialog(
         onDismissRequest = { if (state !is UpdateState.Downloading) vm.dismissUpdatePrompt() },
         icon = { Icon(Icons.Outlined.SystemUpdate, null) },
-        title = { Text("Nowa wersja ${info.versionName}") },
+        title = { Text(loc("Nowa wersja ${info.versionName}", "New version ${info.versionName}")) },
         text = {
             Column {
-                Text("Masz ${BuildConfig.VERSION_NAME}. Aktualizacja pobierze się z GitHuba${sizeMb(info.sizeBytes)}.", color = Fm.c.ink2, fontSize = 13.sp)
+                Text(loc("Masz ${BuildConfig.VERSION_NAME}. Aktualizacja pobierze się z GitHuba${sizeMb(info.sizeBytes)}.", "You have ${BuildConfig.VERSION_NAME}. The update will download from GitHub${sizeMb(info.sizeBytes)}."), color = Fm.c.ink2, fontSize = 13.sp)
                 if (info.notes.isNotBlank()) {
                     Spacer(Modifier.size(10.dp))
                     Column(Modifier.heightIn(max = 220.dp).verticalScroll(rememberScrollState())) {
@@ -72,11 +74,11 @@ fun UpdateDialog(vm: MainViewModel) {
                     is UpdateState.Downloading -> {
                         Spacer(Modifier.size(12.dp))
                         LinearProgressIndicator(progress = { s.progress }, modifier = Modifier.fillMaxWidth())
-                        Text("Pobieranie… ${(s.progress * 100).toInt()}%", color = Fm.c.ink2, fontSize = 12.sp)
+                        Text(loc("Pobieranie… ${(s.progress * 100).toInt()}%", "Downloading… ${(s.progress * 100).toInt()}%"), color = Fm.c.ink2, fontSize = 12.sp)
                     }
                     is UpdateState.Ready -> if (!Updater.canInstall(ctx)) {
                         Spacer(Modifier.size(10.dp))
-                        Text("Zezwól OpenAirBook na instalowanie aplikacji, wróć i naciśnij „Zainstaluj” jeszcze raz.", color = Fm.c.caution, fontSize = 12.sp)
+                        Text(loc("Zezwól OpenAirBook na instalowanie aplikacji, wróć i naciśnij „Zainstaluj” jeszcze raz.", "Allow OpenAirBook to install apps, come back and tap Install again."), color = Fm.c.caution, fontSize = 12.sp)
                     }
                     else -> {}
                 }
@@ -84,13 +86,13 @@ fun UpdateDialog(vm: MainViewModel) {
         },
         confirmButton = {
             when (val s = state) {
-                is UpdateState.Available -> Button({ vm.downloadUpdate(s.info) }) { Text("Pobierz") }
-                is UpdateState.Ready -> Button({ install(s.file) }) { Text("Zainstaluj") }
+                is UpdateState.Available -> Button({ vm.downloadUpdate(s.info) }) { Text(loc("Pobierz", "Download")) }
+                is UpdateState.Ready -> Button({ install(s.file) }) { Text(loc("Zainstaluj", "Install")) }
                 else -> {}
             }
         },
         dismissButton = {
-            if (state !is UpdateState.Downloading) TextButton({ vm.dismissUpdatePrompt() }) { Text("Później") }
+            if (state !is UpdateState.Downloading) TextButton({ vm.dismissUpdatePrompt() }) { Text(loc("Później", "Later")) }
         },
     )
 }
@@ -100,28 +102,28 @@ fun UpdateDialog(vm: MainViewModel) {
 fun UpdateSection(vm: MainViewModel) {
     val state by vm.update.collectAsStateWithLifecycle()
     val install = rememberInstaller()
-    SectionCard("Aktualizacje", icon = Icons.Outlined.SystemUpdate) {
-        Text("Zainstalowana wersja: ${BuildConfig.VERSION_NAME}", color = Fm.c.ink)
+    SectionCard(loc("Aktualizacje", "Updates"), icon = Icons.Outlined.SystemUpdate) {
+        Text(loc("Zainstalowana wersja: ${BuildConfig.VERSION_NAME}", "Installed version: ${BuildConfig.VERSION_NAME}"), color = Fm.c.ink)
         Spacer(Modifier.size(6.dp))
         when (val s = state) {
-            UpdateState.Idle -> Text("Sprawdzane automatycznie przy starcie.", color = Fm.c.ink2, fontSize = 13.sp)
-            UpdateState.Checking -> Text("Sprawdzanie…", color = Fm.c.ink2, fontSize = 13.sp)
-            UpdateState.UpToDate -> Text("Masz najnowszą wersję.", color = Fm.c.vfr, fontSize = 13.sp)
+            UpdateState.Idle -> Text(loc("Sprawdzane automatycznie przy starcie.", "Checked automatically at startup."), color = Fm.c.ink2, fontSize = 13.sp)
+            UpdateState.Checking -> Text(loc("Sprawdzanie…", "Checking…"), color = Fm.c.ink2, fontSize = 13.sp)
+            UpdateState.UpToDate -> Text(loc("Masz najnowszą wersję.", "You have the latest version."), color = Fm.c.vfr, fontSize = 13.sp)
             is UpdateState.Error -> Text(s.message, color = Fm.c.ifr, fontSize = 13.sp)
-            is UpdateState.Available -> Text("Dostępna wersja ${s.info.versionName}${sizeMb(s.info.sizeBytes)}", color = Fm.c.caution, fontSize = 13.sp)
+            is UpdateState.Available -> Text(loc("Dostępna wersja ${s.info.versionName}${sizeMb(s.info.sizeBytes)}", "Version ${s.info.versionName} available${sizeMb(s.info.sizeBytes)}"), color = Fm.c.caution, fontSize = 13.sp)
             is UpdateState.Downloading -> {
                 LinearProgressIndicator(progress = { s.progress }, modifier = Modifier.fillMaxWidth())
-                Text("Pobieranie ${s.info.versionName}… ${(s.progress * 100).toInt()}%", color = Fm.c.ink2, fontSize = 12.sp)
+                Text(loc("Pobieranie ${s.info.versionName}… ${(s.progress * 100).toInt()}%", "Downloading ${s.info.versionName}… ${(s.progress * 100).toInt()}%"), color = Fm.c.ink2, fontSize = 12.sp)
             }
-            is UpdateState.Ready -> Text("Wersja ${s.info.versionName} pobrana — gotowa do instalacji.", color = Fm.c.vfr, fontSize = 13.sp)
+            is UpdateState.Ready -> Text(loc("Wersja ${s.info.versionName} pobrana — gotowa do instalacji.", "Version ${s.info.versionName} downloaded — ready to install."), color = Fm.c.vfr, fontSize = 13.sp)
         }
         Spacer(Modifier.size(10.dp))
         Row {
             when (val s = state) {
-                is UpdateState.Available -> Button({ vm.downloadUpdate(s.info) }) { Text("Pobierz i zainstaluj") }
-                is UpdateState.Ready -> Button({ install(s.file) }) { Text("Zainstaluj") }
+                is UpdateState.Available -> Button({ vm.downloadUpdate(s.info) }) { Text(loc("Pobierz i zainstaluj", "Download and install")) }
+                is UpdateState.Ready -> Button({ install(s.file) }) { Text(loc("Zainstaluj", "Install")) }
                 is UpdateState.Downloading, UpdateState.Checking -> {}
-                else -> OutlinedButton({ vm.checkForUpdate() }) { Text("Sprawdź teraz") }
+                else -> OutlinedButton({ vm.checkForUpdate() }) { Text(loc("Sprawdź teraz", "Check now")) }
             }
         }
     }

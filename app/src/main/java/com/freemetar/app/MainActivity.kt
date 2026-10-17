@@ -1,5 +1,7 @@
 package com.freemetar.app
 
+import com.freemetar.app.domain.loc
+
 import android.graphics.Color as AndroidColor
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -73,12 +75,13 @@ import com.freemetar.app.ui.theme.OpenAirBookTheme
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector, val selectedIcon: ImageVector)
 
-private val tabs = listOf(
-    Tab("home", "Lotniska", Icons.Outlined.LocalAirport, Icons.Filled.LocalAirport),
-    Tab("map", "Mapa", Icons.Outlined.Map, Icons.Filled.Map),
-    Tab("flight", "Lot", Icons.Outlined.FlightTakeoff, Icons.Filled.FlightTakeoff),
-    Tab("tools", "Plan", Icons.Outlined.Explore, Icons.Filled.Explore),
-    Tab("settings", "Więcej", Icons.Outlined.Tune, Icons.Filled.Tune),
+// Getter: etykiety w bieżącym języku przy każdym rysowaniu paska
+private val tabs get() = listOf(
+    Tab("home", loc("Lotniska", "Airports"), Icons.Outlined.LocalAirport, Icons.Filled.LocalAirport),
+    Tab("map", loc("Mapa", "Map"), Icons.Outlined.Map, Icons.Filled.Map),
+    Tab("flight", loc("Lot", "Flight"), Icons.Outlined.FlightTakeoff, Icons.Filled.FlightTakeoff),
+    Tab("tools", loc("Plan", "Plan"), Icons.Outlined.Explore, Icons.Filled.Explore),
+    Tab("settings", loc("Więcej", "More"), Icons.Outlined.Tune, Icons.Filled.Tune),
 )
 
 private fun NavHostController.goTab(route: String) = navigate(route) {
@@ -88,12 +91,23 @@ private fun NavHostController.goTab(route: String) = navigate(route) {
 }
 
 class MainActivity : ComponentActivity() {
+    // Kontroler (Bluetooth/USB): osie i przyciski trafiają do Gamepad; panel sterowania decyduje, czy je wysłać
+    override fun onGenericMotionEvent(event: android.view.MotionEvent): Boolean =
+        com.freemetar.app.data.input.Gamepad.onMotion(event) || super.onGenericMotionEvent(event)
+
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean =
+        com.freemetar.app.data.input.Gamepad.onKey(event) || super.dispatchKeyEvent(event)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             val vm: MainViewModel = viewModel()
             val settings by vm.settings.collectAsStateWithLifecycle()
+            // Język: ustawienie albo system; Lang.current dla logiki, LocalLang dla przebudowy interfejsu
+            val lang = com.freemetar.app.domain.Lang.resolve(settings.language)
+            com.freemetar.app.domain.Lang.current = lang
+            androidx.compose.runtime.CompositionLocalProvider(com.freemetar.app.ui.theme.LocalLang provides lang) {
             OpenAirBookTheme(settings.themeMode) {
                 val night = Fm.c.isNight
                 // Ikony paska stanu muszą pasować do motywu wybranego w aplikacji, nie do systemu
@@ -220,6 +234,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+            }
             }
         }
     }

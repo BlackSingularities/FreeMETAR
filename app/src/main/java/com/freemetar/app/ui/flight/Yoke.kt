@@ -1,5 +1,7 @@
 package com.freemetar.app.ui.flight
 
+import com.freemetar.app.domain.loc
+
 import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -126,15 +128,15 @@ fun YokePanel(link: LinkClient, s: FlightState) {
     }
 
     Text(
-        "Trzymaj telefon jak wolant. Przytrzymaj pole poniżej, żeby sterować — puszczenie oddaje stery joystickowi i autopilotowi. " +
-            "Pozycja zerowa to ta, w której naciśniesz pole.",
+        loc("Trzymaj telefon jak wolant. Przytrzymaj pole poniżej, żeby sterować — puszczenie oddaje stery joystickowi i autopilotowi. ", "Hold the phone like a yoke. Press and hold the pad below to fly — releasing it hands control back to your joystick and autopilot. ") +
+            loc("Pozycja zerowa to ta, w której naciśniesz pole.", "Neutral is wherever the phone is when you press the pad."),
         style = MaterialTheme.typography.bodySmall, color = c.ink2,
     )
     Spacer(Modifier.size(10.dp))
     Box(
         Modifier.fillMaxWidth().aspectRatio(1.4f).clip(RoundedCornerShape(16.dp))
             .background(if (holding) c.accent.copy(alpha = 0.12f) else c.terrain)
-            .semantics { contentDescription = "Pole sterowania przechylaniem — przytrzymaj, aby sterować" }
+            .semantics { contentDescription = loc("Pole sterowania przechylaniem — przytrzymaj, aby sterować", "Tilt control pad — press and hold to fly") }
             .pointerInput(Unit) {
                 awaitEachGesture {
                     awaitFirstDown()
@@ -159,27 +161,27 @@ fun YokePanel(link: LinkClient, s: FlightState) {
             drawCircle(if (holding) c.accent else c.ink2, 16f, Offset(ctr.x + (ail * rad).toFloat(), ctr.y + (elv * rad).toFloat()))
         }
         Text(
-            if (holding) "STERUJESZ" else "PRZYTRZYMAJ, ABY STEROWAĆ",
+            if (holding) loc("STERUJESZ", "IN CONTROL") else loc("PRZYTRZYMAJ, ABY STEROWAĆ", "PRESS AND HOLD TO FLY"),
             fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 13.sp,
             color = if (holding) c.accent else c.ink2,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp),
         )
-        if (s.axes.active && !holding) Text("Serwer jeszcze trzyma osie", fontSize = 11.sp, color = c.caution, modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp))
+        if (s.axes.active && !holding) Text(loc("Serwer jeszcze trzyma osie", "Server still holds the axes"), fontSize = 11.sp, color = c.caution, modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp))
     }
     Spacer(Modifier.size(8.dp))
     Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-        Text("Lotki %+.2f".format(ail), fontFamily = Mono, fontSize = 13.sp, color = c.ink)
-        Text("Ster wys. %+.2f".format(elv), fontFamily = Mono, fontSize = 13.sp, color = c.ink)
-        Text("Ster kier. %+.2f".format(rudder), fontFamily = Mono, fontSize = 13.sp, color = c.ink)
+        Text(loc("Lotki %+.2f", "Aileron %+.2f").format(ail), fontFamily = Mono, fontSize = 13.sp, color = c.ink)
+        Text(loc("Ster wys. %+.2f", "Elevator %+.2f").format(elv), fontFamily = Mono, fontSize = 13.sp, color = c.ink)
+        Text(loc("Ster kier. %+.2f", "Rudder %+.2f").format(rudder), fontFamily = Mono, fontSize = 13.sp, color = c.ink)
     }
     Spacer(Modifier.size(8.dp))
-    Text("Ster kierunku (tylko podczas sterowania)", style = MaterialTheme.typography.labelMedium, color = c.ink2)
+    Text(loc("Ster kierunku (tylko podczas sterowania)", "Rudder (only while flying)"), style = MaterialTheme.typography.labelMedium, color = c.ink2)
     Slider(rudder, { rudder = it }, valueRange = -1f..1f, enabled = holding, onValueChangeFinished = { rudder = 0f })
     Column {
-        Text("Czułość %.1f×".format(sensitivity), style = MaterialTheme.typography.labelMedium, color = c.ink2)
+        Text(loc("Czułość %.1f×", "Sensitivity %.1f×").format(sensitivity), style = MaterialTheme.typography.labelMedium, color = c.ink2)
         Slider(sensitivity, { sensitivity = it }, valueRange = 0.4f..1.6f, steps = 11)
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(48.dp)) {
-            Text("Odwróć ster wysokości", style = MaterialTheme.typography.bodyMedium, color = c.ink, modifier = Modifier.weight(1f))
+            Text(loc("Odwróć ster wysokości", "Invert elevator"), style = MaterialTheme.typography.bodyMedium, color = c.ink, modifier = Modifier.weight(1f))
             Switch(invert, { invert = it })
         }
     }

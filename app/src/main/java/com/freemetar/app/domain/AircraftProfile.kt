@@ -4,13 +4,16 @@ package com.freemetar.app.domain
  * Profil panelu sterowania dopasowany do samolotu. Każdy ma inny układ autopilota,
  * jak w prawdziwych kabinach: FCU Airbusa, MCP Boeinga, autopilot Garmin, prosty autopilot GA.
  */
-enum class AircraftProfile(val label: String, val short: String) {
-    AIRBUS("Airbus (FCU)", "FCU"),
-    BOEING("Boeing (MCP)", "MCP"),
-    BIZJET("Odrzutowiec dyspozycyjny (Garmin)", "G3000"),
-    TURBOPROP("Turbośmigłowy (Garmin)", "G1000"),
-    PISTON("Tłokowy GA", "GA"),
+enum class AircraftProfile(private val labelOf: () -> String, val short: String) {
+    AIRBUS({ "Airbus (FCU)" }, "FCU"),
+    BOEING({ "Boeing (MCP)" }, "MCP"),
+    BIZJET({ loc("Odrzutowiec dyspozycyjny (Garmin)", "Business jet (Garmin)") }, "G3000"),
+    TURBOPROP({ loc("Turbośmigłowy (Garmin)", "Turboprop (Garmin)") }, "G1000"),
+    PISTON({ loc("Tłokowy GA", "Piston GA") }, "GA"),
     ;
+
+    /** Nazwa w bieżącym języku (lambda, bo enum powstaje raz). */
+    val label: String get() = labelOf()
 
     /** Czy profil ma automat ciągu (A/THR, A/T). */
     val hasAutothrottle get() = this == AIRBUS || this == BOEING || this == BIZJET

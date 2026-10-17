@@ -1,5 +1,7 @@
 package com.freemetar.app.ui.flight
 
+import com.freemetar.app.domain.loc
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -80,19 +82,19 @@ fun ConnectionSection(vm: MainViewModel) {
     // Nasłuch w sieci tylko, gdy ten panel jest na ekranie
     DisposableEffect(Unit) { vm.startLinkDiscovery(); onDispose { vm.stopLinkDiscovery() } }
 
-    Section("Symulator", Icons.Outlined.Computer, trailing = {
-        if (status is LinkStatus.Connected || status is LinkStatus.Lost) IconButton({ vm.linkDisconnect() }) { Icon(Icons.Outlined.LinkOff, "Rozłącz", tint = c.ink2) }
+    Section(loc("Symulator", "Simulator"), Icons.Outlined.Computer, trailing = {
+        if (status is LinkStatus.Connected || status is LinkStatus.Lost) IconButton({ vm.linkDisconnect() }) { Icon(Icons.Outlined.LinkOff, loc("Rozłącz", "Disconnect"), tint = c.ink2) }
     }) {
         val (dot, text) = when (val s = status) {
-            LinkStatus.Idle -> c.ink2 to "Nie połączono"
-            is LinkStatus.Connecting -> c.caution to "Łączenie z ${s.ip}…"
-            is LinkStatus.NeedsCode -> c.caution to "Wpisz kod parowania z programu"
+            LinkStatus.Idle -> c.ink2 to loc("Nie połączono", "Not connected")
+            is LinkStatus.Connecting -> c.caution to loc("Łączenie z ${s.ip}…", "Connecting to ${s.ip}…")
+            is LinkStatus.NeedsCode -> c.caution to loc("Wpisz kod parowania z programu", "Enter the pairing code from the PC app")
             is LinkStatus.Connected -> (if (s.source == "none") c.caution else c.green) to when (s.source) {
-                "msfs" -> "Połączono z MSFS"
-                "simulation" -> "Połączono — tryb symulacji"
-                else -> s.message ?: "Połączono, czekam na MSFS"
+                "msfs" -> loc("Połączono z MSFS", "Connected to MSFS")
+                "simulation" -> loc("Połączono — tryb symulacji", "Connected — simulation mode")
+                else -> s.message ?: loc("Połączono, czekam na MSFS", "Connected, waiting for MSFS")
             }
-            is LinkStatus.Lost -> c.danger to "Utracono połączenie, ponawiam… (${s.reason})"
+            is LinkStatus.Lost -> c.danger to loc("Utracono połączenie, ponawiam… (${s.reason})", "Connection lost, retrying… (${s.reason})")
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(10.dp).clip(CircleShape).background(dot))
@@ -106,7 +108,7 @@ fun ConnectionSection(vm: MainViewModel) {
             Spacer(Modifier.size(10.dp))
             if (servers.isEmpty()) {
                 Text(
-                    "Szukam OpenAirBook Link w sieci… Uruchom program na komputerze z MSFS 2024; telefon musi być w tej samej sieci Wi-Fi.",
+                    loc("Szukam OpenAirBook Link w sieci… Uruchom program na komputerze z MSFS 2024; telefon musi być w tej samej sieci Wi-Fi.", "Looking for OpenAirBook Link on the network… Run it on the PC with MSFS 2024; the phone must be on the same Wi-Fi network."),
                     style = MaterialTheme.typography.bodyMedium, color = c.ink2,
                 )
             }
@@ -114,17 +116,17 @@ fun ConnectionSection(vm: MainViewModel) {
                 Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(sv.host, style = MaterialTheme.typography.titleSmall, color = c.ink)
-                        Text("${sv.ip} · ${when (sv.source) { "msfs" -> "MSFS połączony"; "simulation" -> "symulacja"; else -> "czeka na MSFS" }}",
+                        Text("${sv.ip} · ${when (sv.source) { "msfs" -> loc("MSFS połączony", "MSFS connected"); "simulation" -> loc("symulacja", "simulation"); else -> loc("czeka na MSFS", "waiting for MSFS") }}",
                             style = MaterialTheme.typography.bodySmall, color = c.ink2)
                     }
-                    Button({ vm.linkConnect(sv.ip, sv.port) }) { Text("Połącz") }
+                    Button({ vm.linkConnect(sv.ip, sv.port) }) { Text(loc("Połącz", "Connect")) }
                 }
             }
             var manual by rememberSaveable { mutableStateOf("") }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 6.dp)) {
-                OutlinedTextField(manual, { manual = it.trim() }, Modifier.weight(1f), label = { Text("Adres IP komputera") }, singleLine = true,
+                OutlinedTextField(manual, { manual = it.trim() }, Modifier.weight(1f), label = { Text(loc("Adres IP komputera", "PC IP address")) }, singleLine = true,
                     shape = RoundedCornerShape(8.dp), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri))
-                OutlinedButton({ vm.linkConnect(manual) }, enabled = manual.count { it == '.' } == 3) { Text("Połącz") }
+                OutlinedButton({ vm.linkConnect(manual) }, enabled = manual.count { it == '.' } == 3) { Text(loc("Połącz", "Connect")) }
             }
         }
     }
@@ -133,24 +135,27 @@ fun ConnectionSection(vm: MainViewModel) {
         var code by remember(s) { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { vm.linkDisconnect() },
-            title = { Text("Parowanie z ${s.ip}") },
+            title = { Text(loc("Parowanie z ${s.ip}", "Pairing with ${s.ip}")) },
             text = {
                 Column {
-                    Text("Wpisz 6-cyfrowy kod widoczny w oknie OpenAirBook Link. Telefon zapamięta parowanie.", style = MaterialTheme.typography.bodyMedium)
+                    Text(loc("Wpisz 6-cyfrowy kod widoczny w oknie OpenAirBook Link. Telefon zapamięta parowanie.", "Enter the 6-digit code shown in the OpenAirBook Link window. The phone will remember the pairing."), style = MaterialTheme.typography.bodyMedium)
                     s.error?.let { Text(it, color = c.danger, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp)) }
                     OutlinedTextField(code, { code = it.filter(Char::isDigit).take(6) }, Modifier.padding(top = 10.dp), singleLine = true,
                         textStyle = MaterialTheme.typography.headlineSmall.copy(fontFamily = Mono), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword))
                 }
             },
-            confirmButton = { TextButton({ vm.linkConnect(s.ip, s.port, code) }, enabled = code.length == 6) { Text("Sparuj") } },
-            dismissButton = { TextButton({ vm.linkDisconnect() }) { Text("Anuluj") } },
+            confirmButton = { TextButton({ vm.linkConnect(s.ip, s.port, code) }, enabled = code.length == 6) { Text(loc("Sparuj", "Pair")) } },
+            dismissButton = { TextButton({ vm.linkDisconnect() }) { Text(loc("Anuluj", "Cancel")) } },
         )
     }
 }
 
-private enum class LiveView(val label: String, val instrument: Boolean) {
-    PFD("PFD", true), ND("Mapa", true), AP("Autopilot", false), RADIO("Radio", false),
-    CONTROLS("Systemy", false), YOKE("Wolant", false), ENGINES("Silniki", false),
+private enum class LiveView(private val labelOf: () -> String, val instrument: Boolean) {
+    PFD({ "PFD" }, true), ND({ loc("Mapa", "Map") }, true), AP({ "Autopilot" }, false), RADIO({ "Radio" }, false),
+    CONTROLS({ loc("Systemy", "Systems") }, false), YOKE({ loc("Wolant", "Yoke") }, false), ENGINES({ loc("Silniki", "Engines") }, false),
+    ;
+
+    val label: String get() = labelOf()
 }
 
 /** Widoki na żywo: PFD, mapa nawigacyjna, silniki i paliwo, postęp lotu. Na tablecie PFD i mapa obok siebie. */
@@ -161,8 +166,8 @@ fun LiveSection(s: FlightState, route: SavedRoute?, link: LinkClient, profile: c
     var panel by rememberSaveable { mutableStateOf(LiveView.AP) }
     var range by rememberSaveable { mutableStateOf(40) }
     val wide = isWide()
-    Section(s.aircraft.title ?: "Lot na żywo", Icons.Outlined.Speed) {
-        if (s.aircraft.paused == true) Text("Symulator wstrzymany", style = MaterialTheme.typography.labelMedium, color = c.caution, modifier = Modifier.padding(bottom = 6.dp))
+    Section(s.aircraft.title ?: loc("Lot na żywo", "Live flight"), Icons.Outlined.Speed) {
+        if (s.aircraft.paused == true) Text(loc("Symulator wstrzymany", "Simulator paused"), style = MaterialTheme.typography.labelMedium, color = c.caution, modifier = Modifier.padding(bottom = 6.dp))
         if (wide) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box(Modifier.weight(1.1f).clip(RoundedCornerShape(8.dp))) { Pfd(s) }
@@ -217,7 +222,7 @@ private fun RangeRow(range: Int, onRange: (Int) -> Unit) {
 
 /** Postęp: do celu, czas, ETA, początek zniżania (3°), paliwo i jego starczalność. */
 @Composable
-private fun Progress(s: FlightState, route: SavedRoute?) {
+internal fun Progress(s: FlightState, route: SavedRoute?) {
     val c = Fm.c
     val lat = s.position.lat; val lon = s.position.lon
     val dest = route?.fullPath()?.lastOrNull { it.hasPosition }
@@ -234,25 +239,25 @@ private fun Progress(s: FlightState, route: SavedRoute?) {
     val endurance = if (fuel != null && ff > 1) fuel / ff * 60 else null
     FactGrid(
         listOfNotNull(
-            Fact("Do ${dest?.ident ?: "celu"}", toDest?.let { "${it.roundToInt()} NM" } ?: "—", accent = c.magenta, sub = if (dest == null) "wybierz trasę" else null),
-            Fact("Przylot", eta ?: "—", sub = eteMin?.let { "za %d:%02d".format(it.toInt() / 60, it.toInt() % 60) }),
-            Fact("Początek zniżania", if (toDest == null || s.aircraft.onGround == true) "—" else if (toDest <= todNm) "teraz" else "za ${(toDest - todNm).roundToInt()} NM",
-                accent = if (toDest != null && toDest - todNm < 10 && s.aircraft.onGround != true) c.caution else null, sub = "${todNm.roundToInt()} NM przed celem"),
+            Fact("Do ${dest?.ident ?: "celu"}", toDest?.let { "${it.roundToInt()} NM" } ?: "—", accent = c.magenta, sub = if (dest == null) loc("wybierz trasę", "choose a route") else null),
+            Fact(loc("Przylot", "Arrival"), eta ?: "—", sub = eteMin?.let { "za %d:%02d".format(it.toInt() / 60, it.toInt() % 60) }),
+            Fact(loc("Początek zniżania", "Top of descent"), if (toDest == null || s.aircraft.onGround == true) "—" else if (toDest <= todNm) loc("teraz", "now") else loc("za ${(toDest - todNm).roundToInt()} NM", "in ${(toDest - todNm).roundToInt()} NM"),
+                accent = if (toDest != null && toDest - todNm < 10 && s.aircraft.onGround != true) c.caution else null, sub = loc("${todNm.roundToInt()} NM przed celem", "${todNm.roundToInt()} NM before destination")),
             Fact("V/S", "${(s.speed.vsFpm ?: 0.0).roundToInt()} ft/min", sub = "GS ${gs.roundToInt()} kt"),
-            fuel?.let { Fact("Paliwo", "${it.roundToInt()} kg", sub = endurance?.let { e -> "starczy na %d:%02d".format(e.toInt() / 60, e.toInt() % 60) }) },
-            Fact("Wiatr", s.environment.windDirDeg?.let { d -> "%03d/%d".format(d.roundToInt(), (s.environment.windSpdKt ?: 0.0).roundToInt()) } ?: "—",
+            fuel?.let { Fact(loc("Paliwo", "Fuel"), "${it.roundToInt()} kg", sub = endurance?.let { e -> loc("starczy na %d:%02d", "endurance %d:%02d").format(e.toInt() / 60, e.toInt() % 60) }) },
+            Fact(loc("Wiatr", "Wind"), s.environment.windDirDeg?.let { d -> "%03d/%d".format(d.roundToInt(), (s.environment.windSpdKt ?: 0.0).roundToInt()) } ?: "—",
                 sub = s.environment.oatC?.let { "OAT ${it.roundToInt()} °C" }),
         ),
     )
 }
 
 @Composable
-private fun Systems(s: FlightState) {
+internal fun Systems(s: FlightState) {
     val c = Fm.c
     s.engines.forEachIndexed { i, e ->
         val turbine = (e.n1Pct ?: 0.0) > 0.1
         Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("SIL ${i + 1}", fontFamily = Mono, fontSize = 12.sp, color = c.ink2, modifier = Modifier.width(52.dp))
+            Text(loc("SIL ${i + 1}", "ENG ${i + 1}"), fontFamily = Mono, fontSize = 12.sp, color = c.ink2, modifier = Modifier.width(52.dp))
             val pct = if (turbine) (e.n1Pct ?: 0.0) / 100 else ((e.rpm ?: 0.0) / 2700).coerceIn(0.0, 1.0)
             Box(Modifier.weight(1f).height(10.dp).clip(RoundedCornerShape(5.dp)).background(c.terrain)) {
                 Box(Modifier.fillMaxWidth(pct.toFloat().coerceIn(0f, 1f)).height(10.dp).clip(RoundedCornerShape(5.dp)).background(c.green))
@@ -281,9 +286,9 @@ private fun Systems(s: FlightState) {
     val ctl = s.controls
     Text(
         listOfNotNull(
-            ctl.gearDown?.let { if (it) "Podwozie wypuszczone" else "Podwozie schowane" },
-            ctl.flapsIndex?.let { "klapy $it/${(ctl.flapsPositions ?: 1) - 1}" },
-            ctl.parkingBrake?.takeIf { it }?.let { "hamulec postojowy" },
+            ctl.gearDown?.let { if (it) loc("Podwozie wypuszczone", "Gear down") else loc("Podwozie schowane", "Gear up") },
+            ctl.flapsIndex?.let { loc("klapy $it/${(ctl.flapsPositions ?: 1) - 1}", "flaps $it/${(ctl.flapsPositions ?: 1) - 1}") },
+            ctl.parkingBrake?.takeIf { it }?.let { loc("hamulec postojowy", "parking brake") },
             s.radios.transponder?.code?.let { "squawk $it" },
         ).joinToString(", "),
         style = MaterialTheme.typography.bodySmall, color = c.ink2, modifier = Modifier.padding(top = 8.dp),

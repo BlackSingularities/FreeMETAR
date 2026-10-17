@@ -1,6 +1,14 @@
 package com.freemetar.app.ui.screens
 
+import com.freemetar.app.domain.loc
+
 import com.freemetar.app.ui.theme.Fm
+import com.freemetar.app.ui.theme.AUTHOR_SITE
+import com.freemetar.app.ui.theme.AUTHOR_URL
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -58,42 +66,50 @@ fun SettingsScreen(vm: MainViewModel) {
         Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(16.dp).widthIn(max = 760.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Ustawienia", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 8.dp))
+        Text(loc("Ustawienia", "Settings"), style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 8.dp))
 
-        SectionCard("Jednostki", icon = Icons.Outlined.Straighten) {
-            Text("Ciśnienie", color = Fm.c.ink)
+        SectionCard(loc("Jednostki", "Units"), icon = Icons.Outlined.Straighten) {
+            Text(loc("Ciśnienie", "Pressure"), color = Fm.c.ink)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(s.pressureUnit == PressureUnit.HPA, { vm.setPressure(PressureUnit.HPA) }, { Text("hPa") }, leadingIcon = { Icon(Icons.Outlined.Compress, null, Modifier.size(16.dp)) })
                 FilterChip(s.pressureUnit == PressureUnit.INHG, { vm.setPressure(PressureUnit.INHG) }, { Text("inHg") }, leadingIcon = { Icon(Icons.Outlined.Compress, null, Modifier.size(16.dp)) })
             }
             Spacer(Modifier.size(8.dp))
-            Text("Wysokość", color = Fm.c.ink)
+            Text(loc("Wysokość", "Altitude"), color = Fm.c.ink)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(s.altUnit == AltUnit.FT, { vm.setAlt(AltUnit.FT) }, { Text("stopy") }, leadingIcon = { Icon(Icons.Outlined.Height, null, Modifier.size(16.dp)) })
-                FilterChip(s.altUnit == AltUnit.M, { vm.setAlt(AltUnit.M) }, { Text("metry") }, leadingIcon = { Icon(Icons.Outlined.Height, null, Modifier.size(16.dp)) })
+                FilterChip(s.altUnit == AltUnit.FT, { vm.setAlt(AltUnit.FT) }, { Text(loc("stopy", "feet")) }, leadingIcon = { Icon(Icons.Outlined.Height, null, Modifier.size(16.dp)) })
+                FilterChip(s.altUnit == AltUnit.M, { vm.setAlt(AltUnit.M) }, { Text(loc("metry", "metres")) }, leadingIcon = { Icon(Icons.Outlined.Height, null, Modifier.size(16.dp)) })
             }
         }
 
-        SectionCard("Wyświetlanie", icon = Icons.Outlined.Tune) {
-            Text("Motyw", color = Fm.c.ink, style = MaterialTheme.typography.titleSmall)
+        SectionCard(loc("Język", "Language"), icon = Icons.Outlined.Translate) {
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("SYSTEM" to loc("Jak system", "System default"), "PL" to "Polski", "EN" to "English").forEach { (code, label) ->
+                    FilterChip(s.language == code, { vm.setLanguage(code) }, { Text(label) })
+                }
+            }
+        }
+
+        SectionCard(loc("Wyświetlanie", "Display"), icon = Icons.Outlined.Tune) {
+            Text(loc("Motyw", "Theme"), color = Fm.c.ink, style = MaterialTheme.typography.titleSmall)
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)) {
                 listOf(
                     com.freemetar.app.data.ThemeMode.SYSTEM to "AMOLED",
-                    com.freemetar.app.data.ThemeMode.NIGHT to "Grafit",
-                    com.freemetar.app.data.ThemeMode.DAY to "Jasny ekran",
+                    com.freemetar.app.data.ThemeMode.NIGHT to loc("Grafit", "Graphite"),
+                    com.freemetar.app.data.ThemeMode.DAY to loc("Jasny ekran", "Bright screen"),
                 ).forEach { (mode, label) ->
                     FilterChip(s.themeMode == mode, { vm.setTheme(mode) }, { Text(label) },
                         leadingIcon = { Icon(when (mode) { com.freemetar.app.data.ThemeMode.DAY -> Icons.Outlined.LightMode; com.freemetar.app.data.ThemeMode.NIGHT -> Icons.Outlined.DarkMode; else -> Icons.Outlined.Smartphone }, null, Modifier.size(16.dp)) })
                 }
             }
-            ToggleRow(Icons.Outlined.Autorenew, "Automatyczne odświeżanie", "Co 5 minut, gdy aplikacja jest otwarta", s.autoRefresh) { vm.setAutoRefresh(it) }
+            ToggleRow(Icons.Outlined.Autorenew, loc("Automatyczne odświeżanie", "Auto refresh"), loc("Co 5 minut, gdy aplikacja jest otwarta", "Every 5 minutes while the app is open"), s.autoRefresh) { vm.setAutoRefresh(it) }
         }
 
-        SectionCard("Baza lotnisk", icon = Icons.Outlined.Storage) {
+        SectionCard(loc("Baza lotnisk", "Airport database"), icon = Icons.Outlined.Storage) {
             val txt = when (val d = db) {
-                is DbState.Ready -> "${d.count} lotnisk · aktualizacja " + (d.updated?.let { DateFormat.getDateInstance().format(Date(it)) } ?: "—")
+                is DbState.Ready -> loc("${d.count} lotnisk · aktualizacja ", "${d.count} airports · updated ") + (d.updated?.let { DateFormat.getDateInstance().format(Date(it)) } ?: "—")
                 is DbState.Loading -> d.message
-                is DbState.Error -> "Błąd: ${d.message}"
+                is DbState.Error -> loc("Błąd: ${d.message}", "Error: ${d.message}")
                 DbState.Idle -> "—"
             }
             Text(txt, color = Fm.c.ink2, fontSize = 13.sp)
@@ -101,20 +117,32 @@ fun SettingsScreen(vm: MainViewModel) {
             OutlinedButton({ vm.loadDb(force = true) }, enabled = db !is DbState.Loading) {
                 Icon(Icons.Outlined.Download, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Pobierz ponownie")
+                Text(loc("Pobierz ponownie", "Download again"))
             }
-            Text("Baza odświeża się sama co 30 dni.", color = Fm.c.ink2, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+            Text(loc("Baza odświeża się sama co 30 dni.", "The database refreshes itself every 30 days."), color = Fm.c.ink2, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
         }
 
         com.freemetar.app.ui.components.UpdateSection(vm)
 
-        SectionCard("O aplikacji", icon = Icons.Outlined.Info) {
-            Text("OpenAirBook ${BuildConfig.VERSION_NAME}", color = Fm.c.ink)
-            Spacer(Modifier.size(4.dp))
+        SectionCard(loc("O aplikacji", "About"), icon = Icons.Outlined.Info) {
+            Text("OpenAirBook ${BuildConfig.VERSION_NAME}", color = Fm.c.ink, style = MaterialTheme.typography.titleMedium)
+            val uri = androidx.compose.ui.platform.LocalUriHandler.current
+            Row(
+                Modifier.padding(vertical = 6.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
+                    .background(Fm.c.ink).clickable { uri.openUri(AUTHOR_URL) }.padding(horizontal = 14.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(loc("Pomysł i wykonanie: ", "Idea and development: "), color = Fm.c.paper, fontSize = 13.sp)
+                Text(AUTHOR_SITE, color = Fm.c.paper, fontSize = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+            }
             Text(
-                "Pogoda: aviationweather.gov (NOAA/NWS, domena publiczna).\n" +
-                    "Lotniska, pasy, częstotliwości, pomoce nawigacyjne: OurAirports (domena publiczna).\n\n" +
-                    "Aplikacja przeznaczona wyłącznie do symulacji lotów. Dane mogą być nieaktualne lub niekompletne — nie używaj do rzeczywistej nawigacji lotniczej.",
+                loc("Tylko darmowe, otwarte źródła danych — bez kont, kluczy i reklam.", "Free and open data sources only — no accounts, keys or ads."),
+                color = Fm.c.ink2, fontSize = 13.sp, modifier = Modifier.padding(bottom = 8.dp),
+            )
+            Text(
+                loc("Pogoda: aviationweather.gov (NOAA/NWS, domena publiczna).\n", "Weather: aviationweather.gov (NOAA/NWS, public domain).\n") +
+                    loc("Lotniska, pasy, częstotliwości, pomoce nawigacyjne: OurAirports (domena publiczna).\n\n", "Airports, runways, frequencies, navaids: OurAirports (public domain).\n\n") +
+                    loc("Aplikacja przeznaczona wyłącznie do symulacji lotów. Dane mogą być nieaktualne lub niekompletne — nie używaj do rzeczywistej nawigacji lotniczej.", "For flight simulation only. Data may be outdated or incomplete — do not use for real-world navigation."),
                 color = Fm.c.ink2, fontSize = 13.sp,
             )
         }

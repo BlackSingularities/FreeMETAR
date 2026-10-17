@@ -1,5 +1,7 @@
 package com.freemetar.app.ui.flight
 
+import com.freemetar.app.domain.loc
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -74,7 +76,7 @@ fun KnobWindow(
     val enter by rememberUpdatedState(onEnter)
     BoxWithConstraints(
         modifier.height(64.dp).clip(RoundedCornerShape(12.dp)).background(Color.Black).border(1.dp, c.rule, RoundedCornerShape(12.dp))
-            .semantics { contentDescription = "$label $value — przeciągnij w bok, aby zmienić; przytrzymaj, aby wpisać" },
+            .semantics { contentDescription = loc("$label $value — przeciągnij w bok, aby zmienić; przytrzymaj, aby wpisać", "$label $value — drag sideways to change; long-press to type") },
     ) {
         val w = constraints.maxWidth.toFloat()
         Box(
@@ -147,14 +149,14 @@ fun AutopilotPanelV2(link: LinkClient, s: FlightState, override: AircraftProfile
         Text(p.short, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.Black,
             modifier = Modifier.clip(RoundedCornerShape(50)).background(c.ink).padding(horizontal = 10.dp, vertical = 3.dp))
         Spacer(Modifier.width(8.dp))
-        Text(p.label + if (override == null) " · automatycznie" else "", style = MaterialTheme.typography.bodySmall, color = c.ink2, modifier = Modifier.weight(1f), maxLines = 1)
+        Text(p.label + if (override == null) loc(" · automatycznie", " · automatic") else "", style = MaterialTheme.typography.bodySmall, color = c.ink2, modifier = Modifier.weight(1f), maxLines = 1)
         Box {
             Row(Modifier.clip(RoundedCornerShape(50)).clickable { menu = true }.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Profil", style = MaterialTheme.typography.labelMedium, color = c.ink)
+                Text(loc("Profil", "Profile"), style = MaterialTheme.typography.labelMedium, color = c.ink)
                 Icon(Icons.Outlined.ExpandMore, null, tint = c.ink, modifier = Modifier.size(18.dp))
             }
             DropdownMenu(menu, { menu = false }) {
-                DropdownMenuItem(text = { Text("Automatycznie (${detected.label})") }, onClick = { onOverride(null); menu = false })
+                DropdownMenuItem(text = { Text(loc("Automatycznie (${detected.label})", "Automatic (${detected.label})")) }, onClick = { onOverride(null); menu = false })
                 AircraftProfile.entries.forEach { e -> DropdownMenuItem(text = { Text(e.label) }, onClick = { onOverride(e); menu = false }) }
             }
         }
@@ -227,13 +229,13 @@ fun AutopilotPanelV2(link: LinkClient, s: FlightState, override: AircraftProfile
             }
         }
     }
-    Text("Przeciągnij okno w bok, aby kręcić; dotknij krawędzi dla dużego kroku; przytrzymaj, aby wpisać.",
+    Text(loc("Przeciągnij okno w bok, aby kręcić; dotknij krawędzi dla dużego kroku; przytrzymaj, aby wpisać.", "Drag a window sideways to turn it; tap an edge for a big step; long-press to type a value."),
         style = MaterialTheme.typography.labelSmall, color = c.ink2, modifier = Modifier.padding(top = 6.dp))
 
     when (enter) {
-        "HDG" -> EnterDialog("Kurs autopilota", "np. 270", KeyboardType.Number, { it.toIntOrNull() in 0..359 }, { cmd("HEADING_BUG_SET", it.toInt()) }) { enter = null }
-        "ALT" -> EnterDialog("Wysokość (ft)", "np. 12000", KeyboardType.Number, { it.toIntOrNull() in 0..50_000 }, { cmd("AP_ALT_VAR_SET_ENGLISH", it.toInt()) }) { enter = null }
-        "SPD" -> EnterDialog("Prędkość (kt)", "np. 250", KeyboardType.Number, { it.toIntOrNull() in 0..500 }, { cmd("AP_SPD_VAR_SET", it.toInt()) }) { enter = null }
-        "VS" -> EnterDialog("Prędkość pionowa (ft/min)", "np. -1500", KeyboardType.Number, { it.toIntOrNull() in -8000..8000 }, { cmd("AP_VS_VAR_SET_ENGLISH", it.toInt()) }) { enter = null }
+        "HDG" -> EnterDialog(loc("Kurs autopilota", "Autopilot heading"), "np. 270", KeyboardType.Number, { it.toIntOrNull() in 0..359 }, { cmd("HEADING_BUG_SET", it.toInt()) }) { enter = null }
+        "ALT" -> EnterDialog(loc("Wysokość (ft)", "Altitude (ft)"), "np. 12000", KeyboardType.Number, { it.toIntOrNull() in 0..50_000 }, { cmd("AP_ALT_VAR_SET_ENGLISH", it.toInt()) }) { enter = null }
+        "SPD" -> EnterDialog(loc("Prędkość (kt)", "Speed (kt)"), "np. 250", KeyboardType.Number, { it.toIntOrNull() in 0..500 }, { cmd("AP_SPD_VAR_SET", it.toInt()) }) { enter = null }
+        "VS" -> EnterDialog(loc("Prędkość pionowa (ft/min)", "Vertical speed (ft/min)"), "np. -1500", KeyboardType.Number, { it.toIntOrNull() in -8000..8000 }, { cmd("AP_VS_VAR_SET_ENGLISH", it.toInt()) }) { enter = null }
     }
 }

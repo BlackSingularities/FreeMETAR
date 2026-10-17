@@ -1,5 +1,7 @@
 package com.freemetar.app
 
+import com.freemetar.app.domain.loc
+
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -173,15 +175,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun importSimbrief(user: String) = viewModelScope.launch {
-        if (user.isBlank()) { _flightMessage.value = "Wpisz nazwę użytkownika lub Pilot ID z SimBrief."; return@launch }
+        if (user.isBlank()) { _flightMessage.value = loc("Wpisz nazwę użytkownika lub Pilot ID z SimBrief.", "Enter your SimBrief username or Pilot ID."); return@launch }
         _importing.value = true
         prefs.setSimbriefUser(user)
         try {
             val r = SimBrief.fetch(user)
             addRoutes(listOf(r), activate = true).join()
-            _flightMessage.value = "Pobrano plan ${r.name} z SimBrief."
+            _flightMessage.value = loc("Pobrano plan ${r.name} z SimBrief.", "Downloaded plan ${r.name} from SimBrief.")
         } catch (e: Exception) {
-            _flightMessage.value = "Nie pobrano planu z SimBrief: ${e.message}. Sprawdź nazwę użytkownika i czy masz wygenerowany plan."
+            _flightMessage.value = loc("Nie pobrano planu z SimBrief: ${e.message}. Sprawdź nazwę użytkownika i czy masz wygenerowany plan.", "Could not download the SimBrief plan: ${e.message}. Check the username and that you have generated a plan.")
         } finally {
             _importing.value = false
         }
@@ -192,9 +194,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val r = RouteImport.fromText(text, cruiseFl, db.fixResolver)
             addRoutes(listOf(r), activate = true).join()
             val unknown = r.points.count { !it.hasPosition }
-            _flightMessage.value = "Zapisano trasę ${r.name}" + if (unknown > 0) ". $unknown punktów bez pozycji (brak w bazie) — pominięte na mapie." else "."
+            _flightMessage.value = loc("Zapisano trasę ${r.name}", "Saved route ${r.name}") + if (unknown > 0) loc(". $unknown punktów bez pozycji (brak w bazie) — pominięte na mapie.", ". $unknown waypoints without a position (not in the database) are skipped on the map.") else "."
         } catch (e: Exception) {
-            _flightMessage.value = e.message ?: "Nie rozpoznano trasy."
+            _flightMessage.value = e.message ?: loc("Nie rozpoznano trasy.", "Could not recognise the route.")
         }
     }
 
@@ -203,18 +205,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val text = routeStore.readText(getApplication(), uri)
             val list = RouteImport.parseAny(text, db.fixResolver)
             addRoutes(list, activate = list.size == 1).join()
-            _flightMessage.value = "Zaimportowano trasy: ${list.size}."
+            _flightMessage.value = loc("Zaimportowano trasy: ${list.size}.", "Routes imported: ${list.size}.")
         } catch (e: Exception) {
-            _flightMessage.value = "Nie zaimportowano pliku: ${e.message}"
+            _flightMessage.value = loc("Nie zaimportowano pliku: ${e.message}", "File not imported: ${e.message}")
         }
     }
 
     fun exportRoutes(uri: Uri) = viewModelScope.launch {
         try {
             routeStore.exportTo(getApplication(), uri, _routes.value)
-            _flightMessage.value = "Wyeksportowano trasy: ${_routes.value.size}."
+            _flightMessage.value = loc("Wyeksportowano trasy: ${_routes.value.size}.", "Routes exported: ${_routes.value.size}.")
         } catch (e: Exception) {
-            _flightMessage.value = "Nie zapisano pliku: ${e.message}"
+            _flightMessage.value = loc("Nie zapisano pliku: ${e.message}", "File not saved: ${e.message}")
         }
     }
 
@@ -308,8 +310,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 ctx.contentResolver.openOutputStream(uri, "wt")!!.bufferedWriter().use { w -> w.write(com.freemetar.app.data.link.FlightExport.gpx(f)) }
             }
-        }.onSuccess { _flightMessage.value = "Zapisano tor lotu do GPX." }
-            .onFailure { _flightMessage.value = "Nie zapisano pliku: ${it.message}" }
+        }.onSuccess { _flightMessage.value = loc("Zapisano tor lotu do GPX.", "Flight track saved as GPX.") }
+            .onFailure { _flightMessage.value = loc("Nie zapisano pliku: ${it.message}", "File not saved: ${it.message}") }
     }
 
     fun deleteFlightLog(id: String) = viewModelScope.launch {
@@ -322,7 +324,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _flightLogs.value = listOf(log) + _flightLogs.value
             flightLogStore.save(_flightLogs.value)
-            _flightMessage.value = "Zapisano lot ${log.from ?: "?"} → ${log.to ?: "?"} (${log.durationMin} min)."
+            val route = "${log.from ?: "?"} → ${log.to ?: "?"}"
+            _flightMessage.value = loc("Zapisano lot $route (${log.durationMin} min).", "Flight $route saved (${log.durationMin} min).")
         }
     }
 
@@ -336,7 +339,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     // Ocena zaraz po przyziemieniu — nie trzeba czekać na koniec lotu
                     recorder.lastLanding?.takeIf { it !== announcedLanding }?.let { l ->
                         announcedLanding = l
-                        _flightMessage.value = "Lądowanie: ${l.score}/100, ${l.grade.lowercase()} — ${l.vsFpm} ft/min" + (l.runway?.let { ", $it" } ?: "")
+                        _flightMessage.value = loc("Lądowanie: ${l.score}/100, ${l.grade.lowercase()} — ${l.vsFpm} ft/min", "Landing: ${l.score}/100, ${l.grade.lowercase()} — ${l.vsFpm} ft/min") + (l.runway?.let { ", $it" } ?: "")
                     }
                 }
             }
@@ -403,7 +406,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun refreshEditNav(icaos: List<String>, refresh: Boolean) = viewModelScope.launch {
-        _editBusy.value = if (nav.connected) "Pobieranie procedur z MSFS…" else null
+        _editBusy.value = if (nav.connected) loc("Pobieranie procedur z MSFS…", "Loading procedures from MSFS…") else null
         val map = _editNav.value.toMutableMap()
         icaos.distinct().forEach { id -> runCatching { nav.airport(id, refresh) }.getOrNull()?.let { map[id] = it } }
         _editNav.value = map
@@ -419,7 +422,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _routes.value = _routes.value.map { if (it.id == r.id) r else it }
         routeStore.save(_routes.value)
         _editing.value = null
-        _flightMessage.value = "Zapisano plan ${r.name}."
+        _flightMessage.value = loc("Zapisano plan ${r.name}.", "Saved plan ${r.name}.")
         if (settings.value.activeRouteId == r.id) refreshRouteBriefing(r)
     }
 
@@ -435,12 +438,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
             return@launch
         }
-        _editBusy.value = "Pobieranie odcinków $name…"
+        _editBusy.value = loc("Pobieranie odcinków $name…", "Loading legs of $name…")
         val legs = runCatching { nav.legs(icao, kind, name, runway, transition) }.getOrNull()
         _editBusy.value = null
         val segment = when (kind) { "departure" -> "sid"; "arrival" -> "star"; else -> "approach" }
         val sel = ProcSelection(kind, name, runway, transition, label, legs?.let { RouteEdit.legsToPoints(it.legs, segment) }.orEmpty())
-        if (legs == null) _flightMessage.value = "Brak odcinków $name w pamięci — połącz się z OpenAirBook Link, aby pobrać je z MSFS."
+        if (legs == null) _flightMessage.value = loc("Brak odcinków $name w pamięci — połącz się z OpenAirBook Link, aby pobrać je z MSFS.", "No legs for $name stored — connect to OpenAirBook Link to load them from MSFS.")
         editUpdate { r ->
             when (kind) {
                 "departure" -> RouteEdit.setDeparture(r, runway, sel)
@@ -460,7 +463,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val p = db.fixResolver.resolve(id, near)
             ?: nav.fixes(id, near?.lat, near?.lon).firstOrNull()?.let { RoutePoint(it.ident, it.lat, it.lon, it.type) }
         if (p == null) {
-            _flightMessage.value = "Nie znaleziono punktu $id" + if (!nav.connected) ". Punkty RNAV są w bazie MSFS — połącz się z OpenAirBook Link." else "."
+            _flightMessage.value = loc("Nie znaleziono punktu $id", "Waypoint $id not found") + if (!nav.connected) loc(". Punkty RNAV są w bazie MSFS — połącz się z OpenAirBook Link.", ". RNAV waypoints are in the MSFS database — connect to OpenAirBook Link.") else "."
             return@launch
         }
         editUpdate { RouteEdit.insert(it, index, p) }
@@ -487,16 +490,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Lotniska najbliżej użytkownika (wymaga zgody na przybliżoną lokalizację). */
     fun findNearMe() = viewModelScope.launch {
         _nearMe.value = NearMe.Locating
-        val loc = runCatching { Locator.locate(getApplication()) }.getOrNull()
-        if (loc == null) {
-            _nearMe.value = NearMe.Failed("Nie udało się ustalić pozycji. Włącz lokalizację i spróbuj ponownie.")
+        val pos = runCatching { Locator.locate(getApplication()) }.getOrNull()
+        if (pos == null) {
+            _nearMe.value = NearMe.Failed(loc("Nie udało się ustalić pozycji. Włącz lokalizację i spróbuj ponownie.", "Could not determine your position. Turn on location and try again."))
             return@launch
         }
         if (!db.isLoaded) {
-            _nearMe.value = NearMe.Failed("Baza lotnisk jeszcze się ładuje.")
+            _nearMe.value = NearMe.Failed(loc("Baza lotnisk jeszcze się ładuje.", "The airport database is still loading."))
             return@launch
         }
-        val list = db.nearby(loc.latitude, loc.longitude, radiusNm = 120.0, limit = 8)
+        val list = db.nearby(pos.latitude, pos.longitude, radiusNm = 120.0, limit = 8)
         _nearMe.value = NearMe.Found(list, emptyMap())
         val metars = metarsFor(list.map { it.first.ident })
         _nearMe.value = NearMe.Found(list, metars)
@@ -509,7 +512,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             Updater.check()?.let { UpdateState.Available(it) } ?: UpdateState.UpToDate
         } catch (e: Exception) {
             // Przy starcie brak sieci nie jest powodem do komunikatu
-            if (silent) UpdateState.Idle else UpdateState.Error(e.message ?: "Nie udało się sprawdzić aktualizacji")
+            if (silent) UpdateState.Idle else UpdateState.Error(e.message ?: loc("Nie udało się sprawdzić aktualizacji", "Could not check for updates"))
         }
     }
 
@@ -521,7 +524,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
             UpdateState.Ready(info, file)
         } catch (e: Exception) {
-            UpdateState.Error("Pobieranie nie powiodło się: ${e.message}")
+            UpdateState.Error(loc("Pobieranie nie powiodło się: ${e.message}", "Download failed: ${e.message}"))
         }
     }
 
@@ -529,14 +532,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun loadDb(force: Boolean) = viewModelScope.launch {
         try {
-            _db.value = DbState.Loading("Przygotowanie bazy lotnisk…")
+            _db.value = DbState.Loading(loc("Przygotowanie bazy lotnisk…", "Preparing the airport database…"))
             db.ensureDownloaded(force) { _db.value = DbState.Loading(it) }
-            _db.value = DbState.Loading("Indeksowanie…")
+            _db.value = DbState.Loading(loc("Indeksowanie…", "Indexing…"))
             db.load()
             _db.value = DbState.Ready(db.airportCount, db.lastUpdated())
             _detail.value?.let { open(it.ident) }
         } catch (e: Exception) {
-            _db.value = DbState.Error(e.message ?: "Nie udało się pobrać bazy lotnisk")
+            _db.value = DbState.Error(e.message ?: loc("Nie udało się pobrać bazy lotnisk", "Could not download the airport database"))
         }
     }
 
@@ -616,7 +619,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
             loadHazardsAndAloft(ident)
         } catch (e: Exception) {
-            _detail.update { if (it?.ident == ident) it.copy(loading = false, error = e.message ?: "Błąd sieci") else it }
+            _detail.update { if (it?.ident == ident) it.copy(loading = false, error = e.message ?: loc("Błąd sieci", "Network error")) else it }
         }
     }
 
@@ -669,6 +672,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun clearRecent() = viewModelScope.launch { prefs.clearRecent() }
     fun setPressure(u: com.freemetar.app.data.PressureUnit) = viewModelScope.launch { prefs.setPressure(u) }
     fun setAlt(u: com.freemetar.app.data.AltUnit) = viewModelScope.launch { prefs.setAlt(u) }
+    fun setLanguage(v: String) = viewModelScope.launch { prefs.setLanguage(v) }
     fun setAircraftProfile(p: com.freemetar.app.domain.AircraftProfile?) = viewModelScope.launch { prefs.setAircraftProfile(p?.name) }
     fun setTheme(m: com.freemetar.app.data.ThemeMode) = viewModelScope.launch { prefs.setTheme(m) }
     fun setAutoRefresh(v: Boolean) = viewModelScope.launch { prefs.setAutoRefresh(v) }

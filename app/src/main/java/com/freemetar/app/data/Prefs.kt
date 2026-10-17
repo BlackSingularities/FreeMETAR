@@ -26,6 +26,8 @@ data class Settings(
     val activeRouteId: String? = null,
     /** Ręcznie wybrany profil panelu (null = automatycznie z danych samolotu). */
     val aircraftProfile: String? = null,
+    /** SYSTEM / PL / EN */
+    val language: String = "SYSTEM",
 )
 
 class Prefs(private val context: Context) {
@@ -38,6 +40,7 @@ class Prefs(private val context: Context) {
     private val SIMBRIEF = stringPreferencesKey("simbrief_user")
     private val ROUTE = stringPreferencesKey("active_route")
     private val PROFILE = stringPreferencesKey("aircraft_profile")
+    private val LANGUAGE = stringPreferencesKey("language")
     private val LINK_TOKENS = stringPreferencesKey("link_tokens")   // ip=token;ip=token
     private val LINK_LAST = stringPreferencesKey("link_last_ip")
 
@@ -54,6 +57,7 @@ class Prefs(private val context: Context) {
             simbriefUser = p[SIMBRIEF].orEmpty(),
             activeRouteId = p[ROUTE],
             aircraftProfile = p[PROFILE],
+            language = p[LANGUAGE] ?: "SYSTEM",
         )
     }
 
@@ -102,6 +106,7 @@ class Prefs(private val context: Context) {
 
     suspend fun lastLinkIp(): String? = context.dataStore.data.first()[LINK_LAST]
 
+    suspend fun setLanguage(v: String) = context.dataStore.edit { it[LANGUAGE] = v }
     suspend fun setAircraftProfile(name: String?) = context.dataStore.edit { if (name == null) it.remove(PROFILE) else it[PROFILE] = name }
     suspend fun setActiveRoute(id: String?) = context.dataStore.edit { if (id == null) it.remove(ROUTE) else it[ROUTE] = id }
 }

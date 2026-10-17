@@ -1,5 +1,7 @@
 package com.freemetar.app.ui.flight
 
+import com.freemetar.app.domain.loc
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
@@ -92,16 +94,16 @@ fun FlightHistorySection(vm: MainViewModel, onOpenFlight: (String) -> Unit) {
     val c = Fm.c
     val logs by vm.flightLogs.collectAsStateWithLifecycle()
     if (logs.isEmpty()) return
-    Section("Historia lotów", Icons.Outlined.History) {
+    Section(loc("Historia lotów", "Flight history"), Icons.Outlined.History) {
         val minutes = logs.sumOf { it.durationMin }
         val scored = logs.mapNotNull { it.landing?.score }
         FactGrid(
             listOf(
-                Fact("Loty", logs.size.toString()),
-                Fact("Czas lotu", "%d:%02d".format(minutes / 60, minutes % 60)),
-                Fact("Średnia ocena", if (scored.isEmpty()) "—" else scored.average().roundToInt().toString(),
-                    sub = scored.maxOrNull()?.let { "najlepsza $it" }),
-                Fact("Dystans", "${logs.sumOf { it.distanceNm }} NM"),
+                Fact(loc("Loty", "Flights"), logs.size.toString()),
+                Fact(loc("Czas lotu", "Flight time"), "%d:%02d".format(minutes / 60, minutes % 60)),
+                Fact(loc("Średnia ocena", "Average score"), if (scored.isEmpty()) "—" else scored.average().roundToInt().toString(),
+                    sub = scored.maxOrNull()?.let { loc("najlepsza $it", "best $it") }),
+                Fact(loc("Dystans", "Distance"), "${logs.sumOf { it.distanceNm }} NM"),
             ),
         )
         Spacer(Modifier.size(8.dp))
@@ -140,36 +142,36 @@ fun FlightDetailScreen(vm: MainViewModel, id: String, onBack: () -> Unit) {
     }
     Column(Modifier.fillMaxSize().background(c.paper)) {
         Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Wróć", tint = c.ink) }
+            IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, loc("Wróć", "Back"), tint = c.ink) }
             Column(Modifier.weight(1f)) {
                 Text("${f.from ?: "?"} → ${f.to ?: "?"}", fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = c.ink)
                 Text(DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(f.start)) + (f.aircraft?.let { ", $it" } ?: ""),
                     style = MaterialTheme.typography.bodySmall, color = c.ink2, maxLines = 1)
             }
-            IconButton({ exporter.launch("lot-${f.from ?: "x"}-${f.to ?: "y"}.gpx") }) { Icon(Icons.Outlined.FileDownload, "Eksportuj tor do GPX", tint = c.ink) }
-            IconButton({ vm.deleteFlightLog(f.id); onBack() }) { Icon(Icons.Outlined.Delete, "Usuń lot", tint = c.danger) }
+            IconButton({ exporter.launch("lot-${f.from ?: "x"}-${f.to ?: "y"}.gpx") }) { Icon(Icons.Outlined.FileDownload, loc("Eksportuj tor do GPX", "Export track to GPX"), tint = c.ink) }
+            IconButton({ vm.deleteFlightLog(f.id); onBack() }) { Icon(Icons.Outlined.Delete, loc("Usuń lot", "Delete flight"), tint = c.danger) }
         }
         Rule()
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
-            f.landing?.let { LandingCard(it) } ?: Section("Lądowanie", Icons.Outlined.FlightLand) {
-                Text("Brak danych o przyziemieniu (lot zakończony w powietrzu albo nagrany starszą wersją).", style = MaterialTheme.typography.bodyMedium, color = c.ink2)
+            f.landing?.let { LandingCard(it) } ?: Section(loc("Lądowanie", "Landing"), Icons.Outlined.FlightLand) {
+                Text(loc("Brak danych o przyziemieniu (lot zakończony w powietrzu albo nagrany starszą wersją).", "No touchdown data (the flight ended in the air or was recorded by an older version)."), style = MaterialTheme.typography.bodyMedium, color = c.ink2)
             }
-            Section("Lot", Icons.Outlined.Timeline) {
+            Section(loc("Lot", "Flight"), Icons.Outlined.Timeline) {
                 FactGrid(listOf(
-                    Fact("Czas", "%d:%02d".format(f.durationMin / 60, f.durationMin % 60)),
-                    Fact("Dystans", "${f.distanceNm} NM"),
-                    Fact("Najwyżej", "FL%03d".format(f.maxAltFt / 100)),
-                    Fact("Średnia GS", f.track.map { it.gsKt }.filter { it > 50 }.takeIf { it.isNotEmpty() }?.average()?.roundToInt()?.let { "$it kt" } ?: "—"),
+                    Fact(loc("Czas", "Time"), "%d:%02d".format(f.durationMin / 60, f.durationMin % 60)),
+                    Fact(loc("Dystans", "Distance"), "${f.distanceNm} NM"),
+                    Fact(loc("Najwyżej", "Highest"), "FL%03d".format(f.maxAltFt / 100)),
+                    Fact(loc("Średnia GS", "Average GS"), f.track.map { it.gsKt }.filter { it > 50 }.takeIf { it.isNotEmpty() }?.average()?.roundToInt()?.let { "$it kt" } ?: "—"),
                 ))
                 Spacer(Modifier.size(12.dp))
                 TrackPlot(f)
             }
-            Section("Profil lotu", Icons.AutoMirrored.Outlined.ShowChart) {
-                TrendChart("Wysokość ft", f.track.map { it.altFt.toDouble() }, "", c.magenta, Modifier.fillMaxWidth())
+            Section(loc("Profil lotu", "Flight profile"), Icons.AutoMirrored.Outlined.ShowChart) {
+                TrendChart(loc("Wysokość ft", "Altitude ft"), f.track.map { it.altFt.toDouble() }, "", c.magenta, Modifier.fillMaxWidth())
                 Spacer(Modifier.size(14.dp))
-                TrendChart("Prędkość względem ziemi kt", f.track.map { it.gsKt.toDouble() }, "", c.accent, Modifier.fillMaxWidth())
+                TrendChart(loc("Prędkość względem ziemi kt", "Ground speed kt"), f.track.map { it.gsKt.toDouble() }, "", c.accent, Modifier.fillMaxWidth())
                 val vs = f.track.mapNotNull { it.vsFpm?.toDouble() }
-                if (vs.size >= 2) { Spacer(Modifier.size(14.dp)); TrendChart("Prędkość pionowa ft/min", vs, "", c.green, Modifier.fillMaxWidth()) }
+                if (vs.size >= 2) { Spacer(Modifier.size(14.dp)); TrendChart(loc("Prędkość pionowa ft/min", "Vertical speed ft/min"), vs, "", c.green, Modifier.fillMaxWidth()) }
             }
         }
     }
@@ -179,25 +181,25 @@ fun FlightDetailScreen(vm: MainViewModel, id: String, onBack: () -> Unit) {
 private fun LandingCard(l: LandingReport) {
     val c = Fm.c
     val col = scoreColor(l.score)
-    Section("Lądowanie" + (l.runway?.let { " — $it" } ?: ""), Icons.Outlined.FlightLand, frame = if (l.score < 55) c.danger else null) {
+    Section(loc("Lądowanie", "Landing") + (l.runway?.let { " — $it" } ?: ""), Icons.Outlined.FlightLand, frame = if (l.score < 55) c.danger else null) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             ScoreBadge(l, 72)
             Spacer(Modifier.width(16.dp))
             Column {
                 Text(l.grade, style = MaterialTheme.typography.headlineMedium, color = col)
-                Text("${l.vsFpm} ft/min przy przyziemieniu", fontFamily = Mono, fontSize = 14.sp, color = c.ink)
+                Text(loc("${l.vsFpm} ft/min przy przyziemieniu", "${l.vsFpm} ft/min at touchdown"), fontFamily = Mono, fontSize = 14.sp, color = c.ink)
             }
         }
         Spacer(Modifier.size(12.dp))
         FactGrid(listOfNotNull(
-            Fact("Prędkość pionowa", "${l.vsFpm} ft/min"),
-            Fact("Przeciążenie", l.gForce?.let { "%.2f g".format(it) } ?: "—"),
-            Fact("Przechylenie", l.bankDeg?.let { "%.1f°".format(abs(it)) } ?: "—"),
-            Fact("Pochylenie", l.pitchDeg?.let { "%.1f°".format(it) } ?: "—"),
-            Fact("Za progiem", l.alongFt?.let { "$it ft" } ?: "—"),
-            Fact("Od osi", l.crossFt?.let { "${abs(it)} ft " + if (it >= 0) "P" else "L" } ?: "—"),
-            Fact("Prędkość IAS", l.iasKt?.let { "$it kt" } ?: "—"),
-            Fact("Odbicia", l.bounces.toString(), accent = if (l.bounces > 0) c.caution else null),
+            Fact(loc("Prędkość pionowa", "Vertical speed"), "${l.vsFpm} ft/min"),
+            Fact(loc("Przeciążenie", "G-force"), l.gForce?.let { "%.2f g".format(it) } ?: "—"),
+            Fact(loc("Przechylenie", "Bank"), l.bankDeg?.let { "%.1f°".format(abs(it)) } ?: "—"),
+            Fact(loc("Pochylenie", "Pitch"), l.pitchDeg?.let { "%.1f°".format(it) } ?: "—"),
+            Fact(loc("Za progiem", "Past threshold"), l.alongFt?.let { "$it ft" } ?: "—"),
+            Fact(loc("Od osi", "Off centreline"), l.crossFt?.let { "${abs(it)} ft " + if (it >= 0) "P" else "L" } ?: "—"),
+            Fact(loc("Prędkość IAS", "IAS"), l.iasKt?.let { "$it kt" } ?: "—"),
+            Fact(loc("Odbicia", "Bounces"), l.bounces.toString(), accent = if (l.bounces > 0) c.caution else null),
         ))
         Spacer(Modifier.size(10.dp))
         l.notes.forEach { n -> Text("• $n", style = MaterialTheme.typography.bodyMedium, color = c.ink, modifier = Modifier.padding(vertical = 2.dp)) }
@@ -226,6 +228,6 @@ private fun TrackPlot(f: FlightLog) {
     }
     Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
         Text(f.from ?: "start", fontFamily = Mono, fontSize = 12.sp, color = c.green)
-        Text(f.to ?: "koniec", fontFamily = Mono, fontSize = 12.sp, color = c.danger, textAlign = TextAlign.End)
+        Text(f.to ?: loc("koniec", "end"), fontFamily = Mono, fontSize = 12.sp, color = c.danger, textAlign = TextAlign.End)
     }
 }

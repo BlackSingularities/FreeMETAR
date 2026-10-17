@@ -1,5 +1,7 @@
 package com.freemetar.app.data.link
 
+import com.freemetar.app.domain.loc
+
 import android.content.Context
 import android.net.wifi.WifiManager
 import android.os.Build
@@ -113,7 +115,7 @@ class LinkClient(private val context: Context, private val tokens: LinkTokenStor
                     }
                 }
             } catch (e: Exception) {
-                _lastError.value = "Nie można nasłuchiwać w sieci (UDP 47811): ${e.message}"
+                _lastError.value = loc("Nie można nasłuchiwać w sieci (UDP 47811): ${e.message}", "Cannot listen on the network (UDP 47811): ${e.message}")
             } finally {
                 lock?.release()
             }
@@ -136,7 +138,7 @@ class LinkClient(private val context: Context, private val tokens: LinkTokenStor
         wantConnected = false
         reconnectJob?.cancel()
         pingJob?.cancel()
-        socket?.close(1000, "rozłączono")
+        socket?.close(1000, loc("rozłączono", "disconnected"))
         socket = null
         _status.value = LinkStatus.Idle
         _state.value = null
@@ -186,18 +188,18 @@ class LinkClient(private val context: Context, private val tokens: LinkTokenStor
                 "error" -> when (m.code) {
                     "pairing_failed" -> {
                         scope.launch { tokens.clearToken(ip) }
-                        _status.value = LinkStatus.NeedsCode(ip, port, if (code != null) "Nieprawidłowy kod parowania." else "Parowanie wygasło — wpisz nowy kod.")
+                        _status.value = LinkStatus.NeedsCode(ip, port, if (code != null) loc("Nieprawidłowy kod parowania.", "Wrong pairing code.") else loc("Parowanie wygasło — wpisz nowy kod.", "Pairing expired — enter a new code."))
                         wantConnected = false
                         webSocket.close(1000, null)
                     }
-                    "rate_limited" -> _lastError.value = "Za dużo prób — odczekaj minutę."
+                    "rate_limited" -> _lastError.value = loc("Za dużo prób — odczekaj minutę.", "Too many attempts — wait a minute.")
                     else -> _lastError.value = m.message ?: m.code
                 }
             }
         }
 
-        override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) = lost(webSocket, t.message ?: "błąd połączenia")
-        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) = lost(webSocket, reason.ifBlank { "połączenie zamknięte" })
+        override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) = lost(webSocket, t.message ?: loc("błąd połączenia", "connection error"))
+        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) = lost(webSocket, reason.ifBlank { loc("połączenie zamknięte", "connection closed") })
 
         private fun lost(ws: WebSocket, reason: String) {
             if (ws != socket) return
@@ -234,7 +236,7 @@ class LinkClient(private val context: Context, private val tokens: LinkTokenStor
      */
     suspend fun navdata(kind: String, params: Map<String, Any?>): JsonElement {
         val ws = socket
-        if (ws == null || _status.value !is LinkStatus.Connected) throw LinkException("not_connected", "Brak połączenia z OpenAirBook Link")
+        if (ws == null || _status.value !is LinkStatus.Connected) throw LinkException("not_connected", loc("Brak połączenia z OpenAirBook Link", "Not connected to OpenAirBook Link"))
         val id = "n${ids.getAndIncrement()}"
         val msg = buildJsonObject {
             put("v", 1); put("type", "navdata_request"); put("id", id); put("kind", kind)
@@ -249,12 +251,12 @@ class LinkClient(private val context: Context, private val tokens: LinkTokenStor
         }
         val waiter = CompletableDeferred<JsonElement>()
         pending[id] = waiter
-        if (!ws.send(msg.toString())) { pending.remove(id); throw LinkException("send_failed", "Nie wysłano zapytania") }
+        if (!ws.send(msg.toString())) { pending.remove(id); throw LinkException("send_failed", loc("Nie wysłano zapytania", "Request not sent")) }
         return try {
             withTimeout(10_000) { waiter.await() }
         } catch (e: TimeoutCancellationException) {
             pending.remove(id)
-            throw LinkException("timeout", "OpenAirBook Link nie odpowiedział w 10 s")
+            throw LinkException("timeout", loc("OpenAirBook Link nie odpowiedział w 10 s", "OpenAirBook Link did not respond within 10 s"))
         }
     }
 

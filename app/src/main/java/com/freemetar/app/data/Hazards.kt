@@ -1,5 +1,7 @@
 package com.freemetar.app.data
 
+import com.freemetar.app.domain.loc
+
 import com.freemetar.app.domain.Geo
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -28,22 +30,22 @@ data class Sigmet(
 ) {
     val hazardLabel: String
         get() = when (hazard.uppercase()) {
-            "TS", "CONVECTIVE", "CONV" -> "Burze"
-            "TURB" -> "Turbulencja"
-            "ICE" -> "Oblodzenie"
-            "MTW" -> "Fala górska"
-            "VA" -> "Pył wulkaniczny"
-            "TC" -> "Cyklon tropikalny"
-            "DS" -> "Burza pyłowa"
-            "SS" -> "Burza piaskowa"
-            "IFR" -> "Warunki IFR"
+            "TS", "CONVECTIVE", "CONV" -> loc("Burze", "Thunderstorms")
+            "TURB" -> loc("Turbulencja", "Turbulence")
+            "ICE" -> loc("Oblodzenie", "Icing")
+            "MTW" -> loc("Fala górska", "Mountain wave")
+            "VA" -> loc("Pył wulkaniczny", "Volcanic ash")
+            "TC" -> loc("Cyklon tropikalny", "Tropical cyclone")
+            "DS" -> loc("Burza pyłowa", "Dust storm")
+            "SS" -> loc("Burza piaskowa", "Sandstorm")
+            "IFR" -> loc("Warunki IFR", "IFR conditions")
             else -> hazard
         } + (qualifier?.takeIf { it.isNotBlank() && it.length <= 6 }?.let { " ($it)" } ?: "")
 
     val levels: String
         get() = when {
-            baseFt == null && topFt == null -> "wysokość nieokreślona"
-            (baseFt ?: 0) == 0 -> "od ziemi do ${fl(topFt)}"
+            baseFt == null && topFt == null -> loc("wysokość nieokreślona", "levels not specified")
+            (baseFt ?: 0) == 0 -> loc("od ziemi do ${fl(topFt)}", "surface to ${fl(topFt)}")
             else -> "${fl(baseFt)}–${fl(topFt)}"
         }
 
@@ -73,15 +75,15 @@ data class Pirep(
 
     val summary: String
         get() = listOfNotNull(
-            turbulence?.let { if (it.contains("NEG")) "bez turbulencji" else "turbulencja ${intensity(it, neuter = false)}" },
-            icing?.let { if (it.contains("NEG")) "bez oblodzenia" else "oblodzenie ${intensity(it, neuter = true)}" },
-        ).joinToString(", ").ifBlank { "bez zjawisk" }
+            turbulence?.let { if (it.contains("NEG")) loc("bez turbulencji", "no turbulence") else "turbulencja ${intensity(it, neuter = false)}" },
+            icing?.let { if (it.contains("NEG")) loc("bez oblodzenia", "no icing") else "oblodzenie ${intensity(it, neuter = true)}" },
+        ).joinToString(", ").ifBlank { loc("bez zjawisk", "nothing reported") }
 
     // turbulencja (r. żeński) / oblodzenie (r. nijaki)
     private fun intensity(s: String, neuter: Boolean) = when {
-        s.contains("SEV") -> if (neuter) "silne" else "silna"
-        s.contains("MOD") -> if (neuter) "umiarkowane" else "umiarkowana"
-        s.contains("LGT") -> if (neuter) "słabe" else "słaba"
+        s.contains("SEV") -> if (neuter) loc("silne", "severe") else loc("silna", "severe")
+        s.contains("MOD") -> if (neuter) loc("umiarkowane", "moderate") else loc("umiarkowana", "moderate")
+        s.contains("LGT") -> if (neuter) loc("słabe", "light") else loc("słaba", "light")
         else -> s.lowercase()
     }
 }
