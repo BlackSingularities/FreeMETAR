@@ -21,6 +21,8 @@ data class Settings(
     val altUnit: AltUnit = AltUnit.FT,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val autoRefresh: Boolean = true,
+    val simbriefUser: String = "",
+    val activeRouteId: String? = null,
 )
 
 class Prefs(private val context: Context) {
@@ -30,6 +32,8 @@ class Prefs(private val context: Context) {
     private val ALT = stringPreferencesKey("alt")
     private val THEME = stringPreferencesKey("theme")
     private val AUTO = booleanPreferencesKey("auto_refresh")
+    private val SIMBRIEF = stringPreferencesKey("simbrief_user")
+    private val ROUTE = stringPreferencesKey("active_route")
 
     private fun list(v: String?) = v?.split(",")?.filter { it.isNotBlank() }
 
@@ -41,6 +45,8 @@ class Prefs(private val context: Context) {
             altUnit = p[ALT]?.let { runCatching { AltUnit.valueOf(it) }.getOrNull() } ?: AltUnit.FT,
             themeMode = p[THEME]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM,
             autoRefresh = p[AUTO] ?: true,
+            simbriefUser = p[SIMBRIEF].orEmpty(),
+            activeRouteId = p[ROUTE],
         )
     }
 
@@ -69,4 +75,6 @@ class Prefs(private val context: Context) {
     suspend fun setAlt(u: AltUnit) = context.dataStore.edit { it[ALT] = u.name }
     suspend fun setTheme(m: ThemeMode) = context.dataStore.edit { it[THEME] = m.name }
     suspend fun setAutoRefresh(v: Boolean) = context.dataStore.edit { it[AUTO] = v }
+    suspend fun setSimbriefUser(v: String) = context.dataStore.edit { it[SIMBRIEF] = v.trim() }
+    suspend fun setActiveRoute(id: String?) = context.dataStore.edit { if (id == null) it.remove(ROUTE) else it[ROUTE] = id }
 }

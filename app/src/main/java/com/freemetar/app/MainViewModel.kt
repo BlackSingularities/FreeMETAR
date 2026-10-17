@@ -27,6 +27,13 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
 import com.freemetar.app.data.Locator
+import android.net.Uri
+import com.freemetar.app.data.AloftCell
+import com.freemetar.app.data.RouteImport
+import com.freemetar.app.data.RouteStore
+import com.freemetar.app.data.SavedRoute
+import com.freemetar.app.data.SimBrief
+import com.freemetar.app.data.Taf
 import com.freemetar.app.data.LatLon
 import com.freemetar.app.data.OpenMeteo
 import com.freemetar.app.data.Pirep
@@ -79,6 +86,17 @@ sealed interface NearMe {
     data class Failed(val message: String) : NearMe
 }
 
+/** Pogoda dla aktywnej trasy: lotniska końcowe i zapasowe, SIGMET przecinające trasę, wiatr na przelotowym FL. */
+data class RouteBriefing(
+    val routeId: String,
+    val metars: Map<String, Metar> = emptyMap(),
+    val tafs: Map<String, Taf> = emptyMap(),
+    val sigmets: List<Sigmet> = emptyList(),
+    /** Wiatr na poziomie przelotowym w punktach kontrolnych: start, środek trasy, cel. */
+    val cruiseWinds: List<Pair<String, AloftCell?>> = emptyList(),
+    val loading: Boolean = true,
+)
+
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val db = AirportDb(app)
     private val prefs = Prefs(app)
@@ -108,10 +126,126 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _updatePromptDismissed = MutableStateFlow(false)
     val updatePromptDismissed = _updatePromptDismissed.asStateFlow()
 
+    // ---------- trasy i plan lotu ----------
+
+    private val routeStore = RouteStore(app)
+    private val _routes = MutableStateFlow<List<SavedRoute>>(emptyList())
+    val routes = _routes.asStateFlow()
+    private val _routeBriefing = MutableStateFlow<RouteBriefing?>(null)
+    val routeBriefing = _routeBriefing.asStateFlow()
+    /** Krótki komunikat dla użytkownika po imporcie/eksporcie (pokazywany jako pasek u dołu). */
+    private val _flightMessage = MutableStateFlow<String?>(null)
+    val flightMessage = _flightMessage.asStateFlow()
+    private val _importing = MutableStateFlow(false)
+    val importing = _importing.asStateFlow()
+
+    fun activeRoute(): SavedRoute? = settings.value.activeRouteId?.let { id -> _routes.value.firstOrNull { it.id == id } }
+
+    fun consumeFlightMessage() { _flightMessage.value = null }
+
+    /** Prośba o wykadrowanie aktywnej trasy na mapie (licznik, żeby każde dotknięcie działało). */
+    private val _mapRouteFocus = MutableStateFlow(0)
+    val mapRouteFocus = _mapRouteFocus.asStateFlow()
+    fun focusRouteOnMap() { _mapRouteFocus.value += 1 }
+
+    private fun addRoutes(new: List<SavedRoute>, activate: Boolean) = viewModelScope.launch {
+        // Ten sam plan z SimBrief zastępuje poprzednią wersję zamiast się dublować
+        val keep = _routes.value.filterNot { old -> new.any { it.id == old.id } }
+        val all = new + keep
+        _routes.value = all
+        routeStore.save(all)
+        if (activate) new.firstOrNull()?.let { activateRoute(it.id) }
+    }
+
+    fun importSimbrief(user: String) = viewModelScope.launch {
+        if (user.isBlank()) { _flightMessage.value = "Wpisz nazwę użytkownika lub Pilot ID z SimBrief."; return@launch }
+        _importing.value = true
+        prefs.setSimbriefUser(user)
+        try {
+            val r = SimBrief.fetch(user)
+            addRoutes(listOf(r), activate = true).join()
+            _flightMessage.value = "Pobrano plan ${r.name} z SimBrief."
+        } catch (e: Exception) {
+            _flightMessage.value = "Nie pobrano planu z SimBrief: ${e.message}. Sprawdź nazwę użytkownika i czy masz wygenerowany plan."
+        } finally {
+            _importing.value = false
+        }
+    }
+
+    fun addRouteFromText(text: String, cruiseFl: Int?) = viewModelScope.launch {
+        try {
+            val r = RouteImport.fromText(text, cruiseFl, db.fixResolver)
+            addRoutes(listOf(r), activate = true).join()
+            val unknown = r.points.count { !it.hasPosition }
+            _flightMessage.value = "Zapisano trasę ${r.name}" + if (unknown > 0) ". $unknown punktów bez pozycji (brak w bazie) — pominięte na mapie." else "."
+        } catch (e: Exception) {
+            _flightMessage.value = e.message ?: "Nie rozpoznano trasy."
+        }
+    }
+
+    fun importRoutesFile(uri: Uri) = viewModelScope.launch {
+        try {
+            val text = routeStore.readText(getApplication(), uri)
+            val list = RouteImport.parseAny(text, db.fixResolver)
+            addRoutes(list, activate = list.size == 1).join()
+            _flightMessage.value = "Zaimportowano trasy: ${list.size}."
+        } catch (e: Exception) {
+            _flightMessage.value = "Nie zaimportowano pliku: ${e.message}"
+        }
+    }
+
+    fun exportRoutes(uri: Uri) = viewModelScope.launch {
+        try {
+            routeStore.exportTo(getApplication(), uri, _routes.value)
+            _flightMessage.value = "Wyeksportowano trasy: ${_routes.value.size}."
+        } catch (e: Exception) {
+            _flightMessage.value = "Nie zapisano pliku: ${e.message}"
+        }
+    }
+
+    fun deleteRoute(id: String) = viewModelScope.launch {
+        _routes.value = _routes.value.filterNot { it.id == id }
+        routeStore.save(_routes.value)
+        if (settings.value.activeRouteId == id) { prefs.setActiveRoute(null); _routeBriefing.value = null }
+    }
+
+    fun activateRoute(id: String) = viewModelScope.launch {
+        prefs.setActiveRoute(id)
+        _routes.value.firstOrNull { it.id == id }?.let { refreshRouteBriefing(it) }
+    }
+
+    fun refreshRouteBriefing(r: SavedRoute? = activeRoute()) {
+        r ?: return
+        viewModelScope.launch {
+            _routeBriefing.value = RouteBriefing(r.id)
+            val ids = (listOf(r.origin, r.destination) + r.alternates).distinct()
+            val m = async { runCatching { WeatherApi.metars(ids) }.getOrDefault(emptyList()).associateBy { it.station } }
+            val t = async { ids.mapNotNull { id -> runCatching { WeatherApi.taf(id) }.getOrNull()?.let { id to it } }.toMap() }
+            val sig = async {
+                val pts = r.points.filter { it.hasPosition }.map { LatLon(it.lat!!, it.lon!!) }
+                runCatching { WeatherApi.sigmets() }.getOrDefault(emptyList())
+                    .filter { s -> pts.any { p -> s.distanceNm(p) <= 25 } }
+            }
+            val winds = async {
+                val pts = r.points.filter { it.hasPosition }
+                val fl = r.cruiseFl
+                if (pts.isEmpty() || fl == null) emptyList() else
+                    listOf(pts.first(), pts[pts.size / 2], pts.last()).distinct().map { p ->
+                        p.ident to runCatching { OpenMeteo.fetch(p.lat!!, p.lon!!, hours = 3)?.windAt(fl) }.getOrNull()
+                    }
+            }
+            _routeBriefing.value = RouteBriefing(r.id, m.await(), t.await(), sig.await(), winds.await(), loading = false)
+        }
+    }
+
     private val _nearMe = MutableStateFlow<NearMe>(NearMe.Idle)
     val nearMe = _nearMe.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            _routes.value = routeStore.load()
+            prefs.settings.first().activeRouteId?.let { id -> _routes.value.firstOrNull { it.id == id }?.let { refreshRouteBriefing(it) } }
+        }
         loadDb(force = false)
         startAutoRefresh()
         checkForUpdate(silent = true)

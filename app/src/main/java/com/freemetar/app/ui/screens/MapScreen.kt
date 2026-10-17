@@ -49,6 +49,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.freemetar.app.MainViewModel
 import com.freemetar.app.data.Metar
 import com.freemetar.app.data.Sigmet
+import com.freemetar.app.data.SavedRoute
+import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.geometry.LatLngBounds
+import org.maplibre.geojson.LineString
 import com.freemetar.app.ui.components.CategoryTag
 import com.freemetar.app.ui.theme.Fm
 import com.freemetar.app.ui.theme.FmColors
@@ -74,6 +78,8 @@ import org.maplibre.geojson.Polygon
 private const val SRC_METAR = "oab-metars"
 private const val SRC_SIGMET = "oab-sigmets"
 private const val LYR_METAR = "oab-metar-dots"
+private const val SRC_ROUTE = "oab-route"
+private const val SRC_ROUTE_PTS = "oab-route-points"
 
 private fun hex(c: Color) = String.format("#%06X", 0xFFFFFF and c.toArgb())
 
@@ -94,6 +100,17 @@ private fun sigmetFeatures(list: List<Sigmet>): FeatureCollection =
         Feature.fromGeometry(Polygon.fromLngLats(listOf(ring))).apply { addStringProperty("id", s.id) }
     })
 
+private fun routeLine(r: SavedRoute?): FeatureCollection {
+    val pts = r?.points?.filter { it.hasPosition }.orEmpty()
+    if (pts.size < 2) return FeatureCollection.fromFeatures(emptyList())
+    return FeatureCollection.fromFeature(Feature.fromGeometry(LineString.fromLngLats(pts.map { Point.fromLngLat(it.lon!!, it.lat!!) })))
+}
+
+private fun routePoints(r: SavedRoute?): FeatureCollection =
+    FeatureCollection.fromFeatures(r?.points?.filter { it.hasPosition }.orEmpty().map { p ->
+        Feature.fromGeometry(Point.fromLngLat(p.lon!!, p.lat!!)).apply { addStringProperty("id", p.ident) }
+    })
+
 /** Mapa pogody: lotniska w kolorach kategorii lotu i obszary SIGMET; dotknięcie lotniska otwiera briefing. */
 @Composable
 fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
@@ -101,6 +118,11 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
     val c = Fm.c
     val metars by vm.mapMetars.collectAsStateWithLifecycle()
     val sigmets by vm.mapSigmets.collectAsStateWithLifecycle()
+    val settings by vm.settings.collectAsStateWithLifecycle()
+    val routes by vm.routes.collectAsStateWithLifecycle()
+    val focus by vm.mapRouteFocus.collectAsStateWithLifecycle()
+    val route = routes.firstOrNull { it.id == settings.activeRouteId }
+    var handledFocus by rememberSaveable { mutableStateOf(0) }
     var showSigmets by rememberSaveable { mutableStateOf(true) }
     var picked by remember { mutableStateOf<Metar?>(null) }
     var style by remember { mutableStateOf<Style?>(null) }
@@ -163,6 +185,18 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
     LaunchedEffect(style, metars, c) {
         (style?.getSource(SRC_METAR) as? GeoJsonSource)?.setGeoJson(metarFeatures(metars, c))
     }
+    LaunchedEffect(style, route) {
+        (style?.getSource(SRC_ROUTE) as? GeoJsonSource)?.setGeoJson(routeLine(route))
+        (style?.getSource(SRC_ROUTE_PTS) as? GeoJsonSource)?.setGeoJson(routePoints(route))
+    }
+    // „Pokaż na mapie” z sekcji Lot: wykadruj całą trasę
+    LaunchedEffect(style, focus, route) {
+        val pts = route?.points?.filter { it.hasPosition }.orEmpty()
+        if (style == null || focus == handledFocus || pts.size < 2) return@LaunchedEffect
+        handledFocus = focus
+        val bounds = LatLngBounds.Builder().apply { pts.forEach { include(LatLng(it.lat!!, it.lon!!)) } }.build()
+        mapView.getMapAsync { it.easeCamera(CameraUpdateFactory.newLatLngBounds(bounds, 120), 800) }
+    }
     LaunchedEffect(style, sigmets, showSigmets) {
         (style?.getSource(SRC_SIGMET) as? GeoJsonSource)?.setGeoJson(sigmetFeatures(if (showSigmets) sigmets else emptyList()))
     }
@@ -211,6 +245,25 @@ private fun addOverlay(st: Style, c: FmColors) {
     st.addLayer(LineLayer("oab-sigmet-line", SRC_SIGMET).withProperties(
         PropertyFactory.lineColor(hex(c.caution)), PropertyFactory.lineWidth(1.6f), PropertyFactory.lineDasharray(arrayOf(3f, 2f)),
     ))
+    // Trasa w magencie — kolor aktywnej nawigacji w awionice
+    st.addSource(GeoJsonSource(SRC_ROUTE))
+    st.addLayer(LineLayer("oab-route-line", SRC_ROUTE).withProperties(
+        PropertyFactory.lineColor(hex(c.magenta)), PropertyFactory.lineWidth(3.5f),
+    ))
+    st.addSource(GeoJsonSource(SRC_ROUTE_PTS))
+    st.addLayer(CircleLayer("oab-route-pts", SRC_ROUTE_PTS).withProperties(
+        PropertyFactory.circleRadius(3.5f), PropertyFactory.circleColor(hex(c.magenta)),
+    ))
+    st.addLayer(SymbolLayer("oab-route-label", SRC_ROUTE_PTS).withProperties(
+        PropertyFactory.textField(Expression.get("id")),
+        PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+        PropertyFactory.textSize(10f),
+        PropertyFactory.textOffset(arrayOf(0f, -1.2f)),
+        PropertyFactory.textColor(hex(c.magenta)),
+        PropertyFactory.textHaloColor(hex(c.paper)),
+        PropertyFactory.textHaloWidth(1.5f),
+        PropertyFactory.textOptional(true),
+    ).apply { minZoom = 5.5f })
     st.addSource(GeoJsonSource(SRC_METAR))
     // Okrąg w kolorze kategorii, jak symbol lotniska na wyświetlaczu nawigacyjnym
     st.addLayer(CircleLayer(LYR_METAR, SRC_METAR).withProperties(

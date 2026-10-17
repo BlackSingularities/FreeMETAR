@@ -191,7 +191,13 @@ class MainActivity : ComponentActivity() {
                                         nav.navigate("airport/$ident")
                                     }
                                 }
-                                composable("flight") { FlightScreen() }
+                                composable("flight") {
+                                    FlightScreen(
+                                        vm,
+                                        onOpen = { id -> vm.open(id); nav.navigate("airport/$id") },
+                                        onShowMap = { vm.focusRouteOnMap(); nav.goTab("map") },
+                                    )
+                                }
                                 composable("tools") { ToolsScreen(vm) }
                                 composable("settings") { SettingsScreen(vm) }
                             }
