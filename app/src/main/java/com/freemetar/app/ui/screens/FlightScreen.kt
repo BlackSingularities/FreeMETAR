@@ -86,7 +86,7 @@ import java.util.Date
 /** Sekcja Lot: aktywny plan z pogodą na trasie, import (SimBrief, tekst, plik), zapisane trasy, symulator. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> Unit, onEditPlan: (String) -> Unit) {
+fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> Unit, onEditPlan: (String) -> Unit, onOpenFlight: (String) -> Unit) {
     val c = Fm.c
     val settings by vm.settings.collectAsStateWithLifecycle()
     val routes by vm.routes.collectAsStateWithLifecycle()
@@ -171,7 +171,7 @@ fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> U
                 }
             }
 
-            FlightHistorySection(vm)
+            FlightHistorySection(vm, onOpenFlight)
         }
         SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).padding(12.dp).widthIn(max = 560.dp))
     }

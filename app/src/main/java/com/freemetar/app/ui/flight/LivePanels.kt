@@ -288,30 +288,3 @@ private fun Systems(s: FlightState) {
         style = MaterialTheme.typography.bodySmall, color = c.ink2, modifier = Modifier.padding(top = 8.dp),
     )
 }
-
-/** Historia lotów nagranych automatycznie z symulatora. */
-@Composable
-fun FlightHistorySection(vm: MainViewModel) {
-    val c = Fm.c
-    val logs by vm.flightLogs.collectAsStateWithLifecycle()
-    if (logs.isEmpty()) return
-    Section("Historia lotów", Icons.Outlined.History) {
-        logs.take(30).forEach { f ->
-            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("${f.from ?: "?"} → ${f.to ?: "?"}", fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = c.ink)
-                    Text(
-                        listOfNotNull(
-                            DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(f.start)),
-                            "%d:%02d".format(f.durationMin / 60, f.durationMin % 60),
-                            "${f.distanceNm} NM", "FL%03d".format(f.maxAltFt / 100), f.aircraft,
-                        ).joinToString(", "),
-                        style = MaterialTheme.typography.bodySmall, color = c.ink2,
-                    )
-                }
-                IconButton({ vm.deleteFlightLog(f.id) }) { Icon(Icons.Outlined.Delete, "Usuń lot z historii", tint = c.ink2) }
-            }
-            Rule()
-        }
-    }
-}

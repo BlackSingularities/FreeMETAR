@@ -260,7 +260,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val linkServers = link.servers
     val flightState = link.state
     val nav = NavRepository(link, NavDataStore(app))
-    private val recorder = FlightRecorder { lat, lon -> db.nearby(lat, lon, radiusNm = 5.0, limit = 1).firstOrNull()?.first?.ident }
+    private val recorder = FlightRecorder(
+        nearestAirport = { lat, lon -> db.nearby(lat, lon, radiusNm = 5.0, limit = 1).firstOrNull()?.first?.ident },
+        // Progi pasów lotnisk do 5 NM od przyziemienia (OurAirports: współrzędne progów i kursy rzeczywiste)
+        runwaysNear = { lat, lon ->
+            db.nearby(lat, lon, radiusNm = 5.0, limit = 3).flatMap { (a, _) ->
+                db.runways(a.ident).flatMap { rw ->
+                    listOf(rw.le, rw.he).mapNotNull { e ->
+                        val tLat = e.lat ?: return@mapNotNull null
+                        val tLon = e.lon ?: return@mapNotNull null
+                        val hdg = com.freemetar.app.domain.Wind.headingOf(e.ident, e.headingTrue) ?: return@mapNotNull null
+                        com.freemetar.app.domain.RunwayGeom("${a.ident} ${e.ident}", tLat, tLon, hdg, rw.lengthFt?.toDouble())
+                    }
+                }
+            }
+        },
+    )
+    private var announcedLanding: com.freemetar.app.domain.LandingReport? = null
     private val flightLogStore = FlightLogStore(app)
     private val _flightLogs = MutableStateFlow<List<FlightLog>>(emptyList())
     val flightLogs = _flightLogs.asStateFlow()
@@ -286,6 +302,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         link.disconnect()
     }
 
+    /** Tor lotu jako GPX 1.1 (do Google Earth, Garmin, Strava i innych). */
+    fun exportFlightGpx(ctx: android.content.Context, f: FlightLog, uri: Uri) = viewModelScope.launch {
+        runCatching {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                ctx.contentResolver.openOutputStream(uri, "wt")!!.bufferedWriter().use { w -> w.write(com.freemetar.app.data.link.FlightExport.gpx(f)) }
+            }
+        }.onSuccess { _flightMessage.value = "Zapisano tor lotu do GPX." }
+            .onFailure { _flightMessage.value = "Nie zapisano pliku: ${it.message}" }
+    }
+
     fun deleteFlightLog(id: String) = viewModelScope.launch {
         _flightLogs.value = _flightLogs.value.filterNot { it.id == id }
         flightLogStore.save(_flightLogs.value)
@@ -307,6 +333,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 if (st != null) {
                     saveFlight(recorder.onState(st))
                     if (recorder.recording) _track.value = recorder.currentTrack
+                    // Ocena zaraz po przyziemieniu — nie trzeba czekać na koniec lotu
+                    recorder.lastLanding?.takeIf { it !== announcedLanding }?.let { l ->
+                        announcedLanding = l
+                        _flightMessage.value = "Lądowanie: ${l.score}/100, ${l.grade.lowercase()} — ${l.vsFpm} ft/min" + (l.runway?.let { ", $it" } ?: "")
+                    }
                 }
             }
         }

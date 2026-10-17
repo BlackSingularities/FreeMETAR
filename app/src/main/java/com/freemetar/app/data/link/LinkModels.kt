@@ -21,7 +21,22 @@ data class Announce(
 /** Serwer znaleziony w sieci (adres z nadawcy datagramu). */
 data class LinkServer(val name: String, val host: String, val ip: String, val port: Int, val source: String?, val version: String?, val lastSeen: Long)
 
-@Serializable data class AircraftInfo(val title: String? = null, val onGround: Boolean? = null, val paused: Boolean? = null)
+@Serializable data class AircraftInfo(
+    val title: String? = null, val onGround: Boolean? = null, val paused: Boolean? = null,
+    /** piston / jet / turboprop / helicopter / none — z Link (protokół v1, pola dodatkowe). */
+    val engineType: String? = null,
+    val atcModel: String? = null,
+    val atcType: String? = null,
+    /** airliner / bizjet / turboprop / ga / helicopter. */
+    val category: String? = null,
+)
+
+/** Ostatnie przyziemienie zatrzaśnięte przez Link; `seq` rośnie przy każdym (wykrywanie odbić). */
+@Serializable data class Touchdown(
+    val seq: Long = 0, val t: Long? = null, val vsFpm: Double? = null, val gForce: Double? = null,
+    val pitchDeg: Double? = null, val bankDeg: Double? = null, val headingTrueDeg: Double? = null,
+    val lat: Double? = null, val lon: Double? = null, val iasKt: Double? = null, val gsKt: Double? = null,
+)
 @Serializable data class Position(val lat: Double? = null, val lon: Double? = null, val altMslFt: Double? = null, val altAglFt: Double? = null, val altIndFt: Double? = null)
 @Serializable data class Speed(val iasKt: Double? = null, val tasKt: Double? = null, val gsKt: Double? = null, val mach: Double? = null, val vsFpm: Double? = null)
 @Serializable data class Attitude(val pitchDeg: Double? = null, val bankDeg: Double? = null, val hdgTrueDeg: Double? = null, val hdgMagDeg: Double? = null, val trackTrueDeg: Double? = null)
@@ -65,6 +80,7 @@ data class FlightState(
     val engines: List<Engine> = emptyList(),
     val environment: Environment = Environment(),
     val axes: Axes = Axes(),
+    val touchdown: Touchdown? = null,
 )
 
 /** Koperta przychodzącej wiadomości — pola wszystkich typów, czytamy te, które pasują do `type`. */

@@ -62,6 +62,7 @@ import com.freemetar.app.ui.components.UpdateDialog
 import com.freemetar.app.ui.components.isWide
 import com.freemetar.app.ui.screens.BriefingScreen
 import com.freemetar.app.ui.plan.PlanEditorScreen
+import com.freemetar.app.ui.flight.FlightDetailScreen
 import com.freemetar.app.ui.screens.FlightScreen
 import com.freemetar.app.ui.screens.MapScreen
 import com.freemetar.app.ui.screens.HomeScreen
@@ -105,7 +106,11 @@ class MainActivity : ComponentActivity() {
                 val nav = rememberNavController()
                 val entry by nav.currentBackStackEntryAsState()
                 val route = entry?.destination?.route
-                val activeTab = if (route?.startsWith("airport") == true) "home" else route
+                val activeTab = when {
+                    route?.startsWith("airport") == true -> "home"
+                    route?.startsWith("plan") == true || route?.startsWith("flightlog") == true -> "flight"
+                    else -> route
+                }
                 val wide = isWide()
                 val c = Fm.c
                 UpdateDialog(vm)
@@ -198,12 +203,16 @@ class MainActivity : ComponentActivity() {
                                         onOpen = { id -> vm.open(id); nav.navigate("airport/$id") },
                                         onShowMap = { vm.focusRouteOnMap(); nav.goTab("map") },
                                         onEditPlan = { id -> vm.startEdit(id); nav.navigate("plan/$id") },
+                                        onOpenFlight = { id -> nav.navigate("flightlog/$id") },
                                     )
                                 }
                                 composable("plan/{id}") { backStack ->
                                     val id = backStack.arguments?.getString("id").orEmpty()
                                     LaunchedEffect(id) { if (vm.editing.value?.id != id) vm.startEdit(id) }
                                     PlanEditorScreen(vm, onBack = { nav.popBackStack() }, onShowMap = { vm.focusRouteOnMap(); nav.goTab("map") })
+                                }
+                                composable("flightlog/{id}") { backStack ->
+                                    FlightDetailScreen(vm, backStack.arguments?.getString("id").orEmpty(), onBack = { nav.popBackStack() })
                                 }
                                 composable("tools") { ToolsScreen(vm) }
                                 composable("settings") { SettingsScreen(vm) }
