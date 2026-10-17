@@ -11,6 +11,9 @@ import com.freemetar.app.data.Navaid
 import com.freemetar.app.data.Prefs
 import com.freemetar.app.data.Runway
 import com.freemetar.app.data.Settings
+import com.freemetar.app.data.UpdateInfo
+import com.freemetar.app.data.Updater
+import java.io.File
 import com.freemetar.app.data.WeatherApi
 import com.freemetar.app.data.WeatherBundle
 import kotlinx.coroutines.Job
@@ -46,6 +49,16 @@ data class AirportDetail(
     val error: String? = null,
 )
 
+sealed interface UpdateState {
+    data object Idle : UpdateState
+    data object Checking : UpdateState
+    data object UpToDate : UpdateState
+    data class Available(val info: UpdateInfo) : UpdateState
+    data class Downloading(val info: UpdateInfo, val progress: Float) : UpdateState
+    data class Ready(val info: UpdateInfo, val file: File) : UpdateState
+    data class Error(val message: String) : UpdateState
+}
+
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val db = AirportDb(app)
     private val prefs = Prefs(app)
@@ -68,11 +81,44 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private var refreshJob: Job? = null
 
+    private val _update = MutableStateFlow<UpdateState>(UpdateState.Idle)
+    val update = _update.asStateFlow()
+
+    /** Dialog o nowej wersji pokazujemy raz na uruchomienie. */
+    private val _updatePromptDismissed = MutableStateFlow(false)
+    val updatePromptDismissed = _updatePromptDismissed.asStateFlow()
+
     init {
         loadDb(force = false)
         refreshFavorites()
         startAutoRefresh()
+        checkForUpdate(silent = true)
     }
+
+    fun checkForUpdate(silent: Boolean = false) = viewModelScope.launch {
+        if (_update.value is UpdateState.Downloading) return@launch
+        _update.value = UpdateState.Checking
+        _update.value = try {
+            Updater.check()?.let { UpdateState.Available(it) } ?: UpdateState.UpToDate
+        } catch (e: Exception) {
+            // Przy starcie brak sieci nie jest powodem do komunikatu
+            if (silent) UpdateState.Idle else UpdateState.Error(e.message ?: "Nie udało się sprawdzić aktualizacji")
+        }
+    }
+
+    fun downloadUpdate(info: UpdateInfo) = viewModelScope.launch {
+        _update.value = UpdateState.Downloading(info, 0f)
+        _update.value = try {
+            val file = Updater.download(getApplication(), info) { p ->
+                _update.value = UpdateState.Downloading(info, p)
+            }
+            UpdateState.Ready(info, file)
+        } catch (e: Exception) {
+            UpdateState.Error("Pobieranie nie powiodło się: ${e.message}")
+        }
+    }
+
+    fun dismissUpdatePrompt() { _updatePromptDismissed.value = true }
 
     fun loadDb(force: Boolean) = viewModelScope.launch {
         try {

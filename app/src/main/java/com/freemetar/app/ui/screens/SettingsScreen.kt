@@ -76,6 +76,8 @@ fun SettingsScreen(vm: MainViewModel) {
             Text("Baza odświeża się sama co 30 dni.", color = TextLo, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
         }
 
+        com.freemetar.app.ui.components.UpdateSection(vm)
+
         SectionCard("O aplikacji") {
             Text("FreeMETAR ${BuildConfig.VERSION_NAME}", color = TextHi)
             Spacer(Modifier.size(4.dp))

@@ -50,6 +50,7 @@ class MainActivity : ComponentActivity() {
                 val nav = rememberNavController()
                 val entry by nav.currentBackStackEntryAsState()
                 val route = entry?.destination?.route
+                com.freemetar.app.ui.components.UpdateDialog(vm)
 
                 Scaffold(
                     containerColor = Night,
