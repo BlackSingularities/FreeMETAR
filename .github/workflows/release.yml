@@ -1,0 +1,65 @@
+name: Build & Release
+
+# Każdy commit na main = nowy release z podpisanym APK
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+
+      # Opcjonalny własny klucz: sekrety SIGNING_KEYSTORE_BASE64, SIGNING_STORE_PASSWORD,
+      # SIGNING_KEY_ALIAS, SIGNING_KEY_PASSWORD. Bez nich APK jest podpisane kluczem debug.
+      - name: Przygotuj keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build release APK
+        env:
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: gradle :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Nazwij APK
+        run: |
+          VERSION="1.0.${GITHUB_RUN_NUMBER}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          cp app/build/outputs/apk/release/app-release.apk "FreeMETAR-$VERSION.apk"
+
+      - name: Publikuj release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NOTES=$(git log -1 --pretty=format:'%s%n%n%b')
+          gh release create "v$VERSION" "FreeMETAR-$VERSION.apk" \
+            --title "FreeMETAR $VERSION" \
+            --notes "$NOTES" \
+            --target "$GITHUB_SHA"

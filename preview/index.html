@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FreeMETAR — podgląd</title>
+<style>
+:root{--night:#0B1220;--panel:#131C2E;--hi:#1B2740;--line:#26344F;--sky:#38BDF8;--amber:#F59E0B;--t:#E6EDF7;--lo:#8A9AB5;--vfr:#22C55E;--mvfr:#3B82F6;--ifr:#EF4444}
+*{box-sizing:border-box}body{margin:0;background:#05080f;font-family:system-ui,Roboto,sans-serif;color:var(--t);padding:24px 16px}
+h1{text-align:center;font-weight:600;font-size:18px;color:var(--lo);margin:0 0 20px}
+.row{display:flex;gap:28px;justify-content:center;flex-wrap:wrap}
+.phone{width:360px;height:760px;background:var(--night);border-radius:36px;border:8px solid #1e293b;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.cap{text-align:center;color:var(--lo);font-size:13px;margin-top:8px}
+.scroll{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px}
+.lbl{font-size:10.5px;letter-spacing:1.2px;font-weight:600;color:var(--lo);text-transform:uppercase}
+.mono{font-family:ui-monospace,Consolas,monospace}
+.badge{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:2px 10px;font-size:12px;font-weight:700}
+.dot{width:7px;height:7px;border-radius:50%}
+.raw{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;line-height:1.55;color:#d5deeb}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--hi);border-radius:14px;padding:10px 12px}.tile b{display:block;font-size:19px;font-weight:600;margin-top:3px}.tile small{color:var(--lo);font-size:11.5px}
+.nav{display:flex;justify-content:space-around;background:var(--panel);padding:10px 0 14px;font-size:12px;color:var(--lo)}
+.nav .on{color:var(--t)}.nav span{display:flex;flex-direction:column;align-items:center;gap:3px}.nav i{font-style:normal;font-size:18px;padding:2px 16px;border-radius:99px}.nav .on i{background:var(--hi)}
+.top{display:flex;align-items:center;gap:12px;padding:14px 14px 6px}
+.tabs{display:flex;gap:18px;padding:0 16px;font-size:14px;color:var(--lo);border-bottom:1px solid var(--line)}
+.tabs span{padding:10px 0}.tabs .on{color:var(--sky);box-shadow:0 2px 0 var(--sky)}
+.search{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:13px 14px;color:var(--lo);font-size:14px}
+.dec{display:flex;gap:10px;padding:3px 0;font-size:13px}.dec code{flex:0 0 92px;background:var(--hi);border-radius:6px;padding:2px 6px;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.best{background:rgba(56,189,248,.12);border-radius:12px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:6px 4px;text-align:left}th{color:var(--lo);font-weight:400;font-size:12px}
+tr.b td{background:rgba(56,189,248,.12)}tr.b td:first-child{border-radius:8px 0 0 8px}tr.b td:last-child{border-radius:0 8px 8px 0}
+.chip{display:inline-block;background:var(--hi);border-radius:8px;padding:6px 10px;font-size:13px;margin-right:6px}
+</style></head><body>
+<h1>FreeMETAR — makieta interfejsu (dane przykładowe)</h1>
+<div class="row">
+
+<!-- EKRAN 1: start -->
+<div><div class="phone">
+  <div class="scroll">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding-top:6px">
+      <div><div style="font-size:27px;font-weight:700;letter-spacing:-.5px">Free<span style="color:var(--sky)">METAR</span></div>
+      <div style="color:var(--lo);font-size:12px">Pogoda i dane lotnisk dla wirtualnych pilotów</div></div>
+      <div style="text-align:right"><div class="mono" style="color:var(--amber);font-weight:700;font-size:18px">10:42:17Z</div><div class="mono" style="color:var(--lo);font-size:11px">LT 12:42</div></div>
+    </div>
+    <div class="search">🔍&nbsp; ICAO, IATA, nazwa lub miasto</div>
+    <div><div class="lbl" style="margin-bottom:6px">Ostatnio oglądane</div>
+      <span class="chip mono">EPPO</span><span class="chip mono">EDDF</span><span class="chip mono">LOWI</span></div>
+    <div class="lbl">Ulubione</div>
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px"><span class="mono" style="font-size:22px;font-weight:700">EPWA</span>
+        <span class="badge" style="background:rgba(59,130,246,.16);color:var(--mvfr);border:1px solid rgba(59,130,246,.6)"><span class="dot" style="background:var(--mvfr)"></span>MVFR</span></div>
+      <div style="color:var(--lo);font-size:13px">Warsaw Chopin Airport</div>
+      <div style="display:flex;gap:16px;margin:10px 0" class="mono">
+        <div><div class="lbl" style="font-size:9.5px">Wiatr</div><b>240/12G24</b></div><div><div class="lbl" style="font-size:9.5px">Temp</div><b>12°</b></div><div><div class="lbl" style="font-size:9.5px">QNH</div><b>1008</b></div><div><div class="lbl" style="font-size:9.5px">Wiek</div><b>12m</b></div></div>
+      <div class="raw">EPWA 171030Z 24012G24KT 210V280 9999 -SHRA FEW012 BKN025CB 12/09 Q1008 TEMPO 4000 TSRA</div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px"><span class="mono" style="font-size:22px;font-weight:700">EPKK</span>
+        <span class="badge" style="background:rgba(34,197,94,.16);color:var(--vfr);border:1px solid rgba(34,197,94,.6)"><span class="dot" style="background:var(--vfr)"></span>VFR</span></div>
+      <div style="color:var(--lo);font-size:13px">Kraków John Paul II International Airport</div>
+      <div class="raw" style="margin-top:10px">EPKK 171030Z 27008KT CAVOK 14/06 Q1010 NOSIG</div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px"><span class="mono" style="font-size:22px;font-weight:700">EPGD</span>
+        <span class="badge" style="background:rgba(239,68,68,.16);color:var(--ifr);border:1px solid rgba(239,68,68,.6)"><span class="dot" style="background:var(--ifr)"></span>IFR</span></div>
+      <div style="color:var(--lo);font-size:13px">Gdańsk Lech Wałęsa Airport</div>
+      <div class="raw" style="margin-top:10px">EPGD 171030Z 18006KT 2500 BR OVC004 09/08 Q1006</div>
+    </div>
+  </div>
+  <div class="nav"><span class="on"><i>✈</i>Lotniska</span><span><i>🧮</i>Narzędzia</span><span><i>⚙</i>Ustawienia</span></div>
+</div><div class="cap">Start: ulubione z podglądem METAR, zegar UTC</div></div>
+
+<!-- EKRAN 2: pogoda -->
+<div><div class="phone">
+  <div class="top"><span style="font-size:20px">←</span><div style="flex:1"><div class="mono" style="font-weight:700;font-size:18px">EPWA</div><div style="color:var(--lo);font-size:12px">Warsaw Chopin Airport</div></div><span>⟳</span><span style="color:var(--amber);font-size:20px">★</span></div>
+  <div class="tabs"><span class="on">Pogoda</span><span>Pasy</span><span>Radio</span><span>Info</span><span>Okolica</span></div>
+  <div class="scroll">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center"><div><div style="color:var(--mvfr);font-size:24px;font-weight:700">Marginal VFR</div><div style="color:var(--lo);font-size:12.5px">Obserwacja 10:30Z · 12m temu</div></div></div>
+      <div class="best"><div><div class="lbl" style="color:var(--sky)">Preferowany pas</div><div class="mono" style="font-size:21px;font-weight:700">RWY 29</div></div><div style="text-align:right;font-size:13px">Czołowy 10 kt<br>Boczny 7 kt z lewej</div></div>
+    </div>
+    <div class="tiles">
+      <div class="tile"><span class="lbl">Wiatr</span><b>240/12G24 kt</b><small>22 km/h · z WSW</small></div>
+      <div class="tile"><span class="lbl">Widzialność</span><b>≥ 10 km</b></div>
+      <div class="tile"><span class="lbl">Temp / rosa</span><b>12° / 9°</b><small>54 °F</small></div>
+      <div class="tile"><span class="lbl">QNH</span><b>1008 hPa</b><small>29.77 inHg</small></div>
+      <div class="tile"><span class="lbl">Podstawa</span><b>2500 ft</b><small>pułap BKN/OVC</small></div>
+      <div class="tile"><span class="lbl">Wilgotność</span><b>82%</b><small>oblodz. gaźnika: Wysokie</small></div>
+      <div class="tile"><span class="lbl">Wys. gęstościowa</span><b>320 ft</b><small>ciśnieniowa 503 ft</small></div>
+      <div class="tile"><span class="lbl">QFE</span><b>995 hPa</b><small>elewacja 362 ft</small></div>
+    </div>
+    <div class="card"><div class="lbl" style="margin-bottom:8px">Rozkodowany METAR</div>
+      <div class="dec"><code style="color:var(--sky)">24012G24KT</code>Wiatr z 240°, 12 kt, w porywach 24 kt</div>
+      <div class="dec"><code style="color:var(--sky)">210V280</code>Kierunek zmienny od 210° do 280°</div>
+      <div class="dec"><code style="color:var(--vfr)">9999</code>Widzialność 10 km lub więcej</div>
+      <div class="dec"><code style="color:var(--amber)">-SHRA</code>Słaby przelotny deszcz</div>
+      <div class="dec"><code style="color:#93C5FD">BKN025CB</code>Poprzerywane (5–7/8) na 2500 ft — cumulonimbus!</div>
+      <div class="dec"><code style="color:#FCA5A5">12/09</code>Temperatura 12 °C, punkt rosy 9 °C (różnica 3°)</div>
+      <div class="dec"><code style="color:#C4B5FD">Q1008</code>QNH 1008 hPa (29.77 inHg)</div>
+      <div class="dec"><code style="color:var(--amber)">TEMPO</code>Okresowo:</div>
+    </div>
+    <div class="card"><div class="lbl" style="margin-bottom:8px">TAF — prognoza</div>
+      <div class="raw">TAF EPWA 170830Z 1709/1812 25012KT 9999 SCT025</div>
+      <div class="raw" style="padding-left:12px;margin-top:4px">TEMPO 1710/1716 25018G30KT 4000 TSRA BKN015CB</div><div style="color:var(--amber);font-size:12px;padding-left:12px">Okresowo: Ważna od dnia 17 10:00 do dnia 17 16:00 UTC</div>
+      <div class="raw" style="padding-left:12px;margin-top:4px">BECMG 1718/1720 VRB03KT</div>
+    </div>
+  </div>
+</div><div class="cap">Karta lotniska: kategoria lotu, pas, kafelki, dekoder, TAF</div></div>
+
+<!-- EKRAN 3: pasy -->
+<div><div class="phone">
+  <div class="top"><span style="font-size:20px">←</span><div style="flex:1"><div class="mono" style="font-weight:700;font-size:18px">EPWA</div><div style="color:var(--lo);font-size:12px">Warsaw Chopin Airport</div></div><span>⟳</span><span style="color:var(--amber);font-size:20px">★</span></div>
+  <div class="tabs"><span>Pogoda</span><span class="on">Pasy</span><span>Radio</span><span>Info</span><span>Okolica</span></div>
+  <div class="scroll">
+    <div class="card"><div class="lbl">Schemat i wiatr</div>
+      <svg viewBox="0 0 300 300" width="100%">
+        <circle cx="150" cy="150" r="138" fill="none" stroke="#26344F" stroke-width="1.5"/><circle cx="150" cy="150" r="91" fill="none" stroke="#26344F" stroke-opacity=".5"/>
+        <g stroke="#8A9AB5" stroke-width="1.5" id="ticks"></g>
+        <text x="150" y="40" fill="#F59E0B" text-anchor="middle" font-weight="700" font-size="13">N</text><text x="262" y="155" fill="#8A9AB5" text-anchor="middle" font-weight="700" font-size="13">E</text><text x="150" y="270" fill="#8A9AB5" text-anchor="middle" font-weight="700" font-size="13">S</text><text x="38" y="155" fill="#8A9AB5" text-anchor="middle" font-weight="700" font-size="13">W</text>
+        <g transform="rotate(332 150 150)"><rect x="142" y="74" width="16" height="152" fill="#334155"/><line x1="150" y1="82" x2="150" y2="218" stroke="#E6EDF7" stroke-opacity=".7" stroke-dasharray="7 7"/></g>
+        <g transform="rotate(287 162 160)"><rect x="154" y="80" width="16" height="160" fill="#334155"/><line x1="162" y1="88" x2="162" y2="232" stroke="#E6EDF7" stroke-opacity=".7" stroke-dasharray="7 7"/></g>
+        <text x="186" y="224" fill="#E6EDF7" font-family="monospace" font-size="11">15</text><text x="105" y="84" fill="#E6EDF7" font-family="monospace" font-size="11">33</text>
+        <text x="245" y="190" fill="#E6EDF7" font-family="monospace" font-size="11">11</text><text x="66" y="136" fill="#E6EDF7" font-family="monospace" font-size="11">29</text>
+        <line x1="31" y1="219" x2="106" y2="175" stroke="#38BDF8" stroke-width="6"/><polygon points="116,169 92,174 102,190" fill="#38BDF8"/>
+      </svg>
+      <div style="color:var(--lo);font-size:12px">Wiatr: 240/12G24 kt (kierunek rzeczywisty)</div></div>
+    <div class="card"><div class="lbl" style="margin-bottom:6px">Składowe wiatru</div>
+      <table class="mono"><tr><th>Pas</th><th>Kurs</th><th>Czołowy</th><th>Boczny</th></tr>
+      <tr class="b"><td style="color:var(--sky);font-weight:700">29</td><td style="color:var(--lo)">287°</td><td style="color:var(--vfr)">↓ 8 (16)</td><td>← 9 (18)</td></tr>
+      <tr><td>33</td><td style="color:var(--lo)">332°</td><td style="color:var(--vfr)">↓ 0 (1)</td><td style="color:var(--amber)">← 12 (24)</td></tr>
+      <tr><td>15</td><td style="color:var(--lo)">152°</td><td style="color:var(--ifr)">↑ 0 tylny</td><td style="color:var(--amber)">→ 12 (24)</td></tr>
+      <tr><td>11</td><td style="color:var(--lo)">107°</td><td style="color:var(--ifr)">↑ 8 tylny</td><td>→ 9 (18)</td></tr></table>
+      <div style="color:var(--lo);font-size:11px;margin-top:6px">W nawiasach wartości w porywach. → z prawej, ← z lewej.</div></div>
+    <div class="card"><div style="display:flex;justify-content:space-between"><span class="mono" style="font-weight:700;font-size:17px">RWY 11/29</span><span class="lbl" style="color:var(--amber)">Oświetlony</span></div>
+      <div class="tiles" style="grid-template-columns:1fr 1fr 1fr;margin-top:8px"><div class="tile"><span class="lbl">Długość</span><b style="font-size:16px">9186 ft</b><small>2800 m</small></div><div class="tile"><span class="lbl">Szer.</span><b style="font-size:16px">164 ft</b><small>50 m</small></div><div class="tile"><span class="lbl">Nawierzchnia</span><b style="font-size:16px">Beton</b></div></div></div>
+  </div>
+</div><div class="cap">Pasy: schemat z wiatrem i składowe dla każdego kierunku</div></div>
+
+<!-- EKRAN 4: radio -->
+<div><div class="phone">
+  <div class="top"><span style="font-size:20px">←</span><div style="flex:1"><div class="mono" style="font-weight:700;font-size:18px">EPWA</div><div style="color:var(--lo);font-size:12px">Warsaw Chopin Airport</div></div><span>⟳</span><span style="color:var(--amber);font-size:20px">★</span></div>
+  <div class="tabs"><span>Pogoda</span><span>Pasy</span><span class="on">Radio</span><span>Info</span><span>Okolica</span></div>
+  <div class="scroll">
+    <div class="card"><div class="lbl" style="margin-bottom:6px">Częstotliwości lotniska</div>
+      <div id="freqs"></div></div>
+    <div class="card"><div class="lbl" style="margin-bottom:6px">Pomoce nawigacyjne w promieniu 40 NM</div>
+      <div style="display:flex;align-items:center;padding:6px 0"><b class="mono" style="width:56px">OKC</b><div style="flex:1;font-size:13px">VOR-DME · Okęcie<div style="color:var(--lo);font-size:12px">0.8 NM · 285°</div></div><span class="mono" style="color:var(--sky)">113.45 MHz</span></div>
+      <div style="display:flex;align-items:center;padding:6px 0"><b class="mono" style="width:56px">WAR</b><div style="flex:1;font-size:13px">VOR-DME · Warszawa<div style="color:var(--lo);font-size:12px">6.3 NM · 040°</div></div><span class="mono" style="color:var(--sky)">114.90 MHz</span></div>
+    </div>
+    <div class="card"><div class="lbl" style="margin-bottom:8px">Słońce dziś (UTC)</div>
+      <div class="tiles" style="grid-template-columns:repeat(4,1fr)"><div class="tile"><span class="lbl">Świt</span><b style="font-size:15px">04:44</b></div><div class="tile"><span class="lbl">Wsch.</span><b style="font-size:15px;color:var(--amber)">05:18</b></div><div class="tile"><span class="lbl">Zach.</span><b style="font-size:15px;color:var(--amber)">15:27</b></div><div class="tile"><span class="lbl">Zmierz.</span><b style="font-size:15px">16:01</b></div></div></div>
+  </div>
+</div><div class="cap">Radio: częstotliwości, VOR/NDB, słońce (zakładka Info)</div></div>
+
+</div>
+<script>
+const t=document.getElementById('ticks');for(let d=0;d<360;d+=10){const a=(d-90)*Math.PI/180,l=d%30?6:14;const x1=150+(138-l)*Math.cos(a),y1=150+(138-l)*Math.sin(a),x2=150+138*Math.cos(a),y2=150+138*Math.sin(a);t.insertAdjacentHTML('beforeend',`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`)}
+const f=[["ATIS","",128.800],["Delivery","Okęcie Delivery",121.605],["Ziemia","Okęcie Ground",121.900],["Wieża","Okęcie Tower",118.300],["Zbliżanie","Warszawa Approach",128.805],["Odloty","Warszawa Departure",127.580]];
+document.getElementById('freqs').innerHTML=f.map(([a,b,c])=>`<div style="display:flex;align-items:center;padding:7px 0"><div style="flex:1"><div style="font-weight:600">${a}</div><div style="color:var(--lo);font-size:12px">${b}</div></div><span class="mono" style="font-size:19px;font-weight:700;color:var(--sky)">${c.toFixed(3)}</span></div>`).join('');
+</script>
+</body></html>
