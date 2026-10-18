@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +31,9 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.ViewInAr
+import androidx.compose.material.icons.outlined.Layers
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -102,6 +107,10 @@ private const val LYR_CURTAIN = "oab-track-curtain-3d"
 private const val LYR_BUILDINGS = "oab-buildings-3d"
 private const val LYR_TRACK = "oab-track-line"
 private const val SRC_DRAFT = "oab-draft"
+private const val SRC_NAV = "oab-msfs-nav"
+private val METAR_LAYERS = listOf(LYR_METAR, "oab-metar-label")
+private val ROUTE_LAYERS = listOf("oab-route-line", "oab-route-proc-line", "oab-route-pts", "oab-route-label")
+private val NAV_LAYERS = listOf("oab-nav-pts", "oab-nav-label")
 private const val SRC_DRAFT_PTS = "oab-draft-points"
 
 /** Kolor wysokości: nisko zieleń, średnio cyjan, wyżej błękit, poziom przelotowy magenta. */
@@ -190,7 +199,18 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
     var follow by rememberSaveable { mutableStateOf(true) }
     var handledFocus by rememberSaveable { mutableStateOf(0) }
     var showSigmets by rememberSaveable { mutableStateOf(true) }
+    var showMetars by rememberSaveable { mutableStateOf(true) }
+    var showRoute by rememberSaveable { mutableStateOf(true) }
+    var showNav by rememberSaveable { mutableStateOf(true) }
+    var layersMenu by remember { mutableStateOf(false) }
+    val nearbyNav by vm.nearbyNav.collectAsStateWithLifecycle()
+    // Kompas MapLibre pod paskiem stanu i chipami (domyślnie wchodził pod pasek stanu)
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val statusTop = WindowInsets.statusBars.getTop(density)
+    val compassTop = statusTop + with(density) { 64.dp.roundToPx() }
+    val compassRight = with(density) { 14.dp.roundToPx() }
     var threeD by rememberSaveable { mutableStateOf(false) }
+    val lastFollowAt = remember { longArrayOf(0L) }
     var picked by remember { mutableStateOf<Metar?>(null) }
     var style by remember { mutableStateOf<Style?>(null) }
     var wired by remember { mutableStateOf(false) }
@@ -235,6 +255,9 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
             // Pochylanie i obracanie dwoma palcami; przycisk 3D ustawia perspektywę jednym dotknięciem
             map.uiSettings.isRotateGesturesEnabled = true
             map.uiSettings.isTiltGesturesEnabled = true
+            map.uiSettings.compassGravity = android.view.Gravity.TOP or android.view.Gravity.END
+            map.uiSettings.setCompassMargins(0, compassTop, compassRight, 0)
+            map.uiSettings.setCompassFadeFacingNorth(true)
             map.setStyle(Style.Builder().fromUri(styleUrl)) { st ->
                 addOverlay(st, c)
                 set3dLayers(st, threeD)
@@ -274,11 +297,17 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
             live?.position?.altMslFt?.let { addStringProperty("label", altLabel(it.roundToInt())) }
         })
         (st.getSource(SRC_PLANE) as? GeoJsonSource)?.setGeoJson(fc)
-        if (follow && lat != null && lon != null) mapView.getMapAsync { m ->
-            val b = CameraPosition.Builder().target(LatLng(lat, lon))
-            // W 3D kamera patrzy w kierunku lotu, zza samolotu
-            if (threeD) (live?.attitude?.trackTrueDeg ?: live?.attitude?.hdgTrueDeg)?.let { b.bearing(it) }
-            m.moveCamera(CameraUpdateFactory.newCameraPosition(b.build()))
+        // Śledzenie: kamera najwyżej ~3 razy na sekundę, z płynnym przejściem — przesuwanie przy każdym stanie
+        // (10–20 Hz) razem z perspektywą 3D przeciążało renderer, a i tak nie było widać różnicy
+        val nowMs = System.currentTimeMillis()
+        if (follow && lat != null && lon != null && nowMs - lastFollowAt[0] >= 330) {
+            lastFollowAt[0] = nowMs
+            mapView.getMapAsync { m ->
+                val b = CameraPosition.Builder().target(LatLng(lat, lon))
+                // W 3D kamera patrzy w kierunku lotu, zza samolotu
+                if (threeD) (live?.attitude?.trackTrueDeg ?: live?.attitude?.hdgTrueDeg)?.let { b.bearing(it) }
+                m.easeCamera(CameraUpdateFactory.newCameraPosition(b.build()), 320)
+            }
         }
     }
     // Zapisany lot: widok 3D i kadr na cały tor
@@ -343,6 +372,23 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
             Feature.fromGeometry(Point.fromLngLat(p.lon!!, p.lat!!)).apply { addStringProperty("id", "${i + 1}. ${p.ident}") }
         }))
     }
+    // Widoczność warstw z menu
+    LaunchedEffect(style, showMetars, showRoute, showNav) {
+        val st = style ?: return@LaunchedEffect
+        fun vis(ids: List<String>, on: Boolean) = ids.forEach { st.getLayer(it)?.setProperties(PropertyFactory.visibility(if (on) "visible" else "none")) }
+        vis(METAR_LAYERS, showMetars); vis(ROUTE_LAYERS, showRoute); vis(NAV_LAYERS, showNav)
+    }
+    // Lotniska i pomoce nawigacyjne z bazy MSFS wokół samolotu
+    LaunchedEffect(style, nearbyNav) {
+        (style?.getSource(SRC_NAV) as? GeoJsonSource)?.setGeoJson(FeatureCollection.fromFeatures(nearbyNav.map { f ->
+            Feature.fromGeometry(Point.fromLngLat(f.lon, f.lat)).apply {
+                addStringProperty("type", f.type)
+                // Kolor gotowy w danych (jak przy METAR) — wyrażenie „match” wywracało renderer na części GPU
+                addStringProperty("color", when (f.type) { "airport" -> "#4FD1E8"; "vor" -> "#3FE07A"; "ndb" -> "#FFB020"; else -> "#9AA4AE" })
+                addStringProperty("id", if (f.type == "vor" && f.freqMhz != null) "${f.ident} ${"%.2f".format(java.util.Locale.US, f.freqMhz)}" else f.ident)
+            }
+        }))
+    }
     LaunchedEffect(style, sigmets, showSigmets) {
         (style?.getSource(SRC_SIGMET) as? GeoJsonSource)?.setGeoJson(sigmetFeatures(if (showSigmets) sigmets else emptyList()))
     }
@@ -350,17 +396,36 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
     Box(Modifier.fillMaxSize()) {
         AndroidView({ mapView }, Modifier.fillMaxSize())
 
-        // Przełączniki warstw u góry (przewijane, by nie łamały się na wąskim ekranie), legenda pod nimi
-        Column(Modifier.statusBarsPadding().padding(12.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Góra: chipy kontekstowe (planowanie, trasa, wyświetlany lot) i legenda; prawa strona: przyciski mapy
+        Column(Modifier.statusBarsPadding().padding(start = 12.dp, top = 12.dp, end = 70.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 MapChip(loc("Zaplanuj trasę", "Plan a route"), planning, Icons.Outlined.Route) { if (planning) vm.stopMapPlanning() else { follow = false; vm.startMapPlanning() } }
-                MapChip("3D", threeD, Icons.Outlined.ViewInAr) { threeD = !threeD }
-                MapChip("SIGMET", showSigmets, Icons.Outlined.WarningAmber) { showSigmets = !showSigmets }
-                if (live != null) MapChip(loc("Śledź samolot", "Follow aircraft"), follow, Icons.Outlined.MyLocation) { follow = !follow }
                 if (shownFlight != null) MapChip("${shownFlight.from ?: "?"} → ${shownFlight.to ?: "?"}", true, Icons.Outlined.Close) { vm.showFlightOnMap(null) }
                 if (route != null) MapChip(route.origin + " → " + route.destination, false, Icons.Outlined.Route) { follow = false; vm.focusRouteOnMap() }
             }
             Legend()
+        }
+
+        // Kolumna przycisków mapy pod kompasem: warstwy, 3D, śledzenie samolotu, przybliżenie
+        Column(
+            Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 64.dp + 50.dp, end = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box {
+                MapKey(Icons.Outlined.Layers, loc("Warstwy mapy", "Map layers"), layersMenu) { layersMenu = true }
+                androidx.compose.material3.DropdownMenu(layersMenu, { layersMenu = false }) {
+                    @Composable fun item(label: String, on: Boolean, toggle: () -> Unit) =
+                        androidx.compose.material3.DropdownMenuItem(text = { Text((if (on) "✓  " else "     ") + label) }, onClick = toggle)
+                    item(loc("Pogoda na lotniskach (METAR)", "Airport weather (METAR)"), showMetars) { showMetars = !showMetars }
+                    item("SIGMET", showSigmets) { showSigmets = !showSigmets }
+                    item(loc("Trasa i procedury", "Route and procedures"), showRoute) { showRoute = !showRoute }
+                    item(loc("Pomoce nawigacyjne z MSFS", "Navaids from MSFS") + if (nearbyNav.isEmpty()) loc(" (brak danych)", " (no data)") else "", showNav) { showNav = !showNav }
+                }
+            }
+            MapKey(Icons.Outlined.ViewInAr, loc("Widok 3D", "3D view"), threeD) { threeD = !threeD }
+            if (live != null) MapKey(Icons.Outlined.MyLocation, loc("Śledź samolot", "Follow aircraft"), follow) { follow = !follow }
+            MapKey(Icons.Outlined.Add, loc("Przybliż", "Zoom in"), false) { mapView.getMapAsync { it.animateCamera(CameraUpdateFactory.zoomIn(), 250) } }
+            MapKey(Icons.Outlined.Remove, loc("Oddal", "Zoom out"), false) { mapView.getMapAsync { it.animateCamera(CameraUpdateFactory.zoomOut(), 250) } }
         }
 
         if (planning) {
@@ -447,6 +512,23 @@ private fun addOverlay(st: Style, c: FmColors) {
         PropertyFactory.fillExtrusionBase(Expression.coalesce(Expression.get("render_min_height"), Expression.literal(0))),
         PropertyFactory.fillExtrusionOpacity(0.85f),
     ).apply { minZoom = 14f })
+    // Lotniska i pomoce z MSFS: kolor wg typu jak na ND (lotniska cyjan, VOR zieleń, NDB bursztyn, punkty szarość)
+    st.addSource(GeoJsonSource(SRC_NAV))
+    val navColor = Expression.get("color")
+    st.addLayer(CircleLayer("oab-nav-pts", SRC_NAV).withProperties(
+        PropertyFactory.circleRadius(4f), PropertyFactory.circleColor(hex(c.paper)),
+        PropertyFactory.circleStrokeColor(navColor), PropertyFactory.circleStrokeWidth(2f),
+    ).apply { minZoom = 6f })
+    st.addLayer(SymbolLayer("oab-nav-label", SRC_NAV).withProperties(
+        PropertyFactory.textField(Expression.get("id")),
+        PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+        PropertyFactory.textSize(10f),
+        PropertyFactory.textOffset(arrayOf(0f, 1.1f)),
+        PropertyFactory.textColor(navColor),
+        PropertyFactory.textHaloColor(hex(c.paper)),
+        PropertyFactory.textHaloWidth(1.5f),
+        PropertyFactory.textOptional(true),
+    ).apply { minZoom = 8f })
     // Szkic planowanej trasy: cyjanowa linia (kolor wartości wybranej) i ponumerowane punkty
     st.addSource(GeoJsonSource(SRC_DRAFT))
     st.addLayer(LineLayer("oab-draft-line", SRC_DRAFT).withProperties(
@@ -620,4 +702,16 @@ private fun PlanningPanel(vm: MainViewModel, draft: List<com.freemetar.app.data.
             }
         }
     }
+}
+
+/** Kwadratowy przycisk mapy (44 dp) w kolumnie po prawej: włączony — jasne tło. */
+@Composable
+private fun MapKey(icon: androidx.compose.ui.graphics.vector.ImageVector, desc: String, on: Boolean, onClick: () -> Unit) {
+    val c = Fm.c
+    Box(
+        Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(if (on) c.ink else c.card.copy(alpha = 0.94f))
+            .border(1.dp, if (on) c.ink else c.rule, RoundedCornerShape(12.dp))
+            .clickable(role = Role.Button, onClickLabel = desc, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { Icon(icon, desc, tint = if (on) c.paper else c.ink, modifier = Modifier.size(20.dp)) }
 }

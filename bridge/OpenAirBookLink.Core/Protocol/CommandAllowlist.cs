@@ -10,6 +10,9 @@ public enum CommandTarget
     TransponderState,
     // Zapis CAMERA STATE (widok z kabiny / zewnętrzny / dron)
     CameraState,
+    // Zapis CAMERA GAMEPLAY PITCH YAW:0 / :1 (rozglądanie się), wartość w stopniach
+    CameraPitch,
+    CameraYaw,
 }
 
 public enum CommandGroup { Autopilot, Radio, Transponder, Gear, Flaps, Spoilers, Brakes, Lights, Trim, Engines, View }
@@ -139,6 +142,9 @@ public static class CommandAllowlist
 
         // Kamera MSFS: 2 kabina, 3 zewnętrzna (pościg), 4 dron
         new("CAMERA_STATE", CommandGroup.View, CommandTarget.CameraState, Min: 2, Max: 4),
+        // Rozglądanie się: pochylenie (−90 w dół … 90 w górę) i obrót (−180 w lewo … 180 w prawo) kamery, stopnie
+        new("CAMERA_PITCH_SET", CommandGroup.View, CommandTarget.CameraPitch, Min: -90, Max: 90),
+        new("CAMERA_YAW_SET", CommandGroup.View, CommandTarget.CameraYaw, Min: -180, Max: 180),
     };
 
     // Zdarzenia osi — nie są komendami `command`, przychodzą przez wiadomość `axis`.

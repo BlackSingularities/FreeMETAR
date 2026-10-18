@@ -99,7 +99,8 @@ sealed interface UpdateState {
 sealed interface NearMe {
     data object Idle : NearMe
     data object Locating : NearMe
-    data class Found(val airports: List<Pair<Airport, Double>>, val metars: Map<String, Metar>) : NearMe
+    /** [aircraft] = lista wokół samolotu z symulatora (zamiast lokalizacji telefonu). */
+    data class Found(val airports: List<Pair<Airport, Double>>, val metars: Map<String, Metar>, val aircraft: Boolean = false, val loaded: Boolean = true) : NearMe
     data class Failed(val message: String) : NearMe
 }
 
@@ -390,6 +391,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }.onFailure { _flightMessage.value = loc("To nie jest archiwum lotów OpenAirBook.", "This isn't an OpenAirBook flight archive.") }
     }
 
+    /** Stan zapisu lotu do kokpitu: nagrywa (od kiedy) albo wstrzymany po ręcznym zakończeniu. */
+    data class RecordingInfo(val recording: Boolean = false, val startedAt: Long? = null, val held: Boolean = false)
+    private val _recordingInfo = MutableStateFlow(RecordingInfo())
+    val recordingInfo = _recordingInfo.asStateFlow()
+    private fun publishRecording() { _recordingInfo.value = RecordingInfo(recorder.recording, recorder.startedAt, recorder.holdUntilGround) }
+
+    /** Ręczne zakończenie zapisu bieżącego lotu — trafia do dziennika (jeśli trwał co najmniej 2 min). */
+    fun stopRecording() {
+        val log = recorder.stopByUser()
+        if (log != null) saveFlight(log)
+        else { _flightMessage.value = loc("Zapis zakończony — lot krótszy niż 2 min nie trafia do dziennika.", "Recording stopped — flights under 2 min are not saved."); viewModelScope.launch { flightLogStore.clearDraft() } }
+        _track.value = emptyList()
+        publishRecording()
+    }
+
+    fun resumeRecording() { recorder.resume(); publishRecording() }
+
     private val _nearbyNav = MutableStateFlow<List<com.freemetar.app.data.nav.FixResult>>(emptyList())
     /** Lotniska, VOR, NDB i punkty trasy z bazy MSFS wokół samolotu — do mapy ND. */
     val nearbyNav = _nearbyNav.asStateFlow()
@@ -451,12 +469,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 if (lat != null && lon != null && nav.connected) {
                     val moved = lastLat.isNaN() || com.freemetar.app.domain.Geo.distanceNm(lastLat, lastLon, lat, lon) > 10
                     if (moved || System.currentTimeMillis() - lastAt > 180_000) {
+                        findNearAircraft(lat, lon)
                         val found = nav.nearby(lat, lon, 80)
                         if (found.isNotEmpty() || moved) _nearbyNav.value = found
                         lastLat = lat; lastLon = lon; lastAt = System.currentTimeMillis()
                     }
                 } else if (st == null) {
                     lastLat = Double.NaN
+                    // Bez symulatora wracamy do lokalizacji telefonu
+                    if ((_nearMe.value as? NearMe.Found)?.aircraft == true) _nearMe.value = NearMe.Idle
+                } else if (lat != null && lon != null && (_nearMe.value as? NearMe.Found)?.aircraft != true) {
+                    // Połączony bez MSFS-owych danych nawigacyjnych (np. symulacja) — lista lotnisk i tak wokół samolotu
+                    findNearAircraft(lat, lon); lastLat = lat; lastLon = lon; lastAt = System.currentTimeMillis()
                 }
                 kotlinx.coroutines.delay(15_000)
             }
@@ -465,6 +489,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             link.state.collect { st ->
                 if (st != null) {
                     saveFlight(recorder.onState(st))
+                    if (recorder.recording != _recordingInfo.value.recording || recorder.holdUntilGround != _recordingInfo.value.held) publishRecording()
                     // Kopia toru tylko po dojściu nowego punktu, nie przy każdym stanie z Link
                     if (recorder.recording && recorder.pointCount != _track.value.size) _track.value = recorder.currentTrack
                     // Ocena zaraz po przyziemieniu — nie trzeba czekać na koniec lotu
@@ -618,6 +643,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Najbliższe lotniska z kodem ICAO (lądowiska typu „PL-0250” nie mają pogody ani odpowiednika w symulatorze). */
+    private fun nearIcao(lat: Double, lon: Double) =
+        db.nearby(lat, lon, radiusNm = 120.0, limit = 30).filter { (a, _) -> a.ident.length == 4 && a.ident.all { it.isLetter() } }.take(8)
+
+    /** Lotniska najbliżej samolotu w symulatorze — zastępują listę „w pobliżu Ciebie”, dopóki jest połączenie. */
+    private fun findNearAircraft(lat: Double, lon: Double) = viewModelScope.launch {
+        if (!db.isLoaded) return@launch
+        val list = nearIcao(lat, lon)
+        val old = (_nearMe.value as? NearMe.Found)?.takeIf { it.aircraft }?.metars.orEmpty()
+        _nearMe.value = NearMe.Found(list, old, aircraft = true, loaded = old.isNotEmpty())
+        _nearMe.value = NearMe.Found(list, metarsFor(list.map { it.first.ident }), aircraft = true)
+    }
+
     /** Lotniska najbliżej użytkownika (wymaga zgody na przybliżoną lokalizację). */
     fun findNearMe() = viewModelScope.launch {
         _nearMe.value = NearMe.Locating
@@ -630,8 +668,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             _nearMe.value = NearMe.Failed(loc("Baza lotnisk jeszcze się ładuje.", "The airport database is still loading."))
             return@launch
         }
-        val list = db.nearby(pos.latitude, pos.longitude, radiusNm = 120.0, limit = 8)
-        _nearMe.value = NearMe.Found(list, emptyMap())
+        val list = nearIcao(pos.latitude, pos.longitude)
+        _nearMe.value = NearMe.Found(list, emptyMap(), loaded = false)
         val metars = metarsFor(list.map { it.first.ident })
         _nearMe.value = NearMe.Found(list, metars)
     }

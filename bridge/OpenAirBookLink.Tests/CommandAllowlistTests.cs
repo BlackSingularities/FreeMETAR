@@ -130,6 +130,8 @@ public class CommandAllowlistTests
         Assert.True(cam.Ok);
         Assert.Equal(CommandTarget.CameraState, cam.Command!.Spec.Target);
         Assert.False(CommandAllowlist.Validate("CAMERA_STATE", Num(9)).Ok);
+        Assert.Equal(CommandTarget.CameraYaw, CommandAllowlist.Validate("CAMERA_YAW_SET", Num(-120)).Command!.Spec.Target);
+        Assert.False(CommandAllowlist.Validate("CAMERA_PITCH_SET", Num(91)).Ok);
     }
 
     [Fact]

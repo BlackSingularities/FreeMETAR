@@ -1,6 +1,17 @@
 package com.freemetar.app.ui.flight
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.role
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlin.math.roundToInt
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -83,6 +94,8 @@ fun CockpitView(
     controlMode: String = "TILT", onControlMode: (String) -> Unit = {}, floating: Boolean = false, onFloating: (Boolean) -> Unit = {},
     nearby: List<com.freemetar.app.data.nav.FixResult> = emptyList(), floatingTrim: Boolean = false,
     onShowPlan: () -> Unit = {},
+    recording: com.freemetar.app.MainViewModel.RecordingInfo = com.freemetar.app.MainViewModel.RecordingInfo(),
+    onStopRecording: () -> Unit = {}, onResumeRecording: () -> Unit = {},
 ) {
     var tabName by rememberSaveable { mutableStateOf<String?>(null) }
     val tab = CockpitTab.entries.firstOrNull { it.name == tabName }
@@ -125,7 +138,7 @@ fun CockpitView(
             }
             // Wszystko na jednym ekranie: otwarty panel zastępuje ND, PFD i dźwignie zostają
             Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 4.dp)) {
-                CockpitHeader(link, s, effective, onShowPlan)
+                CockpitHeader(link, s, effective, onShowPlan, controlMode, recording, onStopRecording, onResumeRecording)
                 if (wide) {
                     val sideW = (screenW * 0.34f).coerceIn(340.dp, 480.dp)
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -164,8 +177,12 @@ fun CockpitView(
 
 /** Nagłówek: stan i nazwa samolotu, profil panelu, kamera MSFS jako trzy małe ikony. */
 @Composable
-private fun CockpitHeader(link: LinkClient, s: FlightState, p: AircraftProfile, onShowPlan: () -> Unit) {
+private fun CockpitHeader(
+    link: LinkClient, s: FlightState, p: AircraftProfile, onShowPlan: () -> Unit, controlMode: String,
+    rec: com.freemetar.app.MainViewModel.RecordingInfo, onStop: () -> Unit, onResume: () -> Unit,
+) {
     val c = Fm.c
+    var askStop by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth().height(40.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(8.dp).clip(CircleShape).background(if (s.aircraft.paused == true) c.caution else c.green))
         Spacer(Modifier.width(8.dp))
@@ -174,8 +191,10 @@ private fun CockpitHeader(link: LinkClient, s: FlightState, p: AircraftProfile, 
         if (s.aircraft.paused == true) Text(tr("PAUZA", "PAUSED"), fontFamily = Mono, fontSize = 11.sp, color = c.caution, modifier = Modifier.padding(end = 6.dp))
         Text(p.short, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 10.sp, color = Color.Black,
             modifier = Modifier.clip(RoundedCornerShape(50)).background(c.ink).padding(horizontal = 7.dp, vertical = 2.dp))
-        Spacer(Modifier.width(8.dp))
-        CameraSwitch(link, s)
+        Spacer(Modifier.width(6.dp))
+        RecordChip(rec, onClick = { if (rec.recording) askStop = true else if (rec.held) onResume() })
+        Spacer(Modifier.width(6.dp))
+        CameraSwitch(link, s, controlMode = controlMode)
         Spacer(Modifier.width(6.dp))
         // Plan lotu, połączenie i dziennik — zamiast osobnego przełącznika nad kokpitem
         Text(tr("PLAN", "PLAN"), fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = c.ink,
@@ -183,6 +202,14 @@ private fun CockpitHeader(link: LinkClient, s: FlightState, p: AircraftProfile, 
                 .clickable(role = Role.Button, onClickLabel = tr("Plan lotu i dziennik", "Flight plan and logbook"), onClick = onShowPlan)
                 .padding(horizontal = 10.dp, vertical = 7.dp))
     }
+    if (askStop) androidx.compose.material3.AlertDialog(
+        onDismissRequest = { askStop = false },
+        title = { Text(tr("Zakończyć zapis lotu?", "Stop recording this flight?")) },
+        text = { Text(tr("Lot trafi do dziennika. Nowy zapis zacznie się sam po wylądowaniu albo po wznowieniu (dotknij REC).",
+            "The flight goes to the logbook. A new recording starts by itself after landing, or when you resume it (tap REC).")) },
+        confirmButton = { androidx.compose.material3.TextButton({ askStop = false; onStop() }) { Text(tr("Zakończ zapis", "Stop recording"), color = c.danger) } },
+        dismissButton = { androidx.compose.material3.TextButton({ askStop = false }) { Text(tr("Anuluj", "Cancel")) } },
+    )
 }
 
 /** Podpis zakładki: krótki, ale słowem (AP zostaje skrótem, jak na panelu). */
@@ -263,25 +290,114 @@ private fun PanelBar(tab: CockpitTab?, onTab: (CockpitTab) -> Unit, modifier: Mo
 
 /**
  * Kamera MSFS: kabina, zewnętrzna (pościg) i dron — trzy kompaktowe ikony. Aktywny widok podświetlony
- * na podstawie CAMERA STATE z symulatora, więc zmiana klawiaturą w MSFS też się tu pokaże.
+ * na podstawie CAMERA STATE z symulatora. Krótkie dotknięcie zmienia kamerę; **przytrzymanie** włącza
+ * rozglądanie się tym samym sposobem co sterowanie: żyroskop (przechylanie telefonu od pozycji z chwili
+ * naciśnięcia) albo przesuwanie palca. Puszczenie wraca z kamerą na wprost.
  */
 @Composable
-internal fun CameraSwitch(link: LinkClient, s: FlightState, modifier: Modifier = Modifier) {
+internal fun CameraSwitch(link: LinkClient, s: FlightState, modifier: Modifier = Modifier, controlMode: String = "TILT") {
     val c = Fm.c
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val tiltMode = controlMode != "TOUCH"
+    val tilt = rememberTilt(enabled = tiltMode)
     val cam = s.controls.cameraState
-    Row(modifier.clip(RoundedCornerShape(50)).border(1.dp, c.rule, RoundedCornerShape(50)).padding(2.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+    val holdHint = tr(" — przytrzymaj, aby się rozglądać", " — hold to look around")
+    var looking by remember { mutableStateOf(false) }
+    var yaw by remember { mutableFloatStateOf(0f) }    // stopnie, + w prawo
+    var pitch by remember { mutableFloatStateOf(0f) }  // stopnie, + w górę
+    var roll0 by remember { mutableFloatStateOf(0f) }
+    var pitch0 by remember { mutableFloatStateOf(0f) }
+
+    // 8 razy na sekundę dwie komendy (limit Link to 50/s); po puszczeniu jeden raz „na wprost”
+    LaunchedEffect(looking) {
+        if (!looking) return@LaunchedEffect
+        try {
+            while (isActive) {
+                if (tiltMode) {
+                    yaw = ((tilt.roll.toFloat() - roll0) * 3f).coerceIn(-180f, 180f)
+                    pitch = ((tilt.pitch.toFloat() - pitch0) * 2.5f).coerceIn(-80f, 80f)
+                }
+                link.command("CAMERA_YAW_SET", yaw.roundToInt().toDouble())
+                link.command("CAMERA_PITCH_SET", pitch.roundToInt().toDouble())
+                delay(125)
+            }
+        } finally {
+            link.command("CAMERA_YAW_SET", 0.0)
+            link.command("CAMERA_PITCH_SET", 0.0)
+        }
+    }
+
+    Row(modifier.clip(RoundedCornerShape(50)).border(1.dp, if (looking) c.accent else c.rule, RoundedCornerShape(50)).padding(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (looking) {
+            // W trakcie rozglądania zamiast ikon bieżące kąty
+            Text("↔ ${yaw.roundToInt()}°  ↕ ${pitch.roundToInt()}°", fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = c.accent,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp))
+        }
         listOf(
             Triple(2, tr("Kamera: kabina", "Camera: cockpit"), Icons.Outlined.AirlineSeatReclineNormal),
             Triple(3, tr("Kamera: zewnętrzna", "Camera: external"), Icons.Outlined.FlightTakeoff),
             Triple(4, tr("Kamera: dron", "Camera: drone"), Icons.Outlined.Videocam),
         ).forEach { (state, label, icon) ->
             val on = cam == state
+            val desc = label + holdHint
             Box(
                 Modifier.size(32.dp).clip(CircleShape).background(if (on) c.ink else Color.Transparent)
-                    .clickable(role = Role.RadioButton, onClickLabel = label) { link.command("CAMERA_STATE", state.toDouble()) }
-                    .semantics { contentDescription = label },
+                    .semantics {
+                        contentDescription = desc
+                        role = Role.RadioButton
+                    }
+                    .pointerInput(tiltMode) {
+                        val reach = with(density) { 120.dp.toPx() }
+                        awaitEachGesture {
+                            val down = awaitFirstDown()
+                            down.consume()
+                            // Krótkie dotknięcie = zmiana kamery; przytrzymanie = rozglądanie się
+                            val up = withTimeoutOrNull(300) { waitForUpOrCancellation() }
+                            if (up != null) { link.command("CAMERA_STATE", state.toDouble()); return@awaitEachGesture }
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            roll0 = tilt.roll.toFloat(); pitch0 = tilt.pitch.toFloat()
+                            yaw = 0f; pitch = 0f
+                            looking = true
+                            while (true) {
+                                val ev = awaitPointerEvent()
+                                val ch = ev.changes.firstOrNull { it.id == down.id } ?: break
+                                if (!ch.pressed) break
+                                ch.consume()
+                                if (!tiltMode) {
+                                    yaw = ((ch.position.x - down.position.x) / reach * 180f).coerceIn(-180f, 180f)
+                                    pitch = (-(ch.position.y - down.position.y) / reach * 80f).coerceIn(-80f, 80f)
+                                }
+                            }
+                            looking = false
+                        }
+                    },
                 contentAlignment = Alignment.Center,
             ) { Icon(icon, null, tint = if (on) c.paper else c.ink2, modifier = Modifier.size(17.dp)) }
         }
+    }
+}
+
+/**
+ * Wskaźnik zapisu lotu w nagłówku: „● REC 12:34” w czerwieni, gdy lot się nagrywa (dotknięcie — zakończ zapis),
+ * „REC ‖” gdy wstrzymany po ręcznym zakończeniu (dotknięcie — wznów), nic przed startem.
+ */
+@Composable
+private fun RecordChip(rec: com.freemetar.app.MainViewModel.RecordingInfo, onClick: () -> Unit) {
+    val c = Fm.c
+    if (!rec.recording && !rec.held) return
+    var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(rec.recording) { while (rec.recording) { now = System.currentTimeMillis(); delay(1000) } }
+    val min = rec.startedAt?.let { ((now - it) / 60_000).toInt() } ?: 0
+    val label = if (rec.recording) "%d:%02d".format(min / 60, min % 60) else "REC ‖"
+    Row(
+        Modifier.clip(RoundedCornerShape(50)).border(1.dp, if (rec.recording) c.danger else c.rule, RoundedCornerShape(50))
+            .clickable(role = Role.Button, onClickLabel = if (rec.recording) tr("Zakończ zapis lotu", "Stop recording the flight") else tr("Wznów zapis lotów", "Resume flight recording"), onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (rec.recording) { Box(Modifier.size(7.dp).clip(CircleShape).background(c.danger)); Spacer(Modifier.width(5.dp)) }
+        Text(label, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 10.sp, color = if (rec.recording) c.danger else c.ink2, maxLines = 1)
     }
 }

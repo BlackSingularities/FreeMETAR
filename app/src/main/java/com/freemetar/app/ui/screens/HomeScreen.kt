@@ -457,8 +457,10 @@ private fun NearMeBlock(vm: MainViewModel, state: NearMe, onOpen: (String) -> Un
 
     Column(Modifier.padding(top = 18.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(loc("W pobliżu Ciebie", "Near you"), style = MaterialTheme.typography.titleLarge, color = c.ink, modifier = Modifier.weight(1f))
-            if (state is NearMe.Found) IconButton({ start() }) { Icon(Icons.Outlined.MyLocation, loc("Ustal pozycję ponownie", "Locate again"), tint = c.ink2) }
+            val byAircraft = (state as? NearMe.Found)?.aircraft == true
+            Text(if (byAircraft) loc("W pobliżu samolotu", "Near the aircraft") else loc("W pobliżu Ciebie", "Near you"),
+                style = MaterialTheme.typography.titleLarge, color = c.ink, modifier = Modifier.weight(1f))
+            if (state is NearMe.Found && !byAircraft) IconButton({ start() }) { Icon(Icons.Outlined.MyLocation, loc("Ustal pozycję ponownie", "Locate again"), tint = c.ink2) }
         }
         Spacer(Modifier.size(8.dp))
         when (state) {
@@ -482,11 +484,13 @@ private fun NearMeBlock(vm: MainViewModel, state: NearMe, onOpen: (String) -> Un
                 TextButton({ start() }) { Text(loc("Spróbuj ponownie", "Try again")) }
             }
             is NearMe.Found -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (state.aircraft) Text(loc("Wg pozycji samolotu w symulatorze — odświeża się co ok. 10 NM lotu.", "From the aircraft's position in the simulator — refreshes about every 10 NM."),
+                    style = MaterialTheme.typography.bodySmall, color = c.ink2)
                 if (state.airports.isEmpty()) Text(loc("Brak lotnisk w promieniu 120 NM.", "No airports within 120 NM."), style = MaterialTheme.typography.bodyMedium, color = c.ink2)
                 state.airports.forEach { (a, dist) ->
                     FlightStrip(
                         ident = a.ident, name = a.name, metar = state.metars[a.ident],
-                        loading = state.metars.isEmpty(),
+                        loading = !state.loaded,
                         trailingNote = "${dist.fmt(0)} NM",
                         onClick = { onOpen(a.ident) },
                     )

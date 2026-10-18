@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
@@ -90,8 +91,9 @@ fun Pfd(s: FlightState, modifier: Modifier = Modifier) {
         val w = size.width; val h = size.height
         val fmaH = h * 0.085f
         val hdgH = h * 0.12f
-        val tapeW = w * 0.17f
-        val att = Rect(tapeW, fmaH, w - tapeW - w * 0.05f, h - hdgH)
+        val tapeW = w * 0.16f
+        val vsiW = w * 0.1f   // wskaźnik prędkości pionowej po prawej
+        val att = Rect(tapeW, fmaH, w - tapeW - vsiW, h - hdgH)
         val center = att.center
         val ppd = att.height / 42f // pikseli na stopień pochylenia
         val pitch = (s.attitude.pitchDeg ?: 0.0).toFloat()
@@ -221,16 +223,47 @@ fun Pfd(s: FlightState, modifier: Modifier = Modifier) {
             drawCircle(WHITE, 4f, tip)
         }
 
-        // --- wariometr ---
+        // --- wskaźnik prędkości pionowej (VSI): skala nieliniowa 0–1000–2000–6000 ft/min, wskazówka z prawej ---
         val vs = s.speed.vsFpm ?: 0.0
-        val vx = ax + tapeW + w * 0.025f
-        drawRect(TAPE, Offset(ax + tapeW, att.top + att.height * 0.15f), Size(w * 0.05f, att.height * 0.7f))
-        val vsClamped = vs.coerceIn(-4000.0, 4000.0)
-        val vy = center.y - (vsClamped / 4000.0 * att.height * 0.33f).toFloat()
-        drawLine(WHITE, Offset(vx, center.y), Offset(vx, vy), 3f)
+        val vsiX = ax + tapeW
+        val vsiTop = att.top + att.height * 0.06f
+        val vsiBottom = att.bottom - att.height * 0.06f
+        val halfH = (vsiBottom - vsiTop) / 2f
+        val vsiMid = center.y
+        // Ułamek wychylenia: dokładnie do 1000 ft/min, potem ściśnięte jak na prawdziwym VSI
+        fun vsiFrac(v: Double): Float {
+            val a = abs(v)
+            val f = when {
+                a <= 1000 -> a / 1000 * 0.45
+                a <= 2000 -> 0.45 + (a - 1000) / 1000 * 0.25
+                else -> 0.7 + ((a.coerceAtMost(6000.0) - 2000) / 4000) * 0.3
+            }
+            return (if (v >= 0) f else -f).toFloat()
+        }
+        val vsiPath = Path().apply {
+            moveTo(vsiX, vsiTop); lineTo(vsiX + vsiW * 0.75f, vsiTop); lineTo(w, vsiMid - halfH * 0.35f)
+            lineTo(w, vsiMid + halfH * 0.35f); lineTo(vsiX + vsiW * 0.75f, vsiBottom); lineTo(vsiX, vsiBottom); close()
+        }
+        drawPath(vsiPath, TAPE)
+        for (v in listOf(500, 1000, 1500, 2000, 4000, 6000)) {
+            for (sign in listOf(1, -1)) {
+                val y = vsiMid - vsiFrac((v * sign).toDouble()) * halfH
+                val major = v == 1000 || v == 2000 || v == 6000
+                drawLine(WHITE, Offset(vsiX + 2, y), Offset(vsiX + if (major) 12f else 7f, y), 2f)
+                if (major) label(m, "${v / 1000}", Offset(vsiX + 22f, y), WHITE, 10.sp)
+            }
+        }
+        drawLine(WHITE, Offset(vsiX + 2, vsiMid), Offset(vsiX + 14f, vsiMid), 3f)
+        clipPath(vsiPath) {
+            // Wskazówka z punktu za prawą krawędzią do wartości na skali
+            val y = vsiMid - vsiFrac(vs) * halfH
+            val col = if (abs(vs) > 6000) SYMBOL else FPV
+            drawLine(col, Offset(w + vsiW * 1.2f, vsiMid), Offset(vsiX + 4, y), 4f, cap = StrokeCap.Round)
+        }
+        // Odczyt liczbowy (setki ft/min) przy końcu skali, od 100 ft/min
         if (abs(vs) >= 100) {
-            val at = Offset(vx, if (vs > 0) att.top + att.height * 0.08f else att.bottom - att.height * 0.08f)
-            drawRect(Color.Black, Offset(at.x - w * 0.028f, at.y - 11), Size(w * 0.056f, 22f))
+            val at = Offset(vsiX + vsiW * 0.45f, if (vs > 0) vsiTop - 2 else vsiBottom + 2)
+            drawRect(Color.Black, Offset(vsiX, at.y - 11), Size(vsiW, 22f))
             label(m, (vs / 100).roundToInt().toString(), at, if (abs(vs) > 6000) SYMBOL else FPV, 11.sp, true)
         }
 

@@ -341,7 +341,7 @@ jak na mapach); `headingTrueDeg` pasa — rzeczywisty. Wysokości w stopach, odl
 ```
 
 Serwer przyjmuje **wyłącznie** nazwy z listy poniżej (dokładna pisownia, wielkie litery).
-Nazwy to zdarzenia SimConnect (Event IDs) — z wyjątkiem `XPNDR_MODE` i `CAMERA_STATE`, które zapisują SimVar.
+Nazwy to zdarzenia SimConnect (Event IDs) — z wyjątkiem `XPNDR_MODE`, `CAMERA_STATE`, `CAMERA_PITCH_SET` i `CAMERA_YAW_SET`, które zapisują SimVar.
 `value` jest wymagane tylko tam, gdzie podano zakres; w pozostałych jest ignorowane.
 Wartość musi być liczbą całkowitą (lub liczbą z zerową częścią ułamkową) w podanym zakresie.
 
@@ -415,6 +415,8 @@ Wartość musi być liczbą całkowitą (lub liczbą z zerową częścią ułamk
 | name | value |
 |---|---|
 | `CAMERA_STATE` | 2 kabina, 3 zewnętrzna (pościg), 4 dron |
+| `CAMERA_PITCH_SET` | pochylenie kamery w stopniach: −90 (w dół) … 90 (w górę); zapis SimVar `CAMERA GAMEPLAY PITCH YAW:0` |
+| `CAMERA_YAW_SET` | obrót kamery w stopniach: −180 (w lewo) … 180 (w prawo); zapis SimVar `CAMERA GAMEPLAY PITCH YAW:1` |
 
 Odpowiedź: `ack` po przekazaniu do symulatora (nie oznacza, że samolot zareagował — skutek
 widać w kolejnych `state`), albo `error`.

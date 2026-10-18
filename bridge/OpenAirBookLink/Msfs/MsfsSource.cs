@@ -86,6 +86,15 @@ public sealed class MsfsSource : IFlightSource
         var client = _client;
         if (client is not { IsConnected: true }) return CommandResult.Fail(ErrorCodes.SimUnavailable, "Brak połączenia z MSFS");
 
+        if (command.Spec.Target is CommandTarget.CameraPitch or CommandTarget.CameraYaw)
+        {
+            // Kamera gry: indeks 0 = pochylenie, 1 = obrót (radiany). W MSFS dodatnie pochylenie patrzy w dół.
+            var index = command.Spec.Target == CommandTarget.CameraPitch ? 0 : 1;
+            var deg = command.Spec.Target == CommandTarget.CameraPitch ? -command.Value : command.Value;
+            await client.SimVars.SetAsync($"CAMERA GAMEPLAY PITCH YAW:{index}", "radians", deg * Math.PI / 180.0, cancellationToken: ct);
+            return CommandResult.Success;
+        }
+
         if (command.Spec.Target == CommandTarget.CameraState)
         {
             await client.SimVars.SetAsync("CAMERA STATE", "Enum", (double)command.Value, cancellationToken: ct);

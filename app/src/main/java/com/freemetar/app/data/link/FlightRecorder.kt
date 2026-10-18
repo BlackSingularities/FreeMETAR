@@ -92,6 +92,8 @@ class FlightRecorder(
         val alt = (s.position.altMslFt ?: 0.0).toInt()
 
         if (!recording) {
+            // Po ręcznym zakończeniu nie zaczynaj od razu nowego nagrania w powietrzu — dopiero po wylądowaniu
+            if (holdUntilGround) { if (onGround) holdUntilGround = false; prev = s; lastAt = now; return null }
             if (!onGround && gs > 40) {
                 recording = true
                 recordingId = UUID.randomUUID().toString()
@@ -180,6 +182,23 @@ class FlightRecorder(
     private fun report(): LandingReport? = landing?.let { LandingScore.evaluate(it.copy(bounces = bounces)) }
 
     companion object { const val MAX_POINTS = 60_000 }
+
+    /** Wstrzymanie automatycznego startu po ręcznym zakończeniu (do najbliższego postoju na ziemi). */
+    var holdUntilGround = false
+        private set
+
+    /** Czas startu bieżącego nagrania (ms) albo null. */
+    val startedAt: Long? get() = if (recording) points.firstOrNull()?.t else null
+
+    /** Zakończenie zapisu na żądanie użytkownika: zwraca lot (jeśli ≥ 2 min) i wstrzymuje nowe nagranie do lądowania. */
+    fun stopByUser(now: Long = System.currentTimeMillis()): FlightLog? {
+        val log = finish(now)
+        holdUntilGround = true
+        return log
+    }
+
+    /** Wznowienie automatycznego zapisu (nowe nagranie zacznie się przy kolejnym stanie w powietrzu). */
+    fun resume() { holdUntilGround = false }
 
     /** Kończy nagrywanie (np. po rozłączeniu); krótkie loty (< 2 min) są odrzucane. */
     fun finish(now: Long = System.currentTimeMillis()): FlightLog? {

@@ -14,6 +14,9 @@ Do sterowania samolotem i danych z symulatora służy **OpenAirBook Link**, mał
 
 ### Funkcje
 
+**Ekran główny**
+- „W pobliżu”: lotniska najbliżej samolotu, gdy symulator jest połączony, a bez niego najbliżej telefonu; z bieżącą pogodą.
+
 **Briefing lotniska**
 - pogoda teraz i interaktywny METAR (dotknięcie grupy pokazuje jej znaczenie);
 - wcześniejsze depesze z godziną i kategorią lotu w jednej linii;
@@ -27,6 +30,7 @@ Do sterowania samolotem i danych z symulatora służy **OpenAirBook Link**, mał
 - **widok 3D**: pochylenie i obrót mapy, a przy śledzeniu kamera patrzy w kierunku lotu;
 - **ślad lotu z wysokością**: linia zmienia kolor wraz z wysokością, na śladzie są etykiety wysokości (stopy albo FL), a w 3D pod śladem stoi „kurtyna” do ziemi, która pokazuje profil wznoszenia i zniżania (wysokość kurtyny jest przewyższona 3×, żeby profil był czytelny);
 - bieżąca wysokość przy symbolu samolotu, budynki 3D przy dużym przybliżeniu;
+- przyciski mapy przy prawej krawędzi (warstwy, 3D, śledzenie samolotu, przybliżenie) i kompas pod paskiem stanu; w menu warstw METAR, SIGMET, trasa oraz lotniska, VOR, NDB i punkty z bazy MSFS wokół samolotu;
 - każdy zapisany lot można otworzyć na mapie 3D z dziennika lotów.
 
 **Plan lotu**
@@ -37,10 +41,10 @@ Do sterowania samolotem i danych z symulatora służy **OpenAirBook Link**, mał
 
 **Kokpit (z OpenAirBook Link)**
 - **jeden widok do latania**: PFD, ND, dźwignie mocy i pływający przycisk sterowania na ekranie naraz, bez przewijania (telefon pionowo: PFD nad ND, dźwignie z boku; poziomo: wszystko w rzędzie; tablet: obok stała kolumna albo pod spodem stały panel autopilota, radia itd.). Tryb i zasięg ND oraz warstwy to małe przyciski EFIS na samym wyświetlaczu, kamera MSFS to trzy ikony w nagłówku. Autopilot, radio, systemy, silniki i postęp otwierają się z paska ikon w miejscu ND, więc PFD i dźwignie zostają na widoku;
-- **PFD**: horyzont, taśmy prędkości i wysokości z nastawami, wektor toru lotu (znos i kąt toru), trend prędkości na 10 s, Mach, QNH, wysokość nad terenem z pasem ziemi, znacznik toru, wiatr i tryby autopilota (FMA);
+- **PFD**: horyzont, taśmy prędkości i wysokości z nastawami, wskaźnik prędkości pionowej ze skalą 1–2–6 tys. ft/min, wektor toru lotu (znos i kąt toru), trend prędkości na 10 s, Mach, QNH, wysokość nad terenem z pasem ziemi, znacznik toru, wiatr i tryby autopilota (FMA);
 - **MFD/ND** w trybach ARC i ROSE: trasa, nastawa kursu, następny punkt z odległością, namiarem i czasem, a z bazy MSFS lotniska, VOR (z częstotliwością), NDB i punkty trasy wokół samolotu (warstwy do włączenia); pod mapą profil pionowy (VSD) z wysokością wybraną i torem przy bieżącej prędkości pionowej;
 - **silniki**: wyświetlacz EICAS/ECAM (N1 albo obroty, EGT, przepływ i zapas paliwa) oraz pulpit dźwigni przeciąganych palcem — moc, a w tłokowych i turbośmigłowych także mieszanka i śmigło; odrzutowce mają zapadki IDLE/CL/FLX/TOGA, TO/GA i odwracacz ciągu;
-- **kamera MSFS**: kabina, zewnętrzna, dron;
+- **kamera MSFS**: kabina, zewnętrzna, dron; **przytrzymanie ikony kamery** pozwala się rozglądać tym samym sposobem co sterowanie (przechylaniem telefonu albo przesuwaniem palca), a puszczenie wraca na wprost;
 - **autopilot z pokrętłami** jak w awionice: podwójne pokrętło (zewnętrzny pierścień zmienia o duży krok, środek o mały), przyciski −/+ z powtarzaniem i okienko, w które można wpisać wartość. Pod każdą nastawą są jej przyciski trybów. Panel wygląda jak u producenta — Airbus FCU (bursztynowe okienka, zielone kreski lampek), Boeing MCP (kwadratowe klawisze z lampką), Garmin (cyjanowe wartości), GA w stylu KAP140 — i dopasowuje się do motywu aplikacji. Profil wybiera się automatycznie albo ręcznie;
 - radio (COM, NAV, transponder) i systemy (podwozie, klapy, spoilery, trym, światła).
 
@@ -50,6 +54,7 @@ Do sterowania samolotem i danych z symulatora służy **OpenAirBook Link**, mał
 - **pływający przycisk sterowania**: widoczny na każdej zakładce, więc można przeglądać briefing czy mapę i mieć stery pod ręką. Przytrzymaj go i przechylaj telefon (żyroskop) albo przesuwaj kciuk (drążek). Da się go przesunąć za uchwyt. Wariant **z trymem**: przy żyroskopie trymujesz przeciągnięciem palca na przycisku (w dół — nos w górę, w górę — nos w dół), przy drążku trym ma osobne przyciski.
 
 **Dziennik lotów**
+- zapis można zakończyć ręcznie wskaźnikiem nagrywania w nagłówku kokpitu (kolejny zacznie się po wylądowaniu albo po wznowieniu);
 - osobny ekran z podsumowaniem, filtrem i lotami pogrupowanymi po miesiącach; przy każdym trasa, czas, dystans, wysokość, ocena lądowania i miniatura profilu;
 - automatyczny zapis każdego lotu: pozycja, wysokość, prędkość względem ziemi i przyrządowa, prędkość pionowa, kurs; **restart lotu w symulatorze** (skok pozycji albo inny samolot) zamyka bieżący wpis i zaczyna nowy; lot zapisuje się także, gdy symulator przestanie wysyłać dane albo system zamknie aplikację w trakcie lotu;
 - częstotliwość zapisu do wyboru w ustawieniach: 4×, 2× lub 1× na sekundę, co 2 s albo co 5 s;
@@ -105,6 +110,9 @@ To fly the aircraft and read live data from the simulator, run **OpenAirBook Lin
 
 ### Features
 
+**Home screen**
+- “Nearby”: the airports closest to the aircraft while the simulator is connected, otherwise closest to the phone, with current weather.
+
 **Airport briefing**
 - current weather and an interactive METAR (tap a group to see what it means);
 - earlier reports with time and flight category on one line;
@@ -118,6 +126,7 @@ To fly the aircraft and read live data from the simulator, run **OpenAirBook Lin
 - **3D view**: tilt and rotate the map; while following the aircraft the camera looks along the flight path;
 - **flight track with altitude**: the line changes colour with altitude and carries altitude labels (feet or FL). In 3D a curtain drops from the track to the ground and shows the climb and descent profile (its height is exaggerated 3× so the profile is readable);
 - current altitude next to the aircraft symbol, 3D buildings when zoomed in;
+- map buttons along the right edge (layers, 3D, follow aircraft, zoom) and the compass below the status bar; the layers menu has METAR, SIGMET, the route, and airports, VORs, NDBs and waypoints from the MSFS database around the aircraft;
 - any saved flight can be opened on the 3D map from the logbook.
 
 **Flight plan**
@@ -128,10 +137,10 @@ To fly the aircraft and read live data from the simulator, run **OpenAirBook Lin
 
 **Cockpit (with OpenAirBook Link)**
 - **one view for flying**: PFD, ND, thrust levers and the floating control button on screen at once, without scrolling (phone in portrait: PFD above ND, levers at the side; landscape: all in one row; tablet: a fixed column or a fixed panel below for the autopilot, radios and more). ND mode, range and layers are small EFIS buttons on the display itself, and the MSFS camera is three icons in the header. Autopilot, radios, systems, engines and progress open from an icon bar in place of the ND, so the PFD and levers stay in view;
-- **PFD**: horizon, speed and altitude tapes with selected values, flight path vector (drift and flight path angle), 10-second speed trend, Mach, QNH, height above terrain with a ground band, track marker, wind and autopilot modes (FMA);
+- **PFD**: horizon, speed and altitude tapes with selected values, a vertical speed indicator with a 1–2–6 thousand ft/min scale, flight path vector (drift and flight path angle), 10-second speed trend, Mach, QNH, height above terrain with a ground band, track marker, wind and autopilot modes (FMA);
 - **MFD/ND** in ARC and ROSE modes: route, selected heading, next waypoint with distance, bearing and time, and from the MSFS database the airports, VORs (with frequency), NDBs and waypoints around the aircraft (layers can be toggled); below it a vertical situation display (VSD) with the selected altitude and the path at the current vertical speed;
 - **engines**: an EICAS/ECAM display (N1 or RPM, EGT, fuel flow and fuel on board) and a throttle quadrant you drag with your finger — thrust, plus mixture and propeller on piston and turboprop aircraft; jets get IDLE/CL/FLX/TOGA detents, TO/GA and reverse thrust;
-- **MSFS camera**: cockpit, external, drone;
+- **MSFS camera**: cockpit, external, drone; **hold a camera icon** to look around the same way you fly (tilting the phone or moving your finger), and let go to look ahead again;
 - **autopilot with knobs** like real avionics: a dual knob (the outer ring moves in big steps, the centre in small ones), −/+ buttons that repeat when held, and a window you can tap to type a value. Each setting has its mode buttons right below it. The panel looks like the manufacturer's — Airbus FCU (amber windows, green lamp bars), Boeing MCP (square keys with a lamp), Garmin (cyan values), GA in KAP140 style — and adapts to the app theme. The profile is picked automatically or by hand;
 - radios (COM, NAV, transponder) and systems (gear, flaps, spoilers, trim, lights).
 
@@ -141,6 +150,7 @@ To fly the aircraft and read live data from the simulator, run **OpenAirBook Lin
 - **floating control button**: shown on every tab, so you can read the briefing or the map with the controls under your thumb. Hold it and tilt the phone (gyro) or move your thumb (stick). Drag it by the handle to move it. The **with trim** variant: with the gyro you trim by dragging your finger on the button (down — nose up, up — nose down); with the stick, trim has its own buttons.
 
 **Logbook**
+- recording can be stopped by hand from the recording indicator in the cockpit header (the next one starts after landing or when you resume it);
 - its own screen with a summary, a filter and flights grouped by month; each shows the route, time, distance, altitude, landing score and a profile thumbnail;
 - every flight is recorded automatically: position, altitude, ground and indicated speed, vertical speed, heading; **restarting the flight in the simulator** (a position jump or another aircraft) closes the current entry and starts a new one; a flight is also saved when the simulator stops sending data or the system closes the app mid-flight;
 - recording rate is set in Settings: 4, 2 or 1 times per second, every 2 s or every 5 s;

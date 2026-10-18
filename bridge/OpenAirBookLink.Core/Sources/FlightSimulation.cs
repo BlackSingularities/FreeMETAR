@@ -362,6 +362,8 @@ public sealed class FlightSimulation
             case "MIXTURE_SET": c.MixturePct = Math.Round(v / 16383.0 * 100); break;
             case "PROPELLER_SET": c.PropPct = Math.Round(v / 16383.0 * 100); break;
             case "CAMERA_STATE": c.CameraState = (int)v; break;
+            case "CAMERA_PITCH_SET": break;
+            case "CAMERA_YAW_SET": break;
 
             default:
                 return CommandResult.Fail(ErrorCodes.NotAllowed, $"Symulacja nie obsługuje {cmd.Spec.Name}");

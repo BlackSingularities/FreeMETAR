@@ -141,6 +141,19 @@ class LinkTest {
     }
 
     @Test
+    fun manualStopHoldsRecordingUntilLanding() {
+        val r = FlightRecorder { _, _ -> null }
+        var t = 0L
+        repeat(40) { t += 5000; r.onState(st(52.0 + it * 0.003, 20.0, 120.0, false), t) }
+        assertNotNull(r.stopByUser(t))
+        // Dalej w powietrzu — nie zaczyna nowego nagrania
+        t += 5000; r.onState(st(52.2, 20.0, 120.0, false), t); assertFalse(r.recording)
+        // Po wylądowaniu i ponownym starcie — nagrywa
+        t += 5000; r.onState(st(52.2, 20.0, 0.0, true), t)
+        t += 5000; r.onState(st(52.2, 20.0, 90.0, false), t); assertTrue(r.recording)
+    }
+
+    @Test
     fun otherAircraftStartsANewFlight() {
         val r = FlightRecorder { _, _ -> null }
         var t = 0L
