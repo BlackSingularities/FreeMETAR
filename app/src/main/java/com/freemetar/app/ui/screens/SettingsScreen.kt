@@ -210,16 +210,6 @@ fun SettingsScreen(vm: MainViewModel) {
                 Text(loc("Pomysł i wykonanie: ", "Idea and development: "), color = Fm.c.paper, fontSize = 13.sp)
                 Text(AUTHOR_SITE, color = Fm.c.paper, fontSize = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
             }
-            Text(
-                loc("Tylko darmowe, otwarte źródła danych — bez kont, kluczy i reklam.", "Free and open data sources only — no accounts, keys or ads."),
-                color = Fm.c.ink2, fontSize = 13.sp, modifier = Modifier.padding(bottom = 8.dp),
-            )
-            Text(
-                loc("Pogoda: aviationweather.gov (NOAA/NWS, domena publiczna).\n", "Weather: aviationweather.gov (NOAA/NWS, public domain).\n") +
-                    loc("Lotniska, pasy, częstotliwości, pomoce nawigacyjne: OurAirports (domena publiczna).\n\n", "Airports, runways, frequencies, navaids: OurAirports (public domain).\n\n") +
-                    loc("Aplikacja przeznaczona wyłącznie do symulacji lotów. Dane mogą być nieaktualne lub niekompletne — nie używaj do rzeczywistej nawigacji lotniczej.", "For flight simulation only. Data may be outdated or incomplete — do not use for real-world navigation."),
-                color = Fm.c.ink2, fontSize = 13.sp,
-            )
         }
     }
 }
