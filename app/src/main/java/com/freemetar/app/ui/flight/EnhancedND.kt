@@ -241,27 +241,12 @@ private fun MapView3D(
     showWeather: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val m = rememberTextMeasurer()
-    val c = Fm.c
-
-    // TODO: Embed MapLibre view here
-    // - Pochylona kamera (tilt 50°)
-    // - Śledzenie samolotu
-    // - ILS approach paths
-    // - Weather radar overlay
-
-    Canvas(modifier.fillMaxSize()) {
-        val w = size.width
-        val h = size.height
-        val center = Offset(w / 2, h / 2)
-
-        drawRect(Color(0xFF0E1216))
-
-        label(m, "MAP 3D VIEW", center, c.ink2, 14.sp)
-        label(m, loc("Integracja z MapLibre", "MapLibre integration"), Offset(center.x, center.y + 30), c.ink2, 11.sp)
-
-        if (showWeather) {
-            label(m, "WXR: ON", Offset(center.x, center.y + 60), c.accent, 11.sp)
-        }
-    }
+    // Użyj embedded MapLibre view
+    EmbeddedMapView(
+        state = state,
+        route = route,
+        rangeNm = rangeNm,
+        showWeather = showWeather,
+        modifier = modifier
+    )
 }
