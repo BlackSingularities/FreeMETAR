@@ -150,21 +150,13 @@ fun LogbookScreen(vm: MainViewModel, onBack: () -> Unit, onOpenFlight: (String) 
                 return@LazyColumn
             }
             item {
-                val minutes = shown.sumOf { it.durationMin }
-                val scored = shown.mapNotNull { it.landing?.score }
-                Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                    FactGrid(listOf(
-                        Fact(loc("Loty", "Flights"), shown.size.toString()),
-                        Fact(loc("Czas lotu", "Flight time"), "%d:%02d".format(minutes / 60, minutes % 60)),
-                        Fact(loc("Dystans", "Distance"), "${shown.sumOf { it.distanceNm }} NM"),
-                        Fact(loc("Średnia ocena", "Average score"), if (scored.isEmpty()) "—" else scored.average().roundToInt().toString(),
-                            sub = scored.maxOrNull()?.let { loc("najlepsza $it", "best $it") }),
-                    ))
-                    Row(Modifier.horizontalScroll(rememberScrollState()).padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(filter == LogFilter.ALL, { filter = LogFilter.ALL }, { Text(loc("Wszystkie", "All")) })
-                        FilterChip(filter == LogFilter.SCORED, { filter = LogFilter.SCORED }, { Text(loc("Z oceną lądowania", "With landing score")) })
-                        FilterChip(filter == LogFilter.RECENT, { filter = LogFilter.RECENT }, { Text(loc("Ostatnie 30 dni", "Last 30 days")) })
-                    }
+                LogbookStatistics(shown)
+            }
+            item {
+                Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(filter == LogFilter.ALL, { filter = LogFilter.ALL }, { Text(loc("Wszystkie", "All")) })
+                    FilterChip(filter == LogFilter.SCORED, { filter = LogFilter.SCORED }, { Text(loc("Z oceną lądowania", "With landing score")) })
+                    FilterChip(filter == LogFilter.RECENT, { filter = LogFilter.RECENT }, { Text(loc("Ostatnie 30 dni", "Last 30 days")) })
                 }
             }
             if (shown.isEmpty()) item {

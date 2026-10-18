@@ -42,6 +42,8 @@ import androidx.compose.material.icons.outlined.Calculate
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Book
+import androidx.compose.material.icons.filled.Book
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -86,6 +88,7 @@ private val tabs get() = listOf(
     Tab("home", loc("Lotniska", "Airports"), Icons.Outlined.LocalAirport, Icons.Filled.LocalAirport),
     Tab("map", loc("Mapa", "Map"), Icons.Outlined.Map, Icons.Filled.Map),
     Tab("flight", loc("Lot", "Flight"), Icons.Outlined.FlightTakeoff, Icons.Filled.FlightTakeoff),
+    Tab("logbook", loc("Dziennik", "Logbook"), Icons.Outlined.Book, Icons.Filled.Book),
     Tab("tools", loc("Narzędzia", "Tools"), Icons.Outlined.Calculate, Icons.Filled.Calculate),
     Tab("settings", loc("Ustawienia", "Settings"), Icons.Outlined.Settings, Icons.Filled.Settings),
 )
@@ -151,7 +154,7 @@ class MainActivity : ComponentActivity() {
                 val route = entry?.destination?.route
                 val activeTab = when {
                     route?.startsWith("airport") == true -> "home"
-                    route?.startsWith("plan") == true || route?.startsWith("flightlog") == true || route == "logbook" -> "flight"
+                    route?.startsWith("plan") == true || route?.startsWith("flightlog") == true -> "logbook"
                     else -> route
                 }
                 val wide = isWide()
@@ -289,9 +292,12 @@ class MainActivity : ComponentActivity() {
                                         onShowMap = { vm.focusRouteOnMap(); nav.goTab("map") },
                                         onEditPlan = { id -> vm.startEdit(id); nav.navigate("plan/$id") },
                                         onOpenFlight = { id -> nav.navigate("flightlog/$id") },
-                                        onOpenLogbook = { nav.navigate("logbook") },
+                                        onOpenLogbook = { nav.goTab("logbook") },
                                         onOpenSettings = { nav.goTab("settings") },
                                     )
+                                }
+                                composable("logbook") {
+                                    com.freemetar.app.ui.flight.LogbookScreen(vm, onBack = { nav.goTab("flight") }, onOpenFlight = { id -> nav.navigate("flightlog/$id") })
                                 }
                                 composable("plan/{id}") { backStack ->
                                     val id = backStack.arguments?.getString("id").orEmpty()
@@ -300,9 +306,6 @@ class MainActivity : ComponentActivity() {
                                 }
                                 composable("flightlog/{id}") { backStack ->
                                     FlightDetailScreen(vm, backStack.arguments?.getString("id").orEmpty(), onBack = { nav.popBackStack() }, onShowMap = { nav.goTab("map") })
-                                }
-                                composable("logbook") {
-                                    com.freemetar.app.ui.flight.LogbookScreen(vm, onBack = { nav.popBackStack() }, onOpenFlight = { id -> nav.navigate("flightlog/$id") })
                                 }
                                 composable("tools") { ToolsScreen(vm) }
                                 composable("settings") { SettingsScreen(vm) }
