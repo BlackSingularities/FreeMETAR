@@ -1,0 +1,162 @@
+{
+  "aircraft": "Cessna 172",
+  "msfs_matches": ["Cessna 172", "C172", "Skyhawk"],
+  "manufacturer": "Cessna",
+  "category": "ga_single",
+  "checklists": {
+    "preflight": {
+      "name_pl": "Kontrola przed lotem",
+      "name_en": "Preflight Inspection",
+      "phase": "preflight",
+      "items": [
+        {
+          "item_pl": "Dokumenty",
+          "item_en": "Documents",
+          "expected": "ABOARD"
+        },
+        {
+          "item_pl": "Zewnętrzna kontrola",
+          "item_en": "External inspection",
+          "expected": "COMPLETE"
+        },
+        {
+          "item_pl": "Paliwo",
+          "item_en": "Fuel",
+          "expected": "CHECKED"
+        }
+      ]
+    },
+    "before_start": {
+      "name_pl": "Przed startem silnika",
+      "name_en": "Before Starting Engine",
+      "phase": "preflight",
+      "items": [
+        {
+          "item_pl": "Hamulec parkingowy",
+          "item_en": "Parking brake",
+          "expected": "SET"
+        },
+        {
+          "item_pl": "Przepustnica",
+          "item_en": "Throttle",
+          "expected": "CLOSED"
+        },
+        {
+          "item_pl": "Mixture",
+          "item_en": "Mixture",
+          "expected": "RICH"
+        },
+        {
+          "item_pl": "Magneto",
+          "item_en": "Magnetos",
+          "expected": "OFF"
+        }
+      ]
+    },
+    "before_takeoff": {
+      "name_pl": "Przed startem",
+      "name_en": "Before Takeoff",
+      "phase": "takeoff",
+      "items": [
+        {
+          "item_pl": "Klapa",
+          "item_en": "Flaps",
+          "expected": "10°"
+        },
+        {
+          "item_pl": "Mixture",
+          "item_en": "Mixture",
+          "expected": "RICH"
+        },
+        {
+          "item_pl": "Pasy",
+          "item_en": "Seat belts",
+          "expected": "SECURED"
+        }
+      ]
+    },
+    "cruise": {
+      "name_pl": "Lot przelotowy",
+      "name_en": "Cruise",
+      "phase": "cruise",
+      "items": [
+        {
+          "item_pl": "Wysokość",
+          "item_en": "Altitude",
+          "expected": "SET"
+        },
+        {
+          "item_pl": "Mixture",
+          "item_en": "Mixture",
+          "expected": "LEANED"
+        }
+      ]
+    },
+    "before_landing": {
+      "name_pl": "Przed lądowaniem",
+      "name_en": "Before Landing",
+      "phase": "approach",
+      "items": [
+        {
+          "item_pl": "Pasy",
+          "item_en": "Seat belts",
+          "expected": "SECURED"
+        },
+        {
+          "item_pl": "Mixture",
+          "item_en": "Mixture",
+          "expected": "RICH"
+        },
+        {
+          "item_pl": "Klapa",
+          "item_en": "Flaps",
+          "expected": "AS REQUIRED"
+        }
+      ]
+    },
+    "after_landing": {
+      "name_pl": "Po lądowaniu",
+      "name_en": "After Landing",
+      "phase": "taxi",
+      "items": [
+        {
+          "item_pl": "Klapa",
+          "item_en": "Flaps",
+          "expected": "UP"
+        },
+        {
+          "item_pl": "Transponder",
+          "item_en": "Transponder",
+          "expected": "STBY"
+        }
+      ]
+    },
+    "shutdown": {
+      "name_pl": "Wyłączenie silnika",
+      "name_en": "Shutdown",
+      "phase": "shutdown",
+      "items": [
+        {
+          "item_pl": "Hamulec parkingowy",
+          "item_en": "Parking brake",
+          "expected": "SET"
+        },
+        {
+          "item_pl": "Przepustnica",
+          "item_en": "Throttle",
+          "expected": "IDLE"
+        },
+        {
+          "item_pl": "Magneto",
+          "item_en": "Magnetos",
+          "expected": "OFF"
+        },
+        {
+          "item_pl": "Master switch",
+          "item_en": "Master switch",
+          "expected": "OFF"
+        }
+      ]
+    }
+  }
+}

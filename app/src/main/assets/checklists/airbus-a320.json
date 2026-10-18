@@ -1,0 +1,211 @@
+{
+  "aircraft": "Airbus A320",
+  "msfs_matches": ["Airbus A320", "A320", "A320neo", "FlyByWire A320"],
+  "manufacturer": "Airbus",
+  "category": "jet_airliner",
+  "checklists": {
+    "before_start": {
+      "name_pl": "Przed startem silników",
+      "name_en": "Before Start",
+      "phase": "preflight",
+      "items": [
+        {
+          "item_pl": "Parking brake",
+          "item_en": "Parking brake",
+          "expected": "ON"
+        },
+        {
+          "item_pl": "Electrical power",
+          "item_en": "Electrical power",
+          "expected": "ESTABLISHED"
+        },
+        {
+          "item_pl": "Fuel quantity",
+          "item_en": "Fuel quantity",
+          "expected": "CHECKED"
+        },
+        {
+          "item_pl": "Seat belts",
+          "item_en": "Seat belts",
+          "expected": "ON"
+        },
+        {
+          "item_pl": "Flight controls",
+          "item_en": "Flight controls",
+          "expected": "CHECKED"
+        }
+      ]
+    },
+    "after_start": {
+      "name_pl": "Po starcie silników",
+      "name_en": "After Start",
+      "phase": "preflight",
+      "items": [
+        {
+          "item_pl": "Anti-ice",
+          "item_en": "Anti-ice",
+          "expected": "AS REQUIRED"
+        },
+        {
+          "item_pl": "Flaps",
+          "item_en": "Flaps",
+          "expected": "CONF 1+F"
+        },
+        {
+          "item_pl": "Ground spoilers",
+          "item_en": "Ground spoilers",
+          "expected": "ARMED"
+        }
+      ]
+    },
+    "before_takeoff": {
+      "name_pl": "Przed startem",
+      "name_en": "Before Takeoff",
+      "phase": "takeoff",
+      "items": [
+        {
+          "item_pl": "Flight controls",
+          "item_en": "Flight controls",
+          "expected": "CHECKED"
+        },
+        {
+          "item_pl": "Takeoff config",
+          "item_en": "Takeoff config",
+          "expected": "TESTED"
+        },
+        {
+          "item_pl": "Transponder",
+          "item_en": "Transponder",
+          "expected": "TA/RA"
+        },
+        {
+          "item_pl": "Strobe lights",
+          "item_en": "Strobe lights",
+          "expected": "ON"
+        }
+      ]
+    },
+    "after_takeoff": {
+      "name_pl": "Po starcie",
+      "name_en": "After Takeoff",
+      "phase": "climb",
+      "items": [
+        {
+          "item_pl": "Landing gear",
+          "item_en": "Landing gear",
+          "expected": "UP"
+        },
+        {
+          "item_pl": "Flaps",
+          "item_en": "Flaps",
+          "expected": "RETRACTED"
+        }
+      ]
+    },
+    "descent": {
+      "name_pl": "Zniżanie",
+      "name_en": "Descent",
+      "phase": "descent",
+      "items": [
+        {
+          "item_pl": "Altimeters",
+          "item_en": "Altimeters",
+          "expected": "SET"
+        },
+        {
+          "item_pl": "Approach briefing",
+          "item_en": "Approach briefing",
+          "expected": "COMPLETED"
+        },
+        {
+          "item_pl": "Seat belts",
+          "item_en": "Seat belts",
+          "expected": "ON"
+        }
+      ]
+    },
+    "approach": {
+      "name_pl": "Podejście",
+      "name_en": "Approach",
+      "phase": "approach",
+      "items": [
+        {
+          "item_pl": "Landing gear",
+          "item_en": "Landing gear",
+          "expected": "DOWN"
+        },
+        {
+          "item_pl": "Flaps",
+          "item_en": "Flaps",
+          "expected": "FULL"
+        },
+        {
+          "item_pl": "Ground spoilers",
+          "item_en": "Ground spoilers",
+          "expected": "ARMED"
+        }
+      ]
+    },
+    "landing": {
+      "name_pl": "Lądowanie",
+      "name_en": "Landing",
+      "phase": "landing",
+      "items": [
+        {
+          "item_pl": "Landing clearance",
+          "item_en": "Landing clearance",
+          "expected": "RECEIVED"
+        },
+        {
+          "item_pl": "Autobrake",
+          "item_en": "Autobrake",
+          "expected": "MAX"
+        }
+      ]
+    },
+    "after_landing": {
+      "name_pl": "Po lądowaniu",
+      "name_en": "After Landing",
+      "phase": "taxi",
+      "items": [
+        {
+          "item_pl": "Flaps",
+          "item_en": "Flaps",
+          "expected": "RETRACTED"
+        },
+        {
+          "item_pl": "Ground spoilers",
+          "item_en": "Ground spoilers",
+          "expected": "DISARMED"
+        },
+        {
+          "item_pl": "Transponder",
+          "item_en": "Transponder",
+          "expected": "ALT"
+        }
+      ]
+    },
+    "shutdown": {
+      "name_pl": "Wyłączenie",
+      "name_en": "Shutdown",
+      "phase": "shutdown",
+      "items": [
+        {
+          "item_pl": "Parking brake",
+          "item_en": "Parking brake",
+          "expected": "ON"
+        },
+        {
+          "item_pl": "Fuel pumps",
+          "item_en": "Fuel pumps",
+          "expected": "OFF"
+        },
+        {
+          "item_pl": "Electrical power",
+          "item_en": "Electrical power",
+          "expected": "OFF"
+        }
+      ]
+    }
+  }
+}

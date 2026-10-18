@@ -1,0 +1,221 @@
+{
+  "aircraft": "Boeing 737-800",
+  "msfs_matches": ["Boeing 737-800", "PMDG 737-800", "737-800", "B738"],
+  "manufacturer": "Boeing",
+  "category": "jet_airliner",
+  "checklists": {
+    "before_start": {
+      "name_pl": "Przed startem silników",
+      "name_en": "Before Start",
+      "phase": "preflight",
+      "items": [
+        {
+          "item_pl": "Parking brake",
+          "item_en": "Parking brake",
+          "expected": "SET"
+        },
+        {
+          "item_pl": "Flight instruments",
+          "item_en": "Flight instruments",
+          "expected": "CHECKED"
+        },
+        {
+          "item_pl": "Fuel quantity",
+          "item_en": "Fuel quantity",
+          "expected": "CHECKED"
+        },
+        {
+          "item_pl": "Passenger signs",
+          "item_en": "Passenger signs",
+          "expected": "ON"
+        },
+        {
+          "item_pl": "Flight controls",
+          "item_en": "Flight controls",
+          "expected": "CHECKED"
+        }
+      ]
+    },
+    "after_start": {
+      "name_pl": "Po starcie silników",
+      "name_en": "After Start",
+      "phase": "preflight",
+      "items": [
+        {
+          "item_pl": "Anti-ice",
+          "item_en": "Anti-ice",
+          "expected": "AS REQUIRED"
+        },
+        {
+          "item_pl": "Hydraulic pumps",
+          "item_en": "Hydraulic pumps",
+          "expected": "ON"
+        },
+        {
+          "item_pl": "Flaps",
+          "item_en": "Flaps",
+          "expected": "SET FOR TAKEOFF"
+        }
+      ]
+    },
+    "before_takeoff": {
+      "name_pl": "Przed startem",
+      "name_en": "Before Takeoff",
+      "phase": "takeoff",
+      "items": [
+        {
+          "item_pl": "Flight controls",
+          "item_en": "Flight controls",
+          "expected": "CHECKED"
+        },
+        {
+          "item_pl": "Takeoff briefing",
+          "item_en": "Takeoff briefing",
+          "expected": "COMPLETED"
+        },
+        {
+          "item_pl": "Transponder",
+          "item_en": "Transponder",
+          "expected": "TA/RA"
+        },
+        {
+          "item_pl": "Strobe lights",
+          "item_en": "Strobe lights",
+          "expected": "ON"
+        }
+      ]
+    },
+    "after_takeoff": {
+      "name_pl": "Po starcie",
+      "name_en": "After Takeoff",
+      "phase": "climb",
+      "items": [
+        {
+          "item_pl": "Landing gear",
+          "item_en": "Landing gear",
+          "expected": "UP"
+        },
+        {
+          "item_pl": "Flaps",
+          "item_en": "Flaps",
+          "expected": "UP"
+        },
+        {
+          "item_pl": "Climb power",
+          "item_en": "Climb power",
+          "expected": "SET"
+        }
+      ]
+    },
+    "descent": {
+      "name_pl": "Zniżanie",
+      "name_en": "Descent",
+      "phase": "descent",
+      "items": [
+        {
+          "item_pl": "Altimeters",
+          "item_en": "Altimeters",
+          "expected": "SET"
+        },
+        {
+          "item_pl": "Approach briefing",
+          "item_en": "Approach briefing",
+          "expected": "COMPLETED"
+        },
+        {
+          "item_pl": "Seat belts",
+          "item_en": "Seat belts",
+          "expected": "ON"
+        }
+      ]
+    },
+    "approach": {
+      "name_pl": "Podejście",
+      "name_en": "Approach",
+      "phase": "approach",
+      "items": [
+        {
+          "item_pl": "Landing gear",
+          "item_en": "Landing gear",
+          "expected": "DOWN"
+        },
+        {
+          "item_pl": "Flaps",
+          "item_en": "Flaps",
+          "expected": "AS REQUIRED"
+        },
+        {
+          "item_pl": "Speedbrakes",
+          "item_en": "Speedbrakes",
+          "expected": "ARMED"
+        }
+      ]
+    },
+    "landing": {
+      "name_pl": "Lądowanie",
+      "name_en": "Landing",
+      "phase": "landing",
+      "items": [
+        {
+          "item_pl": "Landing clearance",
+          "item_en": "Landing clearance",
+          "expected": "RECEIVED"
+        },
+        {
+          "item_pl": "Autobrake",
+          "item_en": "Autobrake",
+          "expected": "SET"
+        }
+      ]
+    },
+    "after_landing": {
+      "name_pl": "Po lądowaniu",
+      "name_en": "After Landing",
+      "phase": "taxi",
+      "items": [
+        {
+          "item_pl": "Flaps",
+          "item_en": "Flaps",
+          "expected": "UP"
+        },
+        {
+          "item_pl": "Speedbrakes",
+          "item_en": "Speedbrakes",
+          "expected": "DOWN"
+        },
+        {
+          "item_pl": "Transponder",
+          "item_en": "Transponder",
+          "expected": "ALT"
+        },
+        {
+          "item_pl": "Strobe lights",
+          "item_en": "Strobe lights",
+          "expected": "OFF"
+        }
+      ]
+    },
+    "shutdown": {
+      "name_pl": "Wyłączenie",
+      "name_en": "Shutdown",
+      "phase": "shutdown",
+      "items": [
+        {
+          "item_pl": "Parking brake",
+          "item_en": "Parking brake",
+          "expected": "SET"
+        },
+        {
+          "item_pl": "Fuel pumps",
+          "item_en": "Fuel pumps",
+          "expected": "OFF"
+        },
+        {
+          "item_pl": "Hydraulic pumps",
+          "item_en": "Hydraulic pumps",
+          "expected": "OFF"
+        }
+      ]
+    }
+  }
+}
