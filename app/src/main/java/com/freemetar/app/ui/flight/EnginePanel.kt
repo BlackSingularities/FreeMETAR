@@ -189,9 +189,9 @@ private fun Quadrant(link: LinkClient, s: FlightState, p: AircraftProfile) {
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             AfdsKey("IDLE", (s.controls.throttlePct ?: 1.0) < 1, Modifier.weight(1f), skin) { link.command("THROTTLE_CUT") }
-            if (jet) AfdsKey("TO/GA", false, Modifier.weight(1f), skin) { link.command("AUTO_THROTTLE_TO_GA") }
+            if (jet) AfdsKey("TO/GA", (s.controls.throttlePct ?: 0.0) > 99, Modifier.weight(1f), skin) { toga(link) }
             else AfdsKey(loc("PEŁNA", "FULL"), (s.controls.throttlePct ?: 0.0) > 99, Modifier.weight(1f), skin) { link.command("THROTTLE_FULL") }
-            if (p != AircraftProfile.PISTON) AfdsKey("REV", false, Modifier.weight(1f), skin) { link.command("THROTTLE_REVERSE_THRUST_TOGGLE") }
+            if (hasReverser(s, p)) AfdsKey("REV", false, Modifier.weight(1f), skin) { if (s.aircraft.onGround != false) link.command("THROTTLE_REVERSE_THRUST_TOGGLE") }
         }
     }
     Text(loc("Przeciągnij rączkę w górę lub w dół. Ustawienie działa na wszystkie silniki.", "Drag a handle up or down. It sets all engines at once."),

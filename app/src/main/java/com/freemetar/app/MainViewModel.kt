@@ -847,6 +847,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setFloatingControl(v: Boolean) = viewModelScope.launch { prefs.setFloatingControl(v) }
     fun setSimbriefUser(v: String) = viewModelScope.launch { prefs.setSimbriefUser(v) }
     fun setHideStatusBar(v: Boolean) = viewModelScope.launch { prefs.setHideStatusBar(v) }
+    fun setLeversLeft(v: Boolean) = viewModelScope.launch { prefs.setLeversLeft(v) }
     fun setFloatingStyle(v: String) = viewModelScope.launch { prefs.setFloatingStyle(v) }
     fun setRecordInterval(ms: Int) = viewModelScope.launch { prefs.setRecordInterval(ms) }
     fun setTheme(m: com.freemetar.app.data.ThemeMode) = viewModelScope.launch { prefs.setTheme(m) }

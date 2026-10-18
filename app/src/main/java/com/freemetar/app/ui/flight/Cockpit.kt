@@ -92,7 +92,7 @@ private fun CockpitTab.label(): String = when (this) {
 fun CockpitView(
     link: LinkClient, s: FlightState, route: SavedRoute?, profile: AircraftProfile?, onProfile: (AircraftProfile?) -> Unit,
     controlMode: String = "TILT", onControlMode: (String) -> Unit = {}, floating: Boolean = false, onFloating: (Boolean) -> Unit = {},
-    nearby: List<com.freemetar.app.data.nav.FixResult> = emptyList(), floatingTrim: Boolean = false,
+    nearby: List<com.freemetar.app.data.nav.FixResult> = emptyList(), floatingTrim: Boolean = false, leversLeft: Boolean = false,
     onShowPlan: () -> Unit = {},
     recording: com.freemetar.app.MainViewModel.RecordingInfo = com.freemetar.app.MainViewModel.RecordingInfo(),
     onStopRecording: () -> Unit = {}, onResumeRecording: () -> Unit = {},
@@ -142,7 +142,7 @@ fun CockpitView(
                 if (wide) {
                     val sideW = (screenW * 0.34f).coerceIn(340.dp, 480.dp)
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        FlyDeck(link, s, route, effective, nearby, screenH - 40.dp - 14.dp, Modifier.weight(1f))
+                        FlyDeck(link, s, route, effective, nearby, screenH - 40.dp - 14.dp, Modifier.weight(1f), leversLeft = leversLeft)
                         Column(Modifier.width(sideW)) {
                             PanelBar(shownTab, onTab, indicatorTop = false)
                             Column(Modifier.fillMaxWidth().weight(1f, fill = false).verticalScroll(rememberScrollState())) {
@@ -152,7 +152,7 @@ fun CockpitView(
                         }
                     }
                 } else if (tabletPortrait) {
-                    FlyDeck(link, s, route, effective, nearby, screenH * 0.5f)
+                    FlyDeck(link, s, route, effective, nearby, screenH * 0.5f, leversLeft = leversLeft)
                     PanelBar(shownTab, onTab, indicatorTop = false)
                     Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) {
                         panelFor(shownTab!!, false)
@@ -160,12 +160,12 @@ fun CockpitView(
                     }
                 } else if (landscape) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FlyDeck(link, s, route, effective, nearby, screenH - 40.dp - 14.dp, Modifier.weight(1f), panel)
+                        FlyDeck(link, s, route, effective, nearby, screenH - 40.dp - 14.dp, Modifier.weight(1f), panel, leversLeft)
                         PanelRail(tab, onTab)
                     }
                 } else {
                     // Miejsce na wyświetlacze: wysokość ekranu minus nagłówek, pasek paneli i marginesy
-                    FlyDeck(link, s, route, effective, nearby, screenH - 40.dp - 56.dp - 16.dp, panel = panel)
+                    FlyDeck(link, s, route, effective, nearby, screenH - 40.dp - 56.dp - 16.dp, panel = panel, leversLeft = leversLeft)
                     PanelBar(tab, onTab)
                 }
             }
@@ -187,7 +187,8 @@ private fun CockpitHeader(
         Box(Modifier.size(8.dp).clip(CircleShape).background(if (s.aircraft.paused == true) c.caution else c.green))
         Spacer(Modifier.width(8.dp))
         Text(s.aircraft.title ?: tr("Samolot", "Aircraft"), style = MaterialTheme.typography.titleSmall, color = c.ink,
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        FlightParams(s, Modifier.weight(1f).padding(start = 10.dp))
         if (s.aircraft.paused == true) Text(tr("PAUZA", "PAUSED"), fontFamily = Mono, fontSize = 11.sp, color = c.caution, modifier = Modifier.padding(end = 6.dp))
         Text(p.short, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 10.sp, color = Color.Black,
             modifier = Modifier.clip(RoundedCornerShape(50)).background(c.ink).padding(horizontal = 7.dp, vertical = 2.dp))
@@ -210,6 +211,35 @@ private fun CockpitHeader(
         confirmButton = { androidx.compose.material3.TextButton({ askStop = false; onStop() }) { Text(tr("Zakończ zapis", "Stop recording"), color = c.danger) } },
         dismissButton = { androidx.compose.material3.TextButton({ askStop = false }) { Text(tr("Anuluj", "Cancel")) } },
     )
+}
+
+/**
+ * Podstawowe parametry lotu w nagłówku: prędkość, wysokość, kurs, prędkość pionowa.
+ * Gdy brakuje miejsca, pola od końca znikają, zamiast ściskać nazwę samolotu.
+ */
+@Composable
+private fun FlightParams(s: FlightState, modifier: Modifier = Modifier) {
+    val c = Fm.c
+    fun n(v: Double?) = v?.roundToInt()?.toString() ?: "—"
+    val vs = s.speed.vsFpm?.roundToInt()
+    val items = listOf(
+        "IAS" to n(s.speed.iasKt),
+        "ALT" to n(s.position.altIndFt ?: s.position.altMslFt),
+        "HDG" to (s.attitude.hdgMagDeg?.let { "%03d".format(((it.roundToInt() % 360) + 360) % 360) } ?: "—"),
+        "VS" to (vs?.let { if (it > 0) "+$it" else "$it" } ?: "—"),
+    )
+    BoxWithConstraints(modifier) {
+        val fit = (maxWidth / 66.dp).toInt().coerceIn(0, items.size)   // ok. 66 dp na pole
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            items.take(fit).forEach { (label, value) ->
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(label, fontFamily = Mono, fontSize = 9.sp, color = c.ink2)
+                    Spacer(Modifier.width(3.dp))
+                    Text(value, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = c.ink, maxLines = 1)
+                }
+            }
+        }
+    }
 }
 
 /** Podpis zakładki: krótki, ale słowem (AP zostaje skrótem, jak na panelu). */

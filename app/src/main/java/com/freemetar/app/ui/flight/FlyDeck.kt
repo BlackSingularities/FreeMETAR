@@ -86,7 +86,7 @@ private val RANGES = listOf(5, 10, 20, 40, 80, 160, 320)
 @Composable
 fun FlyDeck(
     link: LinkClient, s: FlightState, route: SavedRoute?, profile: AircraftProfile, nearby: List<FixResult>, availableHeight: Dp,
-    modifier: Modifier = Modifier, panel: (@Composable () -> Unit)? = null,
+    modifier: Modifier = Modifier, panel: (@Composable () -> Unit)? = null, leversLeft: Boolean = false,
 ) {
     val piston = profile == AircraftProfile.PISTON
     val levers = if (piston) 3 else if (profile == AircraftProfile.TURBOPROP) 2 else 1
@@ -103,10 +103,11 @@ fun FlyDeck(
             // PFD (1,12:1) i ND (1:1) obok siebie, wysokość wg dostępnego miejsca
             val h = rowH
             Row(horizontalArrangement = Arrangement.spacedBy(gap), verticalAlignment = Alignment.Top) {
+                if (leversLeft) Levers(link, s, profile, Modifier.height(h).width(thrW))
                 Box(Modifier.clip(RoundedCornerShape(10.dp))) { Pfd(s, Modifier.width(h * 1.12f)) }
                 if (panel != null) PanelSlot(Modifier.width(h * 1.05f).height(h), panel)
                 else NdWithControls(s, route, nearby, Modifier.width(h * 1.05f), aspect = 1.05f)
-                Levers(link, s, profile, Modifier.height(h).width(thrW))
+                if (!leversLeft) Levers(link, s, profile, Modifier.height(h).width(thrW))
             }
         } else {
             // PFD nad ND; ND wypełnia resztę wysokości (proporcje 1,0–1,45)
@@ -115,12 +116,13 @@ fun FlyDeck(
             val ndAspect = (w / (availableHeight - pfdH - gap).coerceAtLeast(w / 1.45f)).coerceIn(1f, 1.45f)
             val ndH = w / ndAspect
             Row(horizontalArrangement = Arrangement.spacedBy(gap), verticalAlignment = Alignment.Top) {
+                if (leversLeft) Levers(link, s, profile, Modifier.height(pfdH + gap + ndH).width(thrW))
                 Column(Modifier.width(w), verticalArrangement = Arrangement.spacedBy(gap)) {
                     Box(Modifier.clip(RoundedCornerShape(10.dp))) { Pfd(s) }
                     if (panel != null) PanelSlot(Modifier.fillMaxWidth().height(ndH), panel)
                     else NdWithControls(s, route, nearby, Modifier.fillMaxWidth(), aspect = ndAspect)
                 }
-                Levers(link, s, profile, Modifier.height(pfdH + gap + ndH).width(thrW))
+                if (!leversLeft) Levers(link, s, profile, Modifier.height(pfdH + gap + ndH).width(thrW))
             }
         }
     }
@@ -205,8 +207,8 @@ private fun Levers(link: LinkClient, s: FlightState, p: AircraftProfile, modifie
             CompactLever("THR", s.controls.throttlePct, Color(0xFF2A2D31), thrDetents, Modifier.weight(1f)) { send("THROTTLE_SET", it) }
             // Szybkie przyciski pod dźwignią: jałowy i (odrzutowce) odwracacz ciągu
             MiniKey("IDLE") { link.command("THROTTLE_CUT") }
-            if (jet || p == AircraftProfile.TURBOPROP) MiniKey("REV") { link.command("THROTTLE_REVERSE_THRUST_TOGGLE") }
-            if (jet) MiniKey("TOGA") { link.command("AUTO_THROTTLE_TO_GA") }
+            if (hasReverser(s, p)) MiniKey("REV", enabled = s.aircraft.onGround != false) { link.command("THROTTLE_REVERSE_THRUST_TOGGLE") }
+            if (jet) MiniKey("TOGA") { toga(link) }
         }
         if (p == AircraftProfile.PISTON || p == AircraftProfile.TURBOPROP) Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
             CompactLever("PROP", s.controls.propPct, Color(0xFF1F5FBF), listOf(0 to "", 100 to ""), Modifier.weight(1f)) { send("PROPELLER_SET", it) }
@@ -218,13 +220,13 @@ private fun Levers(link: LinkClient, s: FlightState, p: AircraftProfile, modifie
 }
 
 @Composable
-private fun MiniKey(label: String, onClick: () -> Unit) {
+private fun MiniKey(label: String, enabled: Boolean = true, onClick: () -> Unit) {
     val haptic = LocalHapticFeedback.current
     Box(
         Modifier.padding(top = 4.dp).width(42.dp).height(26.dp).clip(RoundedCornerShape(5.dp)).background(KEY)
-            .clickable(role = Role.Button, onClickLabel = label) { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onClick() },
+            .clickable(enabled = enabled, role = Role.Button, onClickLabel = label) { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onClick() },
         contentAlignment = Alignment.Center,
-    ) { Text(label, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 9.sp, color = LEGEND) }
+    ) { Text(label, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 9.sp, color = if (enabled) LEGEND else LEGEND.copy(alpha = 0.3f)) }
 }
 
 /**
@@ -298,4 +300,20 @@ private fun CompactLever(label: String, actual: Double?, handle: Color, detents:
         drawLine(Color.White.copy(alpha = 0.6f), Offset(cx - hw / 2 + 5, y), Offset(cx + hw / 2 - 5, y), 2f)
         if (dragging) drawRoundRect(CYAN, Offset(cx - hw / 2 - 3, y - hh / 2 - 3), Size(hw + 6, hh + 6), CornerRadius(9f), style = Stroke(3f))
     }
+}
+
+/**
+ * Czy samolot ma odwracacz ciągu: decyduje typ silnika zgłoszony przez MSFS (odrzutowy, turbośmigłowy),
+ * a dopiero bez niego profil panelu. Tłokowe nie mają rewersu.
+ */
+internal fun hasReverser(s: FlightState, p: AircraftProfile): Boolean = when (s.aircraft.engineType) {
+    "jet", "turboprop" -> true
+    "piston" -> false
+    else -> p != AircraftProfile.PISTON
+}
+
+/** TOGA: pełna moc na wszystkich silnikach, a przy autociągu także tryb odejścia (TO/GA). */
+internal fun toga(link: LinkClient) {
+    link.command("THROTTLE_SET", 16383.0)
+    link.command("AUTO_THROTTLE_TO_GA")
 }

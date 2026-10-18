@@ -348,7 +348,9 @@ public sealed class LinkServer : IDisposable
 
         if (result.Ok)
         {
-            Log?.Invoke($"{session.Name}: {cmd.Spec.Name}{(cmd.Spec.NeedsValue ? $" = {cmd.Value}" : "")}");
+            // Rozglądanie się to kilkanaście komend na sekundę — nie zaśmiecamy nimi dziennika
+            if (cmd.Spec.Target is not (CommandTarget.CameraPitch or CommandTarget.CameraYaw))
+                Log?.Invoke($"{session.Name}: {cmd.Spec.Name}{(cmd.Spec.NeedsValue ? $" = {cmd.Value}" : "")}");
             await SendAsync(session, new AckMessage { Id = msg.Id, Name = cmd.Spec.Name });
         }
         else

@@ -37,6 +37,8 @@ data class Settings(
     val floatingStyle: String = "SIMPLE",
     /** Pasek stanu ukryty — aplikacja zajmuje jego miejsce (wysuwa się przeciągnięciem od góry). */
     val hideStatusBar: Boolean = false,
+    /** Dźwignie mocy po lewej stronie PFD i ND (domyślnie po prawej). */
+    val leversLeft: Boolean = false,
     /** Odstęp między punktami zapisu lotu (ms). */
     val recordIntervalMs: Int = 1000,
 )
@@ -59,6 +61,7 @@ class Prefs(private val context: Context) {
     private val RECORD_MS = intPreferencesKey("record_interval_ms")
     private val FLOAT_STYLE = stringPreferencesKey("floating_style")
     private val HIDE_STATUS = booleanPreferencesKey("hide_status_bar")
+    private val LEVERS_LEFT = booleanPreferencesKey("levers_left")
 
     private fun list(v: String?) = v?.split(",")?.filter { it.isNotBlank() }
 
@@ -78,6 +81,7 @@ class Prefs(private val context: Context) {
             floatingControl = p[FLOATING] ?: false,
             floatingStyle = p[FLOAT_STYLE] ?: "SIMPLE",
             hideStatusBar = p[HIDE_STATUS] ?: false,
+            leversLeft = p[LEVERS_LEFT] ?: false,
             recordIntervalMs = p[RECORD_MS] ?: 1000,
         )
     }
@@ -130,6 +134,7 @@ class Prefs(private val context: Context) {
     suspend fun setControlMode(v: String) = context.dataStore.edit { it[CONTROL] = v }
     suspend fun setFloatingControl(v: Boolean) = context.dataStore.edit { it[FLOATING] = v }
     suspend fun setHideStatusBar(v: Boolean) = context.dataStore.edit { it[HIDE_STATUS] = v }
+    suspend fun setLeversLeft(v: Boolean) = context.dataStore.edit { it[LEVERS_LEFT] = v }
     suspend fun setFloatingStyle(v: String) = context.dataStore.edit { it[FLOAT_STYLE] = v }
     suspend fun setRecordInterval(ms: Int) = context.dataStore.edit { it[RECORD_MS] = ms }
     suspend fun setLanguage(v: String) = context.dataStore.edit { it[LANGUAGE] = v }

@@ -269,9 +269,10 @@ public sealed class MsfsSource : IFlightSource
                     // Nie wiadomo, czy MSFS podaje kąt względem samolotu, czy bezwzględny — sprawdzamy więc tylko,
                     // czy kamera w ogóle się ruszyła od chwili, gdy patrzyliśmy na wprost
                     var actual = pitchAxis ? -last.CamPitchRad * 180 / Math.PI : last.CamYawRad * 180 / Math.PI;
-                    if (Math.Abs(valueDeg) < 5) { if (pitchAxis) _lookBasePitch = actual; else _lookBaseYaw = actual; }
-                    else if (Math.Abs(valueDeg) >= 15)
-                        _lookMisses = Math.Abs(Wrap(actual - (pitchAxis ? _lookBasePitch : _lookBaseYaw))) < 2 ? _lookMisses + 1 : 0;
+                    // Telefon przy lekkim przechyle wysyła tylko kilka stopni, więc próg musi być niski
+                    if (Math.Abs(valueDeg) < 2) { if (pitchAxis) _lookBasePitch = actual; else _lookBaseYaw = actual; }
+                    else if (Math.Abs(valueDeg) >= 3)
+                        _lookMisses = Math.Abs(Wrap(actual - (pitchAxis ? _lookBasePitch : _lookBaseYaw))) < 1 ? _lookMisses + 1 : 0;
                 }
             }
             catch (Exception e) when (e is not OperationCanceledException)

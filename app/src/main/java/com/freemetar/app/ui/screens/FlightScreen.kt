@@ -116,7 +116,7 @@ fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> U
             Column(Modifier.fillMaxSize().statusBarsPadding()) {
                 CockpitView(vm.link, state, active, AircraftProfile.fromName(settings.aircraftProfile), { p -> vm.setAircraftProfile(p) },
                     settings.controlMode, { vm.setControlMode(it) }, settings.floatingControl, { vm.setFloatingControl(it) },
-                    vm.nearbyNav.collectAsStateWithLifecycle().value, floatingTrim = settings.floatingStyle == "TRIM",
+                    vm.nearbyNav.collectAsStateWithLifecycle().value, floatingTrim = settings.floatingStyle == "TRIM", leversLeft = settings.leversLeft,
                     onShowPlan = { cockpit = false },
                     recording = vm.recordingInfo.collectAsStateWithLifecycle().value,
                     onStopRecording = { vm.stopRecording() }, onResumeRecording = { vm.resumeRecording() })

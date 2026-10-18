@@ -127,6 +127,10 @@ fun SettingsScreen(vm: MainViewModel) {
                     FilterChip(s.controlMode == code, { vm.setControlMode(code) }, { Text(label) })
                 }
             }
+            ChipRow(loc("Dźwignie mocy", "Power levers")) {
+                FilterChip(s.leversLeft, { vm.setLeversLeft(true) }, { Text(loc("Z lewej", "Left")) })
+                FilterChip(!s.leversLeft, { vm.setLeversLeft(false) }, { Text(loc("Z prawej", "Right")) })
+            }
             ToggleRow(Icons.Outlined.TouchApp, loc("Pływający przycisk sterowania", "Floating control button"),
                 loc("Na każdej zakładce; przytrzymaj, żeby sterować", "On every tab; hold it to fly"),
                 s.floatingControl) { vm.setFloatingControl(it) }
