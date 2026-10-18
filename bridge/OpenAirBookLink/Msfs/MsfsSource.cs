@@ -240,7 +240,7 @@ public sealed class MsfsSource : IFlightSource
 
     // Zdarzenia widoku używane, gdy MSFS nie przyjmuje zapisu CAMERA GAMEPLAY PITCH YAW (wewnętrzne, spoza listy telefonu)
     private static readonly string[] CameraEvents = { "PAN_VIEW", "PAN_RESET_COCKPIT", "AXIS_PAN_HEADING", "AXIS_PAN_PITCH", "VIEW_MODE" };
-    private bool _lookByEvents;
+    private bool _lookByEvents, _look6DofFailed;
     private int _lookMisses;
     private long _lookYaw, _lookPitch;
     private double _lookBaseYaw, _lookBasePitch;
@@ -253,6 +253,18 @@ public sealed class MsfsSource : IFlightSource
     private async Task<CommandResult> LookAsync(SimConnectClient client, bool pitchAxis, long valueDeg, CancellationToken ct)
     {
         if (pitchAxis) _lookPitch = valueDeg; else _lookYaw = valueDeg;
+
+        // MSFS 2024 ignoruje zapis kątów i zdarzenia PAN_* (sprawdzone na żywo), więc najpierw obrót kamery
+        // wprost przez CameraSetRelative6DOF; pozycja oka bez zmian (FLT_MAX), dodatnie pochylenie = w dół
+        if (!_look6DofFailed)
+        {
+            var hr = Native.SimConnect_CameraSetRelative6DOF(client.Handle, float.MaxValue, float.MaxValue, float.MaxValue,
+                -_lookPitch, 0f, _lookYaw);
+            if (hr >= 0) return CommandResult.Success;
+            _look6DofFailed = true;
+            Log?.Invoke($"Kamera: CameraSetRelative6DOF niedostępne (0x{hr:X8}) — próbuję innych metod");
+        }
+
         if (!_lookByEvents)
         {
             try
@@ -475,5 +487,9 @@ public sealed class MsfsSource : IFlightSource
         [DllImport("SimConnect.dll")]
         public static extern int SimConnect_MapClientEventToSimEvent(IntPtr hSimConnect, uint eventId,
             [MarshalAs(UnmanagedType.LPStr)] string eventName);
+
+        [DllImport("SimConnect.dll")]
+        public static extern int SimConnect_CameraSetRelative6DOF(IntPtr hSimConnect, float deltaX, float deltaY, float deltaZ,
+            float pitchDeg, float bankDeg, float headingDeg);
     }
 }
