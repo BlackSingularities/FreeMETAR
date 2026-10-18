@@ -238,67 +238,39 @@ public sealed class MsfsSource : IFlightSource
 
     // ---------- rozglądanie się ----------
 
-    // Zdarzenia widoku używane, gdy MSFS nie przyjmuje zapisu CAMERA GAMEPLAY PITCH YAW (wewnętrzne, spoza listy telefonu)
+    // Zdarzenia widoku — zapas, gdy CameraSetRelative6DOF jest niedostępne (wewnętrzne, spoza listy telefonu)
     private static readonly string[] CameraEvents = { "PAN_VIEW", "PAN_RESET_COCKPIT", "AXIS_PAN_HEADING", "AXIS_PAN_PITCH", "VIEW_MODE" };
-    private bool _lookByEvents, _look6DofFailed;
-    private int _lookMisses;
+    private bool _look6DofFailed, _lookActive;
     private long _lookYaw, _lookPitch;
-    private double _lookBaseYaw, _lookBasePitch;
+    private readonly SemaphoreSlim _cameraGate = new(1, 1);
 
     /// <summary>
-    /// Rozglądanie się. Najpierw zapis SimVar CAMERA GAMEPLAY PITCH YAW; odczyt zwrotny w kolejnych klatkach mówi,
-    /// czy kamera za nim idzie. Jeśli po 3 żądaniach z wyraźnym kątem nie idzie (albo zapis się nie udaje),
-    /// przełączamy się na zdarzenia widoku: PAN_VIEW (kierunek 0–359°, środek = PAN_RESET_COCKPIT) i AXIS_PAN_HEADING / AXIS_PAN_PITCH.
+    /// Rozglądanie się. MSFS 2024 ignoruje zapis CAMERA GAMEPLAY PITCH YAW i zdarzenia PAN_* (sprawdzone na żywo),
+    /// więc kamerę obraca CameraSetRelative6DOF. Ta funkcja przełącza MSFS w osobny, „zamrożony” tryb kamery —
+    /// po powrocie na wprost (oba kąty ≈ 0) przywracamy zwykłą kamerę, przełączając CAMERA STATE tam i z powrotem.
     /// </summary>
     private async Task<CommandResult> LookAsync(SimConnectClient client, bool pitchAxis, long valueDeg, CancellationToken ct)
     {
         if (pitchAxis) _lookPitch = valueDeg; else _lookYaw = valueDeg;
+        var centered = Math.Abs(_lookYaw) < 1 && Math.Abs(_lookPitch) < 1;
 
-        // MSFS 2024 ignoruje zapis kątów i zdarzenia PAN_* (sprawdzone na żywo), więc najpierw obrót kamery
-        // wprost przez CameraSetRelative6DOF; pozycja oka bez zmian (FLT_MAX), dodatnie pochylenie = w dół
         if (!_look6DofFailed)
         {
+            if (centered)
+            {
+                if (_lookActive) await RestoreCameraAsync(client, CurrentCameraState(), ct);
+                return CommandResult.Success;
+            }
+            // Pozycja oka bez zmian (FLT_MAX), dodatnie pochylenie = w dół
             var hr = Native.SimConnect_CameraSetRelative6DOF(client.Handle, float.MaxValue, float.MaxValue, float.MaxValue,
                 -_lookPitch, 0f, _lookYaw);
-            if (hr >= 0) return CommandResult.Success;
+            if (hr >= 0) { _lookActive = true; return CommandResult.Success; }
             _look6DofFailed = true;
-            Log?.Invoke($"Kamera: CameraSetRelative6DOF niedostępne (0x{hr:X8}) — próbuję innych metod");
+            Log?.Invoke($"Kamera: CameraSetRelative6DOF niedostępne (0x{hr:X8}) — rozglądanie przez zdarzenia widoku");
         }
 
-        if (!_lookByEvents)
-        {
-            try
-            {
-                // Indeks 0 = pochylenie, 1 = obrót (radiany); w MSFS dodatnie pochylenie patrzy w dół
-                var index = pitchAxis ? 0 : 1;
-                var deg = pitchAxis ? -valueDeg : valueDeg;
-                await client.SimVars.SetAsync($"CAMERA GAMEPLAY PITCH YAW:{index}", "radians", deg * Math.PI / 180.0, cancellationToken: ct);
-                // Odczyt zwrotny z ostatniej klatki: czy kamera faktycznie jest blisko żądanego kąta
-                MsfsData? d;
-                lock (_lock) d = _last;
-                if (d is { } last)
-                {
-                    // Nie wiadomo, czy MSFS podaje kąt względem samolotu, czy bezwzględny — sprawdzamy więc tylko,
-                    // czy kamera w ogóle się ruszyła od chwili, gdy patrzyliśmy na wprost
-                    var actual = pitchAxis ? -last.CamPitchRad * 180 / Math.PI : last.CamYawRad * 180 / Math.PI;
-                    // Telefon przy lekkim przechyle wysyła tylko kilka stopni, więc próg musi być niski
-                    if (Math.Abs(valueDeg) < 2) { if (pitchAxis) _lookBasePitch = actual; else _lookBaseYaw = actual; }
-                    else if (Math.Abs(valueDeg) >= 3)
-                        _lookMisses = Math.Abs(Wrap(actual - (pitchAxis ? _lookBasePitch : _lookBaseYaw))) < 1 ? _lookMisses + 1 : 0;
-                }
-            }
-            catch (Exception e) when (e is not OperationCanceledException)
-            {
-                _lookMisses = 99;
-                Log?.Invoke($"Kamera: zapis CAMERA GAMEPLAY PITCH YAW nie powiódł się ({e.Message})");
-            }
-            if (_lookMisses < 3) return CommandResult.Success;
-            _lookByEvents = true;
-            Log?.Invoke("Kamera: MSFS nie przyjmuje zapisu SimVar — rozglądanie przez zdarzenia widoku (PAN_VIEW / AXIS_PAN_*)");
-        }
-
-        // Zdarzenia widoku
-        if (Math.Abs(_lookYaw) < 5 && Math.Abs(_lookPitch) < 5)
+        // Zapas: zdarzenia widoku
+        if (centered)
         {
             await TransmitAsync(client, "PAN_RESET_COCKPIT", 0, ct);
             return CommandResult.Success;
@@ -308,11 +280,40 @@ public sealed class MsfsSource : IFlightSource
         return CommandResult.Success;
     }
 
+    private int CurrentCameraState()
+    {
+        lock (_lock) return _last is { } d && d.CameraState is >= 2 and <= 4 ? (int)d.CameraState : 2;
+    }
+
     /// <summary>
-    /// Zmiana kamery. Najpierw zapis SimVar CAMERA STATE; jeśli odczyt zwrotny pokazuje, że MSFS go zignorował
-    /// (bywa tak w MSFS 2024 i przy niektórych samolotach), przełączamy widok zdarzeniem VIEW_MODE aż do skutku.
+    /// Zmiana kamery (kabina / zewnętrzna / dron). MSFS nie reaguje na zapis CAMERA STATE równego bieżącemu
+    /// odczytowi, a po rozglądaniu (CameraSetRelative6DOF) odczyt mówi „kabina”, choć widok jest zamrożony —
+    /// wtedy przełączamy przez inny widok i z powrotem.
     /// </summary>
     private async Task<CommandResult> SetCameraAsync(SimConnectClient client, int target, CancellationToken ct)
+    {
+        if (_lookActive || CurrentCameraState() == target) await RestoreCameraAsync(client, target, ct);
+        else await WriteCameraAsync(client, target, ct);
+        return CommandResult.Success;
+    }
+
+    /// <summary>Ustawia [target] przez inny widok, co zdejmuje też tryb kamery CameraSetRelative6DOF.</summary>
+    private async Task RestoreCameraAsync(SimConnectClient client, int target, CancellationToken ct)
+    {
+        await _cameraGate.WaitAsync(ct);
+        try
+        {
+            _lookActive = false;
+            await WriteCameraAsync(client, target == 3 ? 2 : 3, ct);
+            await WriteCameraAsync(client, target, ct);
+        }
+        finally
+        {
+            _cameraGate.Release();
+        }
+    }
+
+    private async Task WriteCameraAsync(SimConnectClient client, int target, CancellationToken ct)
     {
         try
         {
@@ -321,30 +322,21 @@ public sealed class MsfsSource : IFlightSource
         catch (Exception e) when (e is not OperationCanceledException)
         {
             Log?.Invoke($"Kamera: zapis CAMERA STATE nie powiódł się ({e.Message})");
+            return;
         }
-        if (await WaitForCameraAsync(target, ct)) return CommandResult.Success;
-
-        Log?.Invoke($"Kamera: MSFS nie przyjął CAMERA STATE={target} — przełączam przez VIEW_MODE");
-        for (var i = 0; i < 4; i++)
-        {
-            await TransmitAsync(client, "VIEW_MODE", 0, ct);
-            if (await WaitForCameraAsync(target, ct)) return CommandResult.Success;
-        }
-        Log?.Invoke($"Kamera: nie udało się ustawić widoku {target}");
-        return CommandResult.Success;
+        if (!await WaitForCameraAsync(target, ct)) Log?.Invoke($"Kamera: MSFS nie przełączył widoku na {target}");
     }
 
     private async Task<bool> WaitForCameraAsync(int target, CancellationToken ct)
     {
         for (var i = 0; i < 8; i++)
         {
-            await Task.Delay(60, ct);
+            await Task.Delay(40, ct);
             lock (_lock) if (_last is { } d && (int)d.CameraState == target) return true;
         }
         return false;
     }
 
-    private static double Wrap(double deg) => ((deg % 360) + 540) % 360 - 180;
 
     private void SetStatus(bool connected, string text)
     {

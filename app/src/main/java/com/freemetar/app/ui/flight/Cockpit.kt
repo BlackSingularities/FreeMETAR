@@ -339,7 +339,7 @@ internal fun CameraSwitch(link: LinkClient, s: FlightState, modifier: Modifier =
     var roll0 by remember { mutableFloatStateOf(0f) }
     var pitch0 by remember { mutableFloatStateOf(0f) }
 
-    // 8 razy na sekundę dwie komendy (limit Link to 50/s); po puszczeniu jeden raz „na wprost”
+    // ok. 16 razy na sekundę dwie komendy (limit Link to 50/s); po puszczeniu jeden raz „na wprost”
     LaunchedEffect(looking) {
         if (!looking) return@LaunchedEffect
         try {
@@ -350,7 +350,7 @@ internal fun CameraSwitch(link: LinkClient, s: FlightState, modifier: Modifier =
                 }
                 link.command("CAMERA_YAW_SET", yaw.roundToInt().toDouble())
                 link.command("CAMERA_PITCH_SET", pitch.roundToInt().toDouble())
-                delay(125)
+                delay(60)
             }
         } finally {
             link.command("CAMERA_YAW_SET", 0.0)
