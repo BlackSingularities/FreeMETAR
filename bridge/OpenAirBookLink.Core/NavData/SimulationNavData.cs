@@ -102,6 +102,17 @@ public sealed class SimulationNavData : INavDataProvider
         _ => Task.FromException<AirportProcedures>(NotFound(icao)),
     };
 
+    // Dane przykładowe: wszystkie punkty i oba lotniska (filtr promienia robi NavDataService)
+    public Task<IReadOnlyList<FixResult>> NearbyAsync(double lat, double lon, double radiusNm, CancellationToken ct)
+    {
+        var list = Fixes.Select(kv => new FixResult
+        {
+            Ident = kv.Key.Split('@')[0], Type = kv.Value.Type, Lat = kv.Value.Lat, Lon = kv.Value.Lon, FreqMhz = kv.Value.Mhz, Region = kv.Value.Region,
+        }).ToList();
+        list.AddRange(Airports.Values.Select(a => new FixResult { Ident = a.Icao, Type = FixTypes.Airport, Lat = a.Lat, Lon = a.Lon, Region = "EP" }));
+        return Task.FromResult<IReadOnlyList<FixResult>>(list);
+    }
+
     public Task<IReadOnlyList<FixResult>> FindFixAsync(string ident, CancellationToken ct)
     {
         var results = new List<FixResult>();

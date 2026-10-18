@@ -189,6 +189,57 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ---------- planowanie trasy na mapie ----------
+
+    private val _planning = MutableStateFlow(false)
+    /** Tryb planowania na mapie: dotknięcie dodaje punkt do szkicu trasy. */
+    val planning = _planning.asStateFlow()
+    private val _draft = MutableStateFlow<List<RoutePoint>>(emptyList())
+    /** Szkic trasy budowany na mapie (pierwszy i ostatni punkt to zwykle lotniska). */
+    val draft = _draft.asStateFlow()
+
+    fun startMapPlanning() { _planning.value = true }
+    fun stopMapPlanning() { _planning.value = false }
+    fun undoDraft() { _draft.value = _draft.value.dropLast(1) }
+    fun clearDraft() { _draft.value = emptyList() }
+
+    /**
+     * Punkt w miejscu dotknięcia: najbliższe lotnisko albo pomoc nawigacyjna (baza OurAirports
+     * i — gdy jest połączenie — baza MSFS) w promieniu [radiusNm]; inaczej punkt użytkownika ze współrzędnymi.
+     */
+    fun addDraftAt(lat: Double, lon: Double, radiusNm: Double) {
+        val candidates = buildList {
+            // Lotniska z kodem ICAO (4 litery) — lądowiska typu „PL-0124” nie istnieją w symulatorze
+            db.nearby(lat, lon, radiusNm, limit = 8).firstOrNull { (a, _) -> a.ident.length == 4 && a.ident.all { it.isLetter() } }
+                ?.let { (a, d) -> add(RoutePoint(a.ident, a.lat, a.lon, "airport", a.elevationFt) to d) }
+            db.navaidsNear(lat, lon, radiusNm).firstOrNull()?.let { (n, d) -> add(RoutePoint(n.ident, n.lat, n.lon, n.type.lowercase()) to d) }
+            _nearbyNav.value.map { it to com.freemetar.app.domain.Geo.distanceNm(lat, lon, it.lat, it.lon) }.filter { it.second <= radiusNm }
+                .minByOrNull { it.second }?.let { (f, d) -> add(RoutePoint(f.ident, f.lat, f.lon, if (f.type == "waypoint") "fix" else f.type) to d) }
+        }
+        val p = candidates.minByOrNull { it.second }?.first
+            ?: RoutePoint("WP%02d".format(_draft.value.count { it.ident.startsWith("WP") } + 1), lat, lon, "user")
+        // Ten sam punkt dwa razy pod rząd nic nie zmienia
+        if (_draft.value.lastOrNull()?.ident == p.ident) return
+        _draft.value = _draft.value + p
+    }
+
+    /** Zapis szkicu jako trasy (aktywnej). Wymaga co najmniej dwóch punktów. */
+    fun saveDraft(cruiseFl: Int?) = viewModelScope.launch {
+        val pts = _draft.value
+        if (pts.size < 2) { _flightMessage.value = loc("Dodaj co najmniej dwa punkty.", "Add at least two points."); return@launch }
+        val route = SavedRoute(
+            name = "${pts.first().ident} → ${pts.last().ident}",
+            origin = pts.first().ident, destination = pts.last().ident, cruiseFl = cruiseFl,
+            routeText = pts.drop(1).dropLast(1).joinToString(" ") { it.ident },
+            points = pts,
+            source = "map",
+        ).let { it.copy(distanceNm = it.measuredDistanceNm()) }
+        addRoutes(listOf(route), activate = true).join()
+        _draft.value = emptyList()
+        _planning.value = false
+        _flightMessage.value = loc("Zapisano trasę ${route.name} (${route.distanceNm ?: 0} NM).", "Saved route ${route.name} (${route.distanceNm ?: 0} NM).")
+    }
+
     fun addRouteFromText(text: String, cruiseFl: Int?) = viewModelScope.launch {
         try {
             val r = RouteImport.fromText(text, cruiseFl, db.fixResolver)
@@ -339,6 +390,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }.onFailure { _flightMessage.value = loc("To nie jest archiwum lotów OpenAirBook.", "This isn't an OpenAirBook flight archive.") }
     }
 
+    private val _nearbyNav = MutableStateFlow<List<com.freemetar.app.data.nav.FixResult>>(emptyList())
+    /** Lotniska, VOR, NDB i punkty trasy z bazy MSFS wokół samolotu — do mapy ND. */
+    val nearbyNav = _nearbyNav.asStateFlow()
+
     private val _mapFlight = MutableStateFlow<String?>(null)
     /** Zapisany lot pokazywany na mapie (zamiast toru bieżącego lotu); null = brak. */
     val mapFlight = _mapFlight.asStateFlow()
@@ -365,6 +420,25 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private fun startLinkWatchers() {
         viewModelScope.launch { _flightLogs.value = flightLogStore.load() }
         viewModelScope.launch { settings.collect { recorder.intervalMs = it.recordIntervalMs.toLong().coerceIn(250, 10_000) } }
+        // Lotniska i pomoce nawigacyjne z MSFS wokół samolotu (do ND): po ~10 NM lotu albo co 3 min
+        viewModelScope.launch {
+            var lastLat = Double.NaN; var lastLon = Double.NaN; var lastAt = 0L
+            while (true) {
+                val st = link.state.value
+                val lat = st?.position?.lat; val lon = st?.position?.lon
+                if (lat != null && lon != null && nav.connected) {
+                    val moved = lastLat.isNaN() || com.freemetar.app.domain.Geo.distanceNm(lastLat, lastLon, lat, lon) > 10
+                    if (moved || System.currentTimeMillis() - lastAt > 180_000) {
+                        val found = nav.nearby(lat, lon, 80)
+                        if (found.isNotEmpty() || moved) _nearbyNav.value = found
+                        lastLat = lat; lastLon = lon; lastAt = System.currentTimeMillis()
+                    }
+                } else if (st == null) {
+                    lastLat = Double.NaN
+                }
+                kotlinx.coroutines.delay(15_000)
+            }
+        }
         viewModelScope.launch {
             link.state.collect { st ->
                 if (st != null) {
@@ -711,6 +785,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setAircraftProfile(p: com.freemetar.app.domain.AircraftProfile?) = viewModelScope.launch { prefs.setAircraftProfile(p?.name) }
     fun setControlMode(m: String) = viewModelScope.launch { prefs.setControlMode(m) }
     fun setFloatingControl(v: Boolean) = viewModelScope.launch { prefs.setFloatingControl(v) }
+    fun setSimbriefUser(v: String) = viewModelScope.launch { prefs.setSimbriefUser(v) }
+    fun setFloatingStyle(v: String) = viewModelScope.launch { prefs.setFloatingStyle(v) }
     fun setRecordInterval(ms: Int) = viewModelScope.launch { prefs.setRecordInterval(ms) }
     fun setTheme(m: com.freemetar.app.data.ThemeMode) = viewModelScope.launch { prefs.setTheme(m) }
     fun setAutoRefresh(v: Boolean) = viewModelScope.launch { prefs.setAutoRefresh(v) }

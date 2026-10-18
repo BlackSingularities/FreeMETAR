@@ -22,6 +22,7 @@ public sealed class FlightSimulation
     private double _targetCruiseFt = 24000;
     private double _targetSpdKt = 290;
     private bool _manualSpeed;
+    private bool _manualThrottle;
     private long _touchdownSeq;
 
     public FlightSimulation()
@@ -59,7 +60,8 @@ public sealed class FlightSimulation
             Nav2 = new RadioPair { ActiveMhz = 113.450, StandbyMhz = 110.300 },
             Transponder = new TransponderData { Code = "2000", Mode = "alt" },
         };
-        _s.Controls = new ControlsData { GearDown = true, GearPct = 100, FlapsIndex = 1, FlapsPositions = 5, FlapsPct = 25, SpoilersArmed = true };
+        _s.Controls = new ControlsData { GearDown = true, GearPct = 100, FlapsIndex = 1, FlapsPositions = 5, FlapsPct = 25, SpoilersArmed = true, MixturePct = 100, PropPct = 100, CameraState = 2 };
+        _manualThrottle = false;
         _s.Lights = new LightsData { Beacon = true, Strobe = true, Nav = true, Landing = true, Taxi = false, Logo = true, Panel = true, Cabin = true };
         _s.Fuel = new FuelData { TotalKg = 6400, Tanks = new FuelTanks { LeftKg = 2700, CenterKg = 1000, RightKg = 2700 } };
         _s.Engines = new List<EngineData> { new(), new() };
@@ -250,6 +252,9 @@ public sealed class FlightSimulation
         if (Phase is SimPhase.Climb or SimPhase.Cruise) ap.AltFt = _targetCruiseFt;
         if (Phase == SimPhase.Rollout && _s.Controls.SpoilersArmed) { _s.Controls.SpoilersPct = 100; _s.Controls.SpoilersArmed = false; }
 
+        // Ręczna dźwignia mocy (gdy automat ciągu wyłączony) — tylko wskazania silników, tor lotu zostaje scenariuszem
+        if (_manualThrottle && !_s.Autopilot.Athr) n1 = 20 + _s.Controls.ThrottlePct * 0.8;
+        else _s.Controls.ThrottlePct = Math.Round(Math.Clamp((n1 - 20) / 0.8, 0, 100));
         UpdateEngines(_s.Controls.ParkingBrake && !airborne ? 20 : n1, dt);
     }
 
@@ -348,6 +353,15 @@ public sealed class FlightSimulation
             case "RUDDER_TRIM_LEFT":
             case "RUDDER_TRIM_RIGHT":
                 break;
+
+            case "THROTTLE_SET": c.ThrottlePct = Math.Round(v / 16383.0 * 100); _manualThrottle = true; break;
+            case "THROTTLE_CUT": c.ThrottlePct = 0; _manualThrottle = true; break;
+            case "THROTTLE_FULL": c.ThrottlePct = 100; _manualThrottle = true; break;
+            case "THROTTLE_REVERSE_THRUST_TOGGLE": break;
+            case "AUTO_THROTTLE_TO_GA": c.ThrottlePct = 100; _manualThrottle = false; break;
+            case "MIXTURE_SET": c.MixturePct = Math.Round(v / 16383.0 * 100); break;
+            case "PROPELLER_SET": c.PropPct = Math.Round(v / 16383.0 * 100); break;
+            case "CAMERA_STATE": c.CameraState = (int)v; break;
 
             default:
                 return CommandResult.Fail(ErrorCodes.NotAllowed, $"Symulacja nie obsługuje {cmd.Spec.Name}");

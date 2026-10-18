@@ -7,6 +7,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -125,15 +126,26 @@ fun HomeScreen(vm: MainViewModel, onFlight: () -> Unit = {}, onOpen: (String) ->
     // Puste elementy siatki też dostają odstęp, więc karty bez treści w ogóle nie dodajemy
     val hasFlight = live != null || routes.any { it.id == settings.activeRouteId }
 
+    val gridState = androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState()
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val focus = androidx.compose.ui.platform.LocalFocusManager.current
+
     PullToRefreshBox(isRefreshing = loading, onRefresh = { vm.refreshFavorites() }, modifier = Modifier.fillMaxSize()) {
         LazyVerticalStaggeredGrid(
+            state = gridState,
             columns = StaggeredGridCells.Fixed(windowColumns()),
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 28.dp),
             verticalItemSpacing = 10.dp,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item(span = Full) { Header() }
+            // Logo: powrót do pulpitu — czyści wyszukiwanie i przewija na górę
+            item(span = Full) {
+                Header {
+                    query = ""; vm.onQuery(""); editing = false; focus.clearFocus()
+                    scope.launch { gridState.animateScrollToItem(0) }
+                }
+            }
             item(span = Full) {
                 OutlinedTextField(
                     value = query,
@@ -228,7 +240,7 @@ fun HomeScreen(vm: MainViewModel, onFlight: () -> Unit = {}, onOpen: (String) ->
 }
 
 @Composable
-private fun Header() {
+private fun Header(onLogo: () -> Unit) {
     var now by remember { mutableStateOf(ZonedDateTime.now(ZoneOffset.UTC)) }
     LaunchedEffect(Unit) { while (true) { now = ZonedDateTime.now(ZoneOffset.UTC); delay(1000) } }
     val local = now.withZoneSameInstant(ZoneId.systemDefault())
@@ -239,7 +251,8 @@ private fun Header() {
                 append("Open")
                 withStyle(SpanStyle(color = c.ink2)) { append("AirBook") }
             },
-            style = MaterialTheme.typography.headlineLarge, color = c.ink, modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.headlineLarge, color = c.ink,
+            modifier = Modifier.weight(1f).clickable(onClickLabel = loc("Pulpit", "Dashboard"), onClick = onLogo),
         )
         Column(horizontalAlignment = Alignment.End) {
             Text(now.format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "Z", fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = c.green)

@@ -120,7 +120,8 @@ serwera w ms od epoki Unix.
     },
     "controls": {
       "gearDown": true, "gearPct": 100, "flapsIndex": 1, "flapsPositions": 5, "flapsPct": 25,
-      "spoilersPct": 0, "spoilersArmed": true, "parkingBrake": false, "elevatorTrimPct": 2.5
+      "spoilersPct": 0, "spoilersArmed": true, "parkingBrake": false, "elevatorTrimPct": 2.5,
+      "throttlePct": 85, "mixturePct": 100, "propPct": 100, "cameraState": 2
     },
     "lights": { "beacon": true, "strobe": true, "nav": true, "landing": true, "taxi": false,
                 "logo": true, "wing": false, "panel": true, "cabin": true },
@@ -311,6 +312,21 @@ jak na mapach); `headingTrueDeg` pasa — rzeczywisty. Wysokości w stopach, odl
 - Wyniki posortowane rosnąco po odległości od `nearLat`/`nearLon` (bez nich — po typie i regionie).
 - Brak wyników = `error` `not_found` (nie pusta lista).
 
+**`kind: "nearby"`**
+
+```json
+{ "v": 1, "type": "navdata", "id": "n6", "kind": "nearby",
+  "data": { "results": [
+    { "ident": "WAR", "type": "vor", "lat": 52.188, "lon": 20.962, "freqMhz": 113.45, "region": "EP" },
+    { "ident": "EPWA", "type": "airport", "lat": 52.1657, "lon": 20.9671, "freqMhz": null, "region": "EP" }
+  ] } }
+```
+
+- Lotniska, VOR, NDB i punkty trasy w promieniu `radiusNm` od `lat`/`lon`, posortowane po odległości.
+  Na typ najwyżej: 40 lotnisk, 30 VOR, 30 NDB, 120 punktów trasy.
+- MSFS zwraca obiekty z „bańki rzeczywistości” wokół samolotu (zwykle ok. 100–200 km), więc
+  zapytanie ma sens dla pozycji samolotu. Pusta okolica = pusta lista (nie `not_found`).
+
 ## 4. Wiadomości telefon → serwer
 
 ### `ping`
@@ -325,7 +341,7 @@ jak na mapach); `headingTrueDeg` pasa — rzeczywisty. Wysokości w stopach, odl
 ```
 
 Serwer przyjmuje **wyłącznie** nazwy z listy poniżej (dokładna pisownia, wielkie litery).
-Nazwy to zdarzenia SimConnect (Event IDs) — z wyjątkiem `XPNDR_MODE`, który zapisuje SimVar.
+Nazwy to zdarzenia SimConnect (Event IDs) — z wyjątkiem `XPNDR_MODE` i `CAMERA_STATE`, które zapisują SimVar.
 `value` jest wymagane tylko tam, gdzie podano zakres; w pozostałych jest ignorowane.
 Wartość musi być liczbą całkowitą (lub liczbą z zerową częścią ułamkową) w podanym zakresie.
 
@@ -385,6 +401,21 @@ Wartość musi być liczbą całkowitą (lub liczbą z zerową częścią ułamk
 | `ELEV_TRIM_UP`, `ELEV_TRIM_DN`, `AILERON_TRIM_LEFT`, `AILERON_TRIM_RIGHT`, `RUDDER_TRIM_LEFT`, `RUDDER_TRIM_RIGHT` | — |
 | `ELEVATOR_TRIM_SET` | −16383–16383 |
 
+**Silniki** (dźwignie wszystkich silników naraz; w `state` wartości silnika 1 w `controls`)
+
+| name | value |
+|---|---|
+| `THROTTLE_SET` | 0 (jałowy) – 16383 (pełna moc) |
+| `MIXTURE_SET` | 0 (odcięcie) – 16383 (bogata) |
+| `PROPELLER_SET` | 0 (małe obroty) – 16383 (duże obroty) |
+| `THROTTLE_CUT`, `THROTTLE_FULL`, `THROTTLE_REVERSE_THRUST_TOGGLE`, `AUTO_THROTTLE_TO_GA` | — |
+
+**Kamera** (zapis SimVar `CAMERA STATE`; bieżąca wartość w `controls.cameraState`)
+
+| name | value |
+|---|---|
+| `CAMERA_STATE` | 2 kabina, 3 zewnętrzna (pościg), 4 dron |
+
 Odpowiedź: `ack` po przekazaniu do symulatora (nie oznacza, że samolot zareagował — skutek
 widać w kolejnych `state`), albo `error`.
 
@@ -411,6 +442,7 @@ Telefon zapisuje odpowiedzi u siebie i nie musi pytać ponownie.
 | `procedures` | `icao` | listy SID, STAR i podejść (bez odcinków) |
 | `procedure_legs` | `icao`, `procType` (`departure` / `arrival` / `approach`), `name`, opcjonalnie `runway`, `transition` | odcinki procedury + `missed` |
 | `fix` | `ident`, opcjonalnie `nearLat` + `nearLon` (razem) | wszystkie punkty o tej nazwie |
+| `nearby` | `lat`, `lon`, opcjonalnie `radiusNm` (1–250, domyślnie 60) | lotniska i pomoce nawigacyjne w pobliżu |
 
 - `icao`: 2–8, `ident`: 1–8 liter/cyfr; wielkość liter bez znaczenia. `name`, `transition`:
   1–16 znaków, bez rozróżniania wielkości liter. `runway` w dowolnej postaci (`"RW29"`, `"9"`,

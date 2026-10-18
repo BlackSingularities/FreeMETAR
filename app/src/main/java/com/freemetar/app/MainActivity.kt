@@ -1,6 +1,8 @@
 package com.freemetar.app
 
 import com.freemetar.app.domain.loc
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 
 import android.graphics.Color as AndroidColor
 import android.os.Bundle
@@ -128,7 +130,7 @@ class MainActivity : ComponentActivity() {
                 val route = entry?.destination?.route
                 val activeTab = when {
                     route?.startsWith("airport") == true -> "home"
-                    route?.startsWith("plan") == true || route?.startsWith("flightlog") == true -> "flight"
+                    route?.startsWith("plan") == true || route?.startsWith("flightlog") == true || route == "logbook" -> "flight"
                     else -> route
                 }
                 val wide = isWide()
@@ -178,7 +180,9 @@ class MainActivity : ComponentActivity() {
                                 if (compactRail) Spacer(Modifier.statusBarsPadding().size(4.dp))
                                 else {
                                     Spacer(Modifier.statusBarsPadding().size(16.dp))
-                                    Icon(Icons.Filled.LocalAirport, null, tint = c.ink, modifier = Modifier.size(28.dp))
+                                    // Logo prowadzi na pulpit (ekran główny) z każdego miejsca
+                                    Icon(Icons.Filled.LocalAirport, loc("OpenAirBook — pulpit", "OpenAirBook — dashboard"), tint = c.ink,
+                                        modifier = Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape).clickable { nav.goTab("home") }.padding(6.dp))
                                     Spacer(Modifier.size(24.dp))
                                 }
                                 tabs.forEach { t ->
@@ -203,7 +207,7 @@ class MainActivity : ComponentActivity() {
                             // Pływające stery nad wszystkimi zakładkami (rysowane po NavHost, więc na wierzchu)
                             val floating: @androidx.compose.runtime.Composable () -> Unit = {
                                 if (settings.floatingControl && liveState != null && settings.controlMode != "GAMEPAD")
-                                    com.freemetar.app.ui.flight.FloatingControl(vm.link, settings.controlMode)
+                                    com.freemetar.app.ui.flight.FloatingControl(vm.link, settings.controlMode, liveState, withTrim = settings.floatingStyle == "TRIM")
                             }
                             NavHost(
                                 nav, startDestination = "home",
@@ -244,6 +248,8 @@ class MainActivity : ComponentActivity() {
                                         onShowMap = { vm.focusRouteOnMap(); nav.goTab("map") },
                                         onEditPlan = { id -> vm.startEdit(id); nav.navigate("plan/$id") },
                                         onOpenFlight = { id -> nav.navigate("flightlog/$id") },
+                                        onOpenLogbook = { nav.navigate("logbook") },
+                                        onOpenSettings = { nav.goTab("settings") },
                                     )
                                 }
                                 composable("plan/{id}") { backStack ->
@@ -253,6 +259,9 @@ class MainActivity : ComponentActivity() {
                                 }
                                 composable("flightlog/{id}") { backStack ->
                                     FlightDetailScreen(vm, backStack.arguments?.getString("id").orEmpty(), onBack = { nav.popBackStack() }, onShowMap = { nav.goTab("map") })
+                                }
+                                composable("logbook") {
+                                    com.freemetar.app.ui.flight.LogbookScreen(vm, onBack = { nav.popBackStack() }, onOpenFlight = { id -> nav.navigate("flightlog/$id") })
                                 }
                                 composable("tools") { ToolsScreen(vm) }
                                 composable("settings") { SettingsScreen(vm) }

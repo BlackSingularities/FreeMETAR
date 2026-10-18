@@ -86,6 +86,12 @@ public sealed class MsfsSource : IFlightSource
         var client = _client;
         if (client is not { IsConnected: true }) return CommandResult.Fail(ErrorCodes.SimUnavailable, "Brak połączenia z MSFS");
 
+        if (command.Spec.Target == CommandTarget.CameraState)
+        {
+            await client.SimVars.SetAsync("CAMERA STATE", "Enum", (double)command.Value, cancellationToken: ct);
+            return CommandResult.Success;
+        }
+
         if (command.Spec.Target == CommandTarget.TransponderState)
         {
             await client.SimVars.SetAsync("TRANSPONDER STATE:1", "Enum", (double)command.Value, cancellationToken: ct);
@@ -315,6 +321,7 @@ public sealed class MsfsSource : IFlightSource
                 FlapsIndex = (int)d.FlapsIndex, FlapsPositions = (int)d.FlapsPositions + 1, FlapsPct = R(d.FlapsPct, 0),
                 SpoilersPct = R(d.SpoilersPct, 0), SpoilersArmed = B(d.SpoilersArmed),
                 ParkingBrake = B(d.ParkingBrake), ElevatorTrimPct = R(d.ElevTrimPct, 1),
+                ThrottlePct = R(d.Throttle1, 0), MixturePct = R(d.Mixture1, 0), PropPct = R(d.Prop1, 0), CameraState = (int)d.CameraState,
             },
             Lights = new LightsData
             {

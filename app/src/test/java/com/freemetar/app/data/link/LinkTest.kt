@@ -111,6 +111,35 @@ class LinkTest {
     }
 
     @Test
+    fun restartInSimulatorStartsANewFlight() {
+        val r = FlightRecorder { lat, _ -> if (lat < 53) "EPWA" else "EPGD" }
+        var t = 0L
+        var lat = 52.17
+        r.onState(st(lat, 20.0, 120.0, false), t)
+        repeat(60) { t += 5000; lat += 0.003; r.onState(st(lat, 20.0, 120.0, false, 3000.0), t) }   // 5 min lotu
+        // Restart: samolot nagle znów nad EPWA (teleport 10 NM wstecz w 1 s) — pierwszy lot zamknięty
+        t += 1000
+        val first = r.onState(st(52.17, 20.0, 120.0, false), t)
+        assertNotNull(first)
+        assertTrue(first!!.durationMin in 4..6)
+        // Drugi lot nagrywa się od nowa
+        assertTrue(r.recording)
+        repeat(30) { t += 5000; r.onState(st(52.17 + it * 0.003, 20.0, 120.0, false), t) }
+        assertTrue(r.currentTrack.first().t > first.end)
+    }
+
+    @Test
+    fun otherAircraftStartsANewFlight() {
+        val r = FlightRecorder { _, _ -> null }
+        var t = 0L
+        repeat(40) { t += 5000; r.onState(st(52.0 + it * 0.003, 20.0, 120.0, false), t) }
+        t += 5000
+        val done = r.onState(st(52.0 + 40 * 0.003, 20.0, 120.0, false).copy(aircraft = AircraftInfo("A320", false, false)), t)
+        assertNotNull(done)
+        assertTrue(r.recording)
+    }
+
+    @Test
     fun shortHopIsDiscarded() {
         val r = FlightRecorder { _, _ -> null }
         r.onState(st(52.0, 20.0, 80.0, false), 0)

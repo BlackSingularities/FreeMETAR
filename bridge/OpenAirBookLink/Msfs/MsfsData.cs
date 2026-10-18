@@ -67,6 +67,10 @@ public struct MsfsData
     [SimConnect("SPOILERS ARMED", "bool")] public double SpoilersArmed;
     [SimConnect("BRAKE PARKING POSITION", "bool")] public double ParkingBrake;
     [SimConnect("ELEVATOR TRIM PCT", "percent")] public double ElevTrimPct;
+    [SimConnect("GENERAL ENG THROTTLE LEVER POSITION:1", "percent")] public double Throttle1;
+    [SimConnect("GENERAL ENG MIXTURE LEVER POSITION:1", "percent")] public double Mixture1;
+    [SimConnect("GENERAL ENG PROPELLER LEVER POSITION:1", "percent")] public double Prop1;
+    [SimConnect("CAMERA STATE", "Enum")] public double CameraState;
 
     [SimConnect("LIGHT BEACON", "bool")] public double LightBeacon;
     [SimConnect("LIGHT STROBE", "bool")] public double LightStrobe;

@@ -6,7 +6,8 @@ namespace OpenAirBookLink.Core.NavData;
 
 // Sparsowane i zwalidowane `navdata_request`.
 public sealed record NavdataQuery(string Kind, string? Icao = null, string? ProcType = null, string? Name = null,
-    string? Runway = null, string? Transition = null, string? Ident = null, double? NearLat = null, double? NearLon = null)
+    string? Runway = null, string? Transition = null, string? Ident = null, double? NearLat = null, double? NearLon = null,
+    double? RadiusNm = null)
 {
     public static NavdataQuery? Parse(IncomingMessage msg, out string? error)
     {
@@ -61,8 +62,17 @@ public sealed record NavdataQuery(string Kind, string? Icao = null, string? Proc
                 return new NavdataQuery(kind, Ident: ident, NearLat: lat, NearLon: lon);
             }
 
+            case NavdataKinds.Nearby:
+            {
+                var lat = Number(msg, "lat", -90, 90, ref error);
+                var lon = Number(msg, "lon", -180, 180, ref error);
+                var radius = msg.Has("radiusNm") ? Number(msg, "radiusNm", 1, 250, ref error) : 60;
+                if (error != null) return null;
+                return new NavdataQuery(kind, NearLat: lat, NearLon: lon, RadiusNm: radius);
+            }
+
             default:
-                error = "kind musi być airport, procedures, procedure_legs albo fix";
+                error = "kind musi być airport, procedures, procedure_legs, fix albo nearby";
                 return null;
         }
     }
@@ -72,6 +82,8 @@ public sealed record NavdataQuery(string Kind, string? Icao = null, string? Proc
     {
         NavdataKinds.Airport => $"{sourceKind}|airport|{Icao}",
         NavdataKinds.Procedures or NavdataKinds.ProcedureLegs => $"{sourceKind}|procedures|{Icao}",
+        // Pozycja zaokrąglona do 0,2° (~12 NM): kolejne zapytania z lecącego samolotu trafiają w tę samą pozycję
+        NavdataKinds.Nearby => $"{sourceKind}|nearby|{Math.Round(NearLat!.Value * 5)}|{Math.Round(NearLon!.Value * 5)}|{RadiusNm}",
         _ => $"{sourceKind}|fix|{Ident}",
     };
 
@@ -140,6 +152,23 @@ public sealed class NavDataService
 
             case NavdataKinds.ProcedureLegs:
                 return (await GetAsync(q.CacheKey(sourceKind), () => provider.GetProceduresAsync(q.Icao!, CancellationToken.None))).GetLegs(q);
+
+            case NavdataKinds.Nearby:
+            {
+                var lat = q.NearLat!.Value; var lon = q.NearLon!.Value; var radius = q.RadiusNm ?? 60;
+                var all = await GetAsync(q.CacheKey(sourceKind), () => provider.NearbyAsync(lat, lon, radius, CancellationToken.None));
+                // Limit na typ, żeby gęste rejony (tysiące punktów trasy) nie zalały telefonu
+                var limits = new Dictionary<string, int> { [FixTypes.Airport] = 40, [FixTypes.Vor] = 30, [FixTypes.Ndb] = 30, [FixTypes.Waypoint] = 120 };
+                var results = all
+                    .Select(f => (f, d: NavMath.DistanceNm(lat, lon, f.Lat, f.Lon)))
+                    .Where(x => x.d <= radius)
+                    .GroupBy(x => x.f.Type)
+                    .SelectMany(g => g.OrderBy(x => x.d).Take(limits.GetValueOrDefault(g.Key, 30)))
+                    .OrderBy(x => x.d)
+                    .Select(x => x.f)
+                    .ToList();
+                return new NearbyInfo { Results = results };
+            }
 
             default:
             {

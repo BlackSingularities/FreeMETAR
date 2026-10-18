@@ -89,48 +89,6 @@ fun ScoreBadge(l: LandingReport?, size: Int = 44) {
     }
 }
 
-/** Historia lotów z podsumowaniem; dotknięcie otwiera szczegóły. */
-@Composable
-fun FlightHistorySection(vm: MainViewModel, onOpenFlight: (String) -> Unit) {
-    val c = Fm.c
-    val logs by vm.flightLogs.collectAsStateWithLifecycle()
-    if (logs.isEmpty()) return
-    Section(loc("Historia lotów", "Flight history"), Icons.Outlined.History) {
-        val minutes = logs.sumOf { it.durationMin }
-        val scored = logs.mapNotNull { it.landing?.score }
-        FactGrid(
-            listOf(
-                Fact(loc("Loty", "Flights"), logs.size.toString()),
-                Fact(loc("Czas lotu", "Flight time"), "%d:%02d".format(minutes / 60, minutes % 60)),
-                Fact(loc("Średnia ocena", "Average score"), if (scored.isEmpty()) "—" else scored.average().roundToInt().toString(),
-                    sub = scored.maxOrNull()?.let { loc("najlepsza $it", "best $it") }),
-                Fact(loc("Dystans", "Distance"), "${logs.sumOf { it.distanceNm }} NM"),
-            ),
-        )
-        Spacer(Modifier.size(8.dp))
-        logs.take(50).forEach { f ->
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { onOpenFlight(f.id) }.padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                ScoreBadge(f.landing, 40)
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("${f.from ?: "?"} → ${f.to ?: "?"}", fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = c.ink)
-                    Text(
-                        listOfNotNull(
-                            DateFormat.getDateInstance(DateFormat.SHORT).format(Date(f.start)),
-                            "%d:%02d".format(f.durationMin / 60, f.durationMin % 60),
-                            f.landing?.let { "${it.vsFpm} ft/min" },
-                            f.aircraft,
-                        ).joinToString(", "),
-                        style = MaterialTheme.typography.bodySmall, color = c.ink2, maxLines = 1,
-                    )
-                }
-            }
-            Rule()
-        }
-    }
-}
-
 /** Szczegóły lotu: ocena lądowania, tor, wykresy, eksport. */
 @Composable
 fun FlightDetailScreen(vm: MainViewModel, id: String, onBack: () -> Unit, onShowMap: () -> Unit = {}) {

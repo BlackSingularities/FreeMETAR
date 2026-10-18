@@ -9,6 +9,19 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.material3.Text
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import com.freemetar.app.data.link.FlightState
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -27,6 +40,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -59,9 +73,12 @@ import kotlin.math.roundToInt
  * w trybie żyroskopu przechylasz telefon (zero to pozycja z chwili naciśnięcia),
  * w trybie drążka przesuwasz kciuk od miejsca naciśnięcia. Puszczenie od razu oddaje stery.
  * Uchwyt pod przyciskiem służy do przestawienia go w inne miejsce ekranu.
+ * Wariant z trymem: przy żyroskopie palec na przycisku jest wolny, więc trymuje się przeciągnięciem —
+ * w dół = nos w górę, w górę = nos w dół (im dalej, tym szybciej). Przy drążku palec steruje,
+ * więc trym ma osobne przyciski obok.
  */
 @Composable
-fun FloatingControl(link: LinkClient, modeName: String, modifier: Modifier = Modifier) {
+fun FloatingControl(link: LinkClient, modeName: String, s: FlightState? = null, withTrim: Boolean = false, modifier: Modifier = Modifier) {
     val c = Fm.c
     val haptic = LocalHapticFeedback.current
     val density = LocalDensity.current
@@ -72,6 +89,17 @@ fun FloatingControl(link: LinkClient, modeName: String, modifier: Modifier = Mod
     var roll0 by remember { mutableDoubleStateOf(0.0) }
     var pitch0 by remember { mutableDoubleStateOf(0.0) }
     val tilt = rememberTilt(enabled = tiltMode)
+    // Trym przeciągnięciem (żyroskop): −1 nos w dół, 0 nic, +1 nos w górę; siła 0…1 = tempo powtarzania
+    var trimDir by remember { mutableIntStateOf(0) }
+    var trimForce by remember { mutableFloatStateOf(0f) }
+    val dragTrim = withTrim && tiltMode
+    LaunchedEffect(trimDir) {
+        if (trimDir == 0) return@LaunchedEffect
+        while (isActive) {
+            link.command(if (trimDir > 0) "ELEV_TRIM_UP" else "ELEV_TRIM_DN")
+            delay((220 - 160 * trimForce).toLong().coerceIn(50, 220))
+        }
+    }
     val max = link.limits.maxDeflection
 
     // Pozycja przycisku (ułamek dostępnego obszaru) przetrwa obrót ekranu i zmianę zakładki
@@ -96,24 +124,29 @@ fun FloatingControl(link: LinkClient, modeName: String, modifier: Modifier = Mod
 
     BoxWithConstraints(modifier.fillMaxSize()) {
         val btn = 68.dp
+        val trimW = if (withTrim && !tiltMode) 52.dp else 0.dp
         val total = btn + 22.dp   // przycisk + uchwyt
         val pad = 12.dp
-        val wPx = with(density) { (maxWidth - btn - pad * 2).toPx() }.coerceAtLeast(1f)
+        val wPx = with(density) { (maxWidth - btn - trimW - pad * 2).toPx() }.coerceAtLeast(1f)
         val hPx = with(density) { (maxHeight - total - pad * 2).toPx() }.coerceAtLeast(1f)
         val padPx = with(density) { pad.toPx() }
         val reach = with(density) { 56.dp.toPx() }
 
-        Column(
+        Row(
             Modifier.offset { IntOffset((padPx + fx * wPx).roundToInt(), (padPx + fy * hPx).roundToInt()) },
-            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalAlignment = Alignment.Top,
         ) {
+        if (withTrim && !tiltMode) TrimColumn(link, s, Modifier.padding(end = 6.dp))
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Box(
                 Modifier.size(btn)
                     .semantics {
-                        contentDescription = if (tiltMode) loc("Sterowanie żyroskopem: przytrzymaj i przechylaj telefon", "Gyro control: hold and tilt the phone")
+                        contentDescription = if (dragTrim) loc("Sterowanie żyroskopem: przytrzymaj i przechylaj telefon; przeciągnij w dół lub w górę, aby trymować", "Gyro control: hold and tilt the phone; drag down or up to trim")
+                        else if (tiltMode) loc("Sterowanie żyroskopem: przytrzymaj i przechylaj telefon", "Gyro control: hold and tilt the phone")
                         else loc("Drążek: przytrzymaj i przesuwaj kciuk", "Stick: hold and move your thumb")
                     }
-                    .pointerInput(tiltMode) {
+                    .pointerInput(tiltMode, dragTrim) {
+                        val dead = 16.dp.toPx(); val full = 70.dp.toPx()
                         awaitEachGesture {
                             val down = awaitFirstDown()
                             down.consume()
@@ -126,6 +159,13 @@ fun FloatingControl(link: LinkClient, modeName: String, modifier: Modifier = Mod
                                 val ch = ev.changes.firstOrNull { it.id == down.id } ?: break
                                 if (!ch.pressed) break
                                 ch.consume()
+                                if (dragTrim) {
+                                    // Palec w dół (dy > 0) = nos w górę
+                                    val dy = ch.position.y - down.position.y
+                                    val dir = if (dy > dead) 1 else if (dy < -dead) -1 else 0
+                                    trimForce = ((kotlin.math.abs(dy) - dead) / (full - dead)).coerceIn(0f, 1f)
+                                    if (dir != trimDir) { trimDir = dir; if (dir != 0) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
+                                }
                                 if (!tiltMode) {
                                     var dx = (ch.position.x - down.position.x) / reach
                                     var dy = (ch.position.y - down.position.y) / reach
@@ -135,6 +175,7 @@ fun FloatingControl(link: LinkClient, modeName: String, modifier: Modifier = Mod
                                 }
                             }
                             active = false
+                            trimDir = 0
                             x = 0f; y = 0f
                         }
                     },
@@ -153,7 +194,15 @@ fun FloatingControl(link: LinkClient, modeName: String, modifier: Modifier = Mod
                     }
                 }
                 if (!active) Icon(if (tiltMode) Icons.Outlined.ScreenRotation else Icons.Outlined.Gamepad, null, tint = c.ink, modifier = Modifier.size(28.dp))
+                // Trym przeciągnięciem: strzałki nad i pod przyciskiem, aktywna podświetlona
+                if (dragTrim) {
+                    Text("▲", fontSize = 10.sp, color = if (trimDir < 0) c.accent else c.ink2, modifier = Modifier.align(Alignment.TopCenter).padding(top = 2.dp))
+                    Text("▼", fontSize = 10.sp, color = if (trimDir > 0) c.accent else c.ink2, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 2.dp))
+                }
             }
+            // Odczyt trymu pod przyciskiem (wariant z trymem przy żyroskopie)
+            if (dragTrim) Text(s?.controls?.elevatorTrimPct?.let { "TRIM %+.0f".format(it) } ?: "TRIM", fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                color = if (trimDir != 0) c.accent else c.ink, modifier = Modifier.padding(top = 3.dp).clip(RoundedCornerShape(50)).background(Color.Black).padding(horizontal = 6.dp, vertical = 1.dp))
             Spacer(Modifier.height(6.dp))
             // Uchwyt do przestawiania
             Box(
@@ -171,5 +220,48 @@ fun FloatingControl(link: LinkClient, modeName: String, modifier: Modifier = Mod
                 Box(Modifier.width(16.dp).height(3.dp).clip(CircleShape).background(c.ink2))
             }
         }
+        }
     }
+}
+
+/** Trym wysokości obok pływającego przycisku: dwa klawisze z powtarzaniem i bieżący trym w %. */
+@Composable
+private fun TrimColumn(link: LinkClient, s: FlightState?, modifier: Modifier = Modifier) {
+    val c = Fm.c
+    Column(
+        modifier.width(46.dp).clip(RoundedCornerShape(23.dp)).background(Color.Black).border(1.5.dp, Color(0x66FFFFFF), RoundedCornerShape(23.dp)).padding(vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        TrimKey("▲", loc("Trym: nos w dół", "Trim nose down")) { link.command("ELEV_TRIM_DN") }
+        Text(s?.controls?.elevatorTrimPct?.let { "%+.0f".format(it) } ?: "TRIM", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = c.ink,
+            modifier = Modifier.padding(vertical = 2.dp))
+        TrimKey("▼", loc("Trym: nos w górę", "Trim nose up")) { link.command("ELEV_TRIM_UP") }
+    }
+}
+
+/** Klawisz trymu: działa raz po dotknięciu, potem powtarza co 80 ms, dopóki trzymasz. */
+@Composable
+private fun TrimKey(label: String, desc: String, action: () -> Unit) {
+    val c = Fm.c
+    val haptic = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+    val act by rememberUpdatedState(action)
+    var pressed by remember { mutableStateOf(false) }
+    Box(
+        Modifier.size(38.dp).clip(CircleShape).background(if (pressed) c.accent else Color(0xFF1C1C1C))
+            .semantics { contentDescription = desc; role = Role.Button; onClick { act(); true } }
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown().consume()
+                    pressed = true
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    act()
+                    val job = scope.launch { delay(350); while (true) { act(); delay(80) } }
+                    waitForUpOrCancellation()
+                    job.cancel()
+                    pressed = false
+                }
+            },
+        contentAlignment = Alignment.Center,
+    ) { Text(label, fontSize = 15.sp, color = if (pressed) Color.Black else c.ink) }
 }

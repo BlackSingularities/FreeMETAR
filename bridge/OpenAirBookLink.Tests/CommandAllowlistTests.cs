@@ -121,6 +121,18 @@ public class CommandAllowlistTests
     }
 
     [Fact]
+    public void Engine_levers_take_0_to_16383_and_camera_is_a_simvar_write()
+    {
+        Assert.True(CommandAllowlist.Validate("THROTTLE_SET", Num(16383)).Ok);
+        Assert.False(CommandAllowlist.Validate("THROTTLE_SET", Num(16384)).Ok);
+        Assert.False(CommandAllowlist.Validate("MIXTURE_SET", Num(-1)).Ok);
+        var cam = CommandAllowlist.Validate("CAMERA_STATE", Num(3));
+        Assert.True(cam.Ok);
+        Assert.Equal(CommandTarget.CameraState, cam.Command!.Spec.Target);
+        Assert.False(CommandAllowlist.Validate("CAMERA_STATE", Num(9)).Ok);
+    }
+
+    [Fact]
     public void Allowlist_covers_every_required_group()
     {
         var groups = CommandAllowlist.All.Select(s => s.Group).ToHashSet();

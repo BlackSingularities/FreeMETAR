@@ -17,6 +17,7 @@ public static class NavdataKinds
     public const string Procedures = "procedures";
     public const string ProcedureLegs = "procedure_legs";
     public const string Fix = "fix";
+    public const string Nearby = "nearby";
 }
 
 public static class ProcTypes
@@ -134,6 +135,12 @@ public sealed class LegInfo
     [JsonIgnore(Condition = JsonIgnoreCondition.Never)] public double? CourseDeg { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.Never)] public double? DistNm { get; init; }
     public bool FlyOver { get; init; }
+}
+
+// kind = nearby: lotniska, VOR, NDB i punkty trasy w promieniu, posortowane po odległości
+public sealed class NearbyInfo
+{
+    public List<FixResult> Results { get; init; } = new();
 }
 
 // kind = fix

@@ -19,6 +19,10 @@ public interface INavDataProvider
 
     // Wszystkie punkty o danym identyfikatorze (kolejność dowolna — sortuje NavDataService).
     Task<IReadOnlyList<FixResult>> FindFixAsync(string ident, CancellationToken ct);
+
+    // Obiekty w pobliżu (MSFS: z „bańki rzeczywistości” wokół samolotu). Kolejność i limit robi NavDataService.
+    Task<IReadOnlyList<FixResult>> NearbyAsync(double lat, double lon, double radiusNm, CancellationToken ct) =>
+        Task.FromResult<IReadOnlyList<FixResult>>(Array.Empty<FixResult>());
 }
 
 public sealed record NamedLegs(string Name, List<LegInfo> Legs);

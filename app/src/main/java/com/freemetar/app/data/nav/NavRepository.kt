@@ -35,6 +35,14 @@ class NavRepository(private val link: LinkClient, val store: NavDataStore) {
         return l
     }
 
+    /** Lotniska, VOR-y, NDB i punkty trasy z bazy MSFS w promieniu od pozycji (dla mapy ND). */
+    suspend fun nearby(lat: Double, lon: Double, radiusNm: Int): List<FixResult> {
+        if (!connected) return emptyList()
+        return runCatching {
+            LinkJson.decodeFromJsonElement(FixResults.serializer(), link.navdata("nearby", mapOf("lat" to lat, "lon" to lon, "radiusNm" to radiusNm))).results
+        }.getOrDefault(emptyList())
+    }
+
     /** Punkty, VOR-y, NDB o danym identyfikatorze, najbliższe podanej pozycji. */
     suspend fun fixes(ident: String, nearLat: Double?, nearLon: Double?): List<FixResult> {
         if (!connected) return emptyList()

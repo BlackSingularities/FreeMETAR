@@ -85,7 +85,7 @@ private const val INNER = 0.58f
  */
 @Composable
 fun DualKnob(
-    size: Dp, desc: String, modifier: Modifier = Modifier,
+    size: Dp, desc: String, modifier: Modifier = Modifier, skin: PanelSkin? = null,
     onStep: (Int) -> Unit, onBigStep: (Int) -> Unit, onPush: () -> Unit,
 ) {
     val c = Fm.c
@@ -152,7 +152,10 @@ fun DualKnob(
         val ctr = center
         val r = this.size.minDimension / 2f
         // Pierścień zewnętrzny z radełkowaniem
-        drawCircle(Brush.radialGradient(listOf(Color(0xFF262626), Color(0xFF101010)), ctr, r), r, ctr)
+        val outerC = skin?.knobOuter ?: Color(0xFF1A1A1A)
+        val innerC = skin?.knobInner ?: Color(0xFF2A2A2A)
+        val markC = skin?.knobMark ?: Color.White
+        drawCircle(Brush.radialGradient(listOf(outerC.lighten(0.12f), outerC.darken(0.35f)), ctr, r), r, ctr)
         drawCircle(if (grip == 2) c.accent else Color(0x40FFFFFF), r - 1f, ctr, style = Stroke(if (grip == 2) 3f else 1.5f))
         rotate(outer, ctr) {
             for (i in 0 until 36) {
@@ -164,24 +167,24 @@ fun DualKnob(
         // Gałka wewnętrzna: jaśniejsza, z kreską położenia
         val ri = r * INNER
         drawCircle(Color.Black, ri + 3f, ctr)
-        drawCircle(Brush.radialGradient(listOf(Color(0xFF3A3A3A), Color(0xFF1A1A1A)), Offset(ctr.x - ri * 0.3f, ctr.y - ri * 0.3f), ri * 1.4f), ri, ctr)
+        drawCircle(Brush.radialGradient(listOf(innerC.lighten(0.18f), innerC.darken(0.3f)), Offset(ctr.x - ri * 0.3f, ctr.y - ri * 0.3f), ri * 1.4f), ri, ctr)
         drawCircle(if (grip == 1) c.accent else Color(0x4DFFFFFF), ri, ctr, style = Stroke(if (grip == 1) 3f else 1f))
         rotate(inner, ctr) {
-            drawLine(if (grip == 1) c.accent else Color.White, Offset(ctr.x, ctr.y - ri * 0.86f), Offset(ctr.x, ctr.y - ri * 0.45f), 5f, cap = StrokeCap.Round)
+            drawLine(if (grip == 1) c.accent else markC, Offset(ctr.x, ctr.y - ri * 0.86f), Offset(ctr.x, ctr.y - ri * 0.45f), 5f, cap = StrokeCap.Round)
         }
     }
 }
 
 /** Mały okrągły przycisk −/+ z powtarzaniem przy przytrzymaniu (400 ms, potem co 90 ms). */
 @Composable
-private fun NudgeKey(label: String, desc: String, modifier: Modifier = Modifier, action: () -> Unit) {
+private fun NudgeKey(label: String, desc: String, modifier: Modifier = Modifier, skin: PanelSkin? = null, action: () -> Unit) {
     val c = Fm.c
     val scope = rememberCoroutineScope()
     val act by rememberUpdatedState(action)
     val haptic = LocalHapticFeedback.current
     var pressed by remember { mutableStateOf(false) }
     Box(
-        modifier.size(36.dp).clip(CircleShape).background(if (pressed) c.ink else c.terrain)
+        modifier.size(38.dp).clip(CircleShape).background(if (pressed) (skin?.keyPressed ?: c.ink) else (skin?.key ?: c.terrain))
             .semantics { contentDescription = desc; role = Role.Button; onClick { act(); true } }
             .pointerInput(Unit) {
                 awaitEachGesture {
@@ -196,25 +199,59 @@ private fun NudgeKey(label: String, desc: String, modifier: Modifier = Modifier,
                 }
             },
         contentAlignment = Alignment.Center,
-    ) { Text(label, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = if (pressed) Color.Black else c.ink) }
+    ) { Text(label, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = if (pressed && skin == null) Color.Black else (skin?.keyText ?: c.ink)) }
 }
 
 /**
- * Klawisz trybu jak na FCU: lampka nad napisem świeci na zielono, gdy tryb jest aktywny.
+ * Klawisz trybu w stylu producenta (patrz [LampStyle]): Airbus — zielone kreski nad napisem,
+ * Boeing — lampka pod napisem na kwadratowym klawiszu, Garmin — cyjanowy napis z kropką,
+ * GA — obwódka i jasny napis. Bez skórki: wygląd ogólny aplikacji.
  */
 @Composable
-fun AfdsKey(label: String, on: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun AfdsKey(label: String, on: Boolean, modifier: Modifier = Modifier, skin: PanelSkin? = null, onClick: () -> Unit) {
     val c = Fm.c
     val haptic = LocalHapticFeedback.current
-    Column(
-        modifier.height(42.dp).clip(RoundedCornerShape(8.dp)).background(c.terrain)
+    val s = skin
+    val shape = RoundedCornerShape(s?.keyCorner ?: 8.dp)
+    val lampOn = s?.lampOn ?: c.green
+    val lampOff = s?.lampOff ?: Color(0x26FFFFFF)
+    val style = s?.lamp ?: LampStyle.BARS
+    val textColor = when {
+        style == LampStyle.TEXT && on -> lampOn
+        style == LampStyle.OUTLINE && on -> lampOn
+        s == null && on -> c.green
+        else -> s?.keyText ?: c.ink
+    }
+    Box(
+        modifier.height(s?.keyHeight ?: 42.dp).clip(shape)
+            // Lekki gradient: klawisz wygląda na wypukły
+            .background(Brush.verticalGradient(listOf((s?.key ?: c.terrain).lighten(0.08f), (s?.key ?: c.terrain).darken(0.18f))))
+            .border(if (style == LampStyle.OUTLINE && on) 1.5.dp else 1.dp, if (style == LampStyle.OUTLINE && on) lampOn else (s?.plateEdge ?: Color(0x1FFFFFFF)), shape)
             .semantics { contentDescription = label + if (on) loc(", włączony", ", on") else loc(", wyłączony", ", off") }
             .clickable(role = Role.Switch) { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onClick() },
-        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+        contentAlignment = Alignment.Center,
     ) {
-        Box(Modifier.width(22.dp).height(3.dp).clip(RoundedCornerShape(50)).background(if (on) c.green else Color(0x26FFFFFF)))
-        Spacer(Modifier.height(5.dp))
-        Text(label, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = if (on) c.green else c.ink, maxLines = 1)
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            when (style) {
+                LampStyle.BARS -> {
+                    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                        repeat(3) { Box(Modifier.width(7.dp).height(3.dp).clip(RoundedCornerShape(50)).background(if (on) lampOn else lampOff)) }
+                    }
+                    Spacer(Modifier.height(5.dp))
+                    Text(label, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = textColor, maxLines = 1)
+                }
+                LampStyle.BAR_BELOW -> {
+                    Text(label, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = textColor, maxLines = 1)
+                    Spacer(Modifier.height(5.dp))
+                    Box(Modifier.width(30.dp).height(5.dp).clip(RoundedCornerShape(1.dp)).background(if (on) lampOn else lampOff))
+                }
+                LampStyle.TEXT -> Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (on) { Box(Modifier.size(6.dp).clip(CircleShape).background(lampOn)); Spacer(Modifier.width(5.dp)) }
+                    Text(label, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = textColor, maxLines = 1)
+                }
+                LampStyle.OUTLINE -> Text(label, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = textColor, maxLines = 1)
+            }
+        }
     }
 }
 
@@ -228,38 +265,40 @@ private data class Selector(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SelectorModule(sel: Selector, onEnter: (String) -> Unit, onKey: (String) -> Unit, modifier: Modifier = Modifier) {
-    val c = Fm.c
+private fun SelectorModule(sel: Selector, skin: PanelSkin, onEnter: (String) -> Unit, onKey: (String) -> Unit, modifier: Modifier = Modifier) {
     Column(
-        modifier.clip(RoundedCornerShape(14.dp)).border(1.dp, c.rule, RoundedCornerShape(14.dp)).padding(10.dp),
+        modifier.clip(RoundedCornerShape(12.dp)).border(1.dp, skin.plateEdge, RoundedCornerShape(12.dp)).padding(10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Okienko wartości: dotknięcie = wpisanie liczby
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color.Black).border(1.dp, Color(0x26FFFFFF), RoundedCornerShape(8.dp))
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(6.dp)).background(skin.window).border(1.dp, skin.plateEdge, RoundedCornerShape(6.dp))
                 .clickable(onClickLabel = loc("Wpisz wartość", "Type a value")) { onEnter(sel.enter) }
                 .padding(horizontal = 10.dp, vertical = 6.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(sel.label, fontFamily = Mono, fontSize = 10.sp, color = c.ink2, modifier = Modifier.weight(1f), maxLines = 1)
-                Text(sel.unit, fontFamily = Mono, fontSize = 10.sp, color = c.ink2)
+                Text(sel.label, fontFamily = Mono, fontSize = 10.sp, color = skin.windowLabel, modifier = Modifier.weight(1f), maxLines = 1)
+                Text(sel.unit, fontFamily = Mono, fontSize = 10.sp, color = skin.windowLabel.copy(alpha = 0.7f))
             }
-            Text(sel.value, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 24.sp, color = c.accent, maxLines = 1)
+            Text(sel.value, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 26.sp, color = skin.windowText, maxLines = 1)
         }
         Spacer(Modifier.height(10.dp))
-        // Pokrętło z −/+ w dolnych narożnikach
-        Box(Modifier.fillMaxWidth().height(96.dp)) {
+        // Pokrętło z −/+ w dolnych narożnikach; średnica wg szerokości modułu, żeby −/+ go nie zachodziły
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val knob = (maxWidth - 52.dp).coerceIn(64.dp, 96.dp)
+            Box(Modifier.fillMaxWidth().height(knob + 14.dp)) {
             DualKnob(
-                88.dp, loc("Pokrętło ${sel.label}: ${sel.value}", "${sel.label} knob: ${sel.value}"), Modifier.align(Alignment.TopCenter),
+                knob, loc("Pokrętło ${sel.label}: ${sel.value}", "${sel.label} knob: ${sel.value}"), Modifier.align(Alignment.TopCenter), skin,
                 onStep = sel.step, onBigStep = sel.big, onPush = { onEnter(sel.enter) },
             )
-            NudgeKey("−", loc("${sel.label} w dół", "${sel.label} down"), Modifier.align(Alignment.BottomStart)) { sel.step(-1) }
-            NudgeKey("+", loc("${sel.label} w górę", "${sel.label} up"), Modifier.align(Alignment.BottomEnd)) { sel.step(1) }
+            NudgeKey("−", loc("${sel.label} w dół", "${sel.label} down"), Modifier.align(Alignment.BottomStart), skin) { sel.step(-1) }
+            NudgeKey("+", loc("${sel.label} w górę", "${sel.label} up"), Modifier.align(Alignment.BottomEnd), skin) { sel.step(1) }
+            }
         }
         if (sel.keys.isNotEmpty()) {
             Spacer(Modifier.height(10.dp))
             FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), maxItemsInEachRow = 2) {
-                sel.keys.forEach { k -> AfdsKey(k.label, k.on, Modifier.weight(1f)) { onKey(k.event) } }
+                sel.keys.forEach { k -> AfdsKey(k.label, k.on, Modifier.weight(1f), skin) { onKey(k.event) } }
                 if (sel.keys.size % 2 == 1) Spacer(Modifier.weight(1f))
             }
         }
@@ -298,6 +337,7 @@ fun AutopilotPanelV2(link: LinkClient, s: FlightState, override: AircraftProfile
         }
     }
 
+    val skin = panelSkin(p)
     // Klawisze główne (autopilot, dyrektor lotu, automat ciągu) — w jednym rzędzie nad pokrętłami
     val master = when (p) {
         AircraftProfile.AIRBUS -> listOf(Key("AP1", ap.master, "AP_MASTER"), Key("FD", ap.fd, "TOGGLE_FLIGHT_DIRECTOR"), Key("A/THR", ap.athr, "AUTO_THROTTLE_ARM"))
@@ -306,8 +346,15 @@ fun AutopilotPanelV2(link: LinkClient, s: FlightState, override: AircraftProfile
         AircraftProfile.TURBOPROP -> listOf(Key("AP", ap.master, "AP_MASTER"), Key("FD", ap.fd, "TOGGLE_FLIGHT_DIRECTOR"), Key("YD", false, "YAW_DAMPER_TOGGLE"))
         AircraftProfile.PISTON -> listOf(Key("AP", ap.master, "AP_MASTER"))
     }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        master.forEach { k -> AfdsKey(k.label, k.on, Modifier.weight(1f)) { cmd(k.event) } }
+    // Płyta panelu: od tego miejsca wszystko na tle i w kolorach producenta
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(skin.plate).border(1.dp, skin.plateEdge, RoundedCornerShape(14.dp)).padding(10.dp)) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
+        Text(skin.name, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = skin.legend)
+        Spacer(Modifier.width(8.dp))
+        Box(Modifier.weight(1f).height(1.dp).background(skin.plateEdge))
+    }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        master.forEach { k -> AfdsKey(k.label, k.on, Modifier.weight(1f), skin) { cmd(k.event) } }
     }
     Spacer(Modifier.size(10.dp))
 
@@ -354,16 +401,18 @@ fun AutopilotPanelV2(link: LinkClient, s: FlightState, override: AircraftProfile
 
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         // Moduł potrzebuje ~168 dp; trzy kolumny przy czterech modułach zostawiłyby sierotę — wtedy dwie
-        var cols = ((maxWidth + 8.dp) / 176.dp).toInt().coerceIn(1, modules.size)
+        // Moduł mieści się od ~150 dp: telefon 2 kolumny, szeroki ekran wszystkie w rzędzie
+        var cols = ((maxWidth + 8.dp) / 158.dp).toInt().coerceIn(1, modules.size)
         if (cols == 3 && modules.size == 4) cols = 2
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             modules.chunked(cols).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEach { sel -> SelectorModule(sel, { enter = it }, { cmd(it) }, Modifier.weight(1f)) }
+                    row.forEach { sel -> SelectorModule(sel, skin, { enter = it }, { cmd(it) }, Modifier.weight(1f)) }
                     repeat(cols - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }
+    }
     }
     Text(loc("Kręć palcem wokół pokrętła: pierścień zmienia o duży krok, środek o mały. Dotknij okienka, aby wpisać wartość.",
         "Turn a knob with your finger: the outer ring moves in big steps, the centre in small ones. Tap the window to type a value."),
@@ -376,3 +425,7 @@ fun AutopilotPanelV2(link: LinkClient, s: FlightState, override: AircraftProfile
         "VS" -> EnterDialog(loc("Prędkość pionowa (ft/min)", "Vertical speed (ft/min)"), loc("np. -1500", "e.g. -1500"), KeyboardType.Number, { it.toIntOrNull() in -8000..8000 }, { cmd("AP_VS_VAR_SET_ENGLISH", it.toInt()) }) { enter = null }
     }
 }
+
+/** Jaśniejszy / ciemniejszy odcień — do gradientów klawiszy i pokręteł. */
+internal fun Color.lighten(f: Float) = Color(red + (1 - red) * f, green + (1 - green) * f, blue + (1 - blue) * f, alpha)
+internal fun Color.darken(f: Float) = Color(red * (1 - f), green * (1 - f), blue * (1 - f), alpha)

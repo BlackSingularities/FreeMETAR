@@ -8,9 +8,11 @@ public enum CommandTarget
     Event,
     // Zapis jednej zmiennej symulatora (tylko XPNDR_MODE)
     TransponderState,
+    // Zapis CAMERA STATE (widok z kabiny / zewnętrzny / dron)
+    CameraState,
 }
 
-public enum CommandGroup { Autopilot, Radio, Transponder, Gear, Flaps, Spoilers, Brakes, Lights, Trim }
+public enum CommandGroup { Autopilot, Radio, Transponder, Gear, Flaps, Spoilers, Brakes, Lights, Trim, Engines, View }
 
 public sealed record CommandSpec(string Name, CommandGroup Group, CommandTarget Target = CommandTarget.Event,
     long? Min = null, long? Max = null, bool SquawkCode = false)
@@ -125,6 +127,18 @@ public static class CommandAllowlist
         new("AILERON_TRIM_RIGHT", CommandGroup.Trim),
         new("RUDDER_TRIM_LEFT", CommandGroup.Trim),
         new("RUDDER_TRIM_RIGHT", CommandGroup.Trim),
+
+        // Silniki: dźwignie wszystkich silników naraz (0 = jałowy / uboga / małe obroty, 16383 = pełne)
+        new("THROTTLE_SET", CommandGroup.Engines, Min: 0, Max: 16383),
+        new("THROTTLE_CUT", CommandGroup.Engines),
+        new("THROTTLE_FULL", CommandGroup.Engines),
+        new("THROTTLE_REVERSE_THRUST_TOGGLE", CommandGroup.Engines),
+        new("AUTO_THROTTLE_TO_GA", CommandGroup.Engines),
+        new("MIXTURE_SET", CommandGroup.Engines, Min: 0, Max: 16383),
+        new("PROPELLER_SET", CommandGroup.Engines, Min: 0, Max: 16383),
+
+        // Kamera MSFS: 2 kabina, 3 zewnętrzna (pościg), 4 dron
+        new("CAMERA_STATE", CommandGroup.View, CommandTarget.CameraState, Min: 2, Max: 4),
     };
 
     // Zdarzenia osi — nie są komendami `command`, przychodzą przez wiadomość `axis`.

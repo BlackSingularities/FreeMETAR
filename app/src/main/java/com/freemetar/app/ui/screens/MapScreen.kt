@@ -101,6 +101,8 @@ private const val SRC_TRACK_LBL = "oab-track-labels"
 private const val LYR_CURTAIN = "oab-track-curtain-3d"
 private const val LYR_BUILDINGS = "oab-buildings-3d"
 private const val LYR_TRACK = "oab-track-line"
+private const val SRC_DRAFT = "oab-draft"
+private const val SRC_DRAFT_PTS = "oab-draft-points"
 
 /** Kolor wysokości: nisko zieleń, średnio cyjan, wyżej błękit, poziom przelotowy magenta. */
 private fun altColor(): Expression = Expression.interpolate(
@@ -193,6 +195,9 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
     var style by remember { mutableStateOf<Style?>(null) }
     var wired by remember { mutableStateOf(false) }
     val openLatest by rememberUpdatedState(onOpen)
+    val planning by vm.planning.collectAsStateWithLifecycle()
+    val draft by vm.draft.collectAsStateWithLifecycle()
+    val planningLatest by rememberUpdatedState(planning)
     val metarsLatest by rememberUpdatedState(metars)
 
     val mapView = remember {
@@ -239,6 +244,12 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
             wired = true
             map.addOnCameraIdleListener { requestArea(map, vm) }
             map.addOnMapClickListener { ll ->
+                // Planowanie: dotknięcie dodaje punkt; promień szukania lotniska/radiolatarni zależy od przybliżenia
+                if (planningLatest) {
+                    val radius = (3.0 * Math.pow(2.0, 10 - map.cameraPosition.zoom)).coerceIn(0.5, 30.0)
+                    vm.addDraftAt(ll.latitude, ll.longitude, radius)
+                    return@addOnMapClickListener true
+                }
                 val pt: PointF = map.projection.toScreenLocation(ll)
                 val hit = map.queryRenderedFeatures(pt, LYR_METAR).firstOrNull()
                     ?: map.queryRenderedFeatures(android.graphics.RectF(pt.x - 24, pt.y - 24, pt.x + 24, pt.y + 24), LYR_METAR).firstOrNull()
@@ -321,6 +332,17 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
         val bounds = LatLngBounds.Builder().apply { pts.forEach { include(LatLng(it.lat!!, it.lon!!)) } }.build()
         mapView.getMapAsync { it.easeCamera(CameraUpdateFactory.newLatLngBounds(bounds, 120), 800) }
     }
+    // Szkic planowanej trasy
+    LaunchedEffect(style, draft) {
+        val st = style ?: return@LaunchedEffect
+        val pts = draft.filter { it.hasPosition }
+        (st.getSource(SRC_DRAFT) as? GeoJsonSource)?.setGeoJson(
+            if (pts.size < 2) FeatureCollection.fromFeatures(emptyList())
+            else FeatureCollection.fromFeature(Feature.fromGeometry(LineString.fromLngLats(pts.map { Point.fromLngLat(it.lon!!, it.lat!!) }))))
+        (st.getSource(SRC_DRAFT_PTS) as? GeoJsonSource)?.setGeoJson(FeatureCollection.fromFeatures(pts.mapIndexed { i, p ->
+            Feature.fromGeometry(Point.fromLngLat(p.lon!!, p.lat!!)).apply { addStringProperty("id", "${i + 1}. ${p.ident}") }
+        }))
+    }
     LaunchedEffect(style, sigmets, showSigmets) {
         (style?.getSource(SRC_SIGMET) as? GeoJsonSource)?.setGeoJson(sigmetFeatures(if (showSigmets) sigmets else emptyList()))
     }
@@ -331,6 +353,7 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
         // Przełączniki warstw u góry (przewijane, by nie łamały się na wąskim ekranie), legenda pod nimi
         Column(Modifier.statusBarsPadding().padding(12.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MapChip(loc("Zaplanuj trasę", "Plan a route"), planning, Icons.Outlined.Route) { if (planning) vm.stopMapPlanning() else { follow = false; vm.startMapPlanning() } }
                 MapChip("3D", threeD, Icons.Outlined.ViewInAr) { threeD = !threeD }
                 MapChip("SIGMET", showSigmets, Icons.Outlined.WarningAmber) { showSigmets = !showSigmets }
                 if (live != null) MapChip(loc("Śledź samolot", "Follow aircraft"), follow, Icons.Outlined.MyLocation) { follow = !follow }
@@ -340,8 +363,12 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
             Legend()
         }
 
+        if (planning) {
+            PlanningPanel(vm, draft, Modifier.align(Alignment.BottomCenter))
+        }
+
         val s = live
-        if (picked == null && s != null) {
+        if (!planning && picked == null && s != null) {
             Row(
                 Modifier.align(Alignment.BottomCenter).padding(12.dp).fillMaxWidth()
                     .clip(RoundedCornerShape(50)).background(c.card.copy(alpha = 0.94f)).border(1.dp, c.rule, RoundedCornerShape(50))
@@ -355,7 +382,7 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
             }
         }
 
-        picked?.let { m ->
+        picked?.takeIf { !planning }?.let { m ->
             Column(
                 Modifier.align(Alignment.BottomCenter).padding(12.dp).fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp)).background(c.card.copy(alpha = 0.96f))
@@ -420,6 +447,26 @@ private fun addOverlay(st: Style, c: FmColors) {
         PropertyFactory.fillExtrusionBase(Expression.coalesce(Expression.get("render_min_height"), Expression.literal(0))),
         PropertyFactory.fillExtrusionOpacity(0.85f),
     ).apply { minZoom = 14f })
+    // Szkic planowanej trasy: cyjanowa linia (kolor wartości wybranej) i ponumerowane punkty
+    st.addSource(GeoJsonSource(SRC_DRAFT))
+    st.addLayer(LineLayer("oab-draft-line", SRC_DRAFT).withProperties(
+        PropertyFactory.lineColor(hex(c.accent)), PropertyFactory.lineWidth(3.5f), PropertyFactory.lineCap("round"), PropertyFactory.lineJoin("round"),
+    ))
+    st.addSource(GeoJsonSource(SRC_DRAFT_PTS))
+    st.addLayer(CircleLayer("oab-draft-pts", SRC_DRAFT_PTS).withProperties(
+        PropertyFactory.circleRadius(5f), PropertyFactory.circleColor(hex(c.paper)),
+        PropertyFactory.circleStrokeColor(hex(c.ink)), PropertyFactory.circleStrokeWidth(2.5f),
+    ))
+    st.addLayer(SymbolLayer("oab-draft-label", SRC_DRAFT_PTS).withProperties(
+        PropertyFactory.textField(Expression.get("id")),
+        PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+        PropertyFactory.textSize(11f),
+        PropertyFactory.textOffset(arrayOf(0f, -1.3f)),
+        PropertyFactory.textColor(hex(c.ink)),
+        PropertyFactory.textHaloColor(hex(c.paper)),
+        PropertyFactory.textHaloWidth(1.5f),
+        PropertyFactory.textAllowOverlap(true),
+    ))
     // Tor lotu w kolorze wysokości, pod nim (w 3D) kurtyna do ziemi; samolot nad wszystkim
     // Bez upraszczania: wąskie wstęgi znikałyby przy małym przybliżeniu
     st.addSource(GeoJsonSource(SRC_CURTAIN, GeoJsonOptions().withTolerance(0f)))
@@ -531,6 +578,45 @@ private fun Legend() {
                 Box(Modifier.size(9.dp).clip(CircleShape).background(c.category(k)))
                 Spacer(Modifier.width(3.dp))
                 Text(k, fontFamily = Mono, fontSize = 10.sp, color = c.ink2)
+            }
+        }
+    }
+}
+
+/** Panel planowania na mapie: punkty szkicu, cofnij, wyczyść, poziom lotu i zapis trasy. */
+@Composable
+private fun PlanningPanel(vm: MainViewModel, draft: List<com.freemetar.app.data.RoutePoint>, modifier: Modifier = Modifier) {
+    val c = Fm.c
+    var fl by rememberSaveable { mutableStateOf("") }
+    Column(
+        modifier.padding(12.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(c.card.copy(alpha = 0.97f))
+            .border(1.dp, c.rule, RoundedCornerShape(16.dp)).padding(14.dp),
+    ) {
+        Text(loc("Planowanie trasy", "Route planning"), style = MaterialTheme.typography.titleMedium, color = c.ink)
+        Text(
+            if (draft.isEmpty()) loc("Dotknij lotniska startowego. Kolejne dotknięcia dodają punkty; w pobliżu lotniska lub radiolatarni wybiera się ono samo.", "Tap the departure airport. Further taps add waypoints; near an airport or navaid it is picked automatically.")
+            else loc("Ostatni punkt to lotnisko docelowe.", "The last point is the destination."),
+            style = MaterialTheme.typography.bodySmall, color = c.ink2,
+        )
+        if (draft.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()).padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            draft.forEachIndexed { i, p ->
+                Text(p.ident, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                    color = if (i == 0 || i == draft.lastIndex) c.paper else c.ink,
+                    modifier = Modifier.clip(RoundedCornerShape(50)).background(if (i == 0 || i == draft.lastIndex) c.ink else c.terrain).padding(horizontal = 10.dp, vertical = 4.dp))
+            }
+        }
+        Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.material3.OutlinedButton({ vm.undoDraft() }, enabled = draft.isNotEmpty()) { Text(loc("Cofnij", "Undo")) }
+            androidx.compose.material3.TextButton({ vm.clearDraft() }, enabled = draft.isNotEmpty()) { Text(loc("Wyczyść", "Clear")) }
+            Spacer(Modifier.weight(1f))
+            Icon(Icons.Outlined.Close, loc("Zakończ planowanie", "Stop planning"), tint = c.ink2, modifier = Modifier.size(24.dp).clickable { vm.stopMapPlanning() })
+        }
+        Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.material3.OutlinedTextField(fl, { fl = it.filter(Char::isDigit).take(3) }, Modifier.width(110.dp), singleLine = true,
+                label = { Text(loc("Poziom FL", "Level FL")) }, shape = RoundedCornerShape(8.dp),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
+            androidx.compose.material3.Button({ vm.saveDraft(fl.toIntOrNull()) }, enabled = draft.size >= 2, modifier = Modifier.weight(1f)) {
+                Text(loc("Zapisz trasę", "Save route"))
             }
         }
     }

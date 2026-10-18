@@ -1,6 +1,11 @@
 package com.freemetar.app.ui.flight
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.height
+import androidx.compose.material.icons.outlined.AirlineSeatReclineNormal
+import androidx.compose.material.icons.outlined.FlightTakeoff
+import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -78,24 +83,30 @@ private fun CockpitTab.label(): String = when (this) {
 fun CockpitView(
     link: LinkClient, s: FlightState, route: SavedRoute?, profile: AircraftProfile?, onProfile: (AircraftProfile?) -> Unit,
     controlMode: String = "TILT", onControlMode: (String) -> Unit = {}, floating: Boolean = false, onFloating: (Boolean) -> Unit = {},
+    nearby: List<com.freemetar.app.data.nav.FixResult> = emptyList(),
 ) {
     val c = Fm.c
     var tab by rememberSaveable { mutableStateOf(CockpitTab.AP) }
     var range by rememberSaveable { mutableIntStateOf(40) }
+    var rose by rememberSaveable { mutableStateOf(false) }
+    // Warstwy ND (lotniska, VOR, NDB, punkty trasy) — zapis jako tekst, żeby przetrwały obrót ekranu
+    var layersText by rememberSaveable { mutableStateOf("airport,vor,ndb") }
+    val layers = layersText.split(",").filter { it.isNotBlank() }.toSet()
+    val toggleLayer: (String) -> Unit = { k -> layersText = (if (k in layers) layers - k else layers + k).joinToString(",") }
     val effective = profile ?: AircraftProfile.detect(s.aircraft.title, s.aircraft.atcModel, s.aircraft.category, s.aircraft.engineType)
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val wide = maxWidth >= 600.dp || maxWidth > maxHeight
         val tallNd = wide && maxHeight >= 640.dp
-        val statusBar: @Composable () -> Unit = { CockpitStatus(s, effective) }
+        val statusBar: @Composable () -> Unit = { CockpitStatus(s, effective); CameraSwitch(link, s) }
         val panel: @Composable () -> Unit = {
             when (tab) {
                 CockpitTab.AP -> AutopilotPanelV2(link, s, profile, onProfile)
                 CockpitTab.RADIO -> RadioPanel(link, s)
                 CockpitTab.SYSTEMS -> SystemsPanel(link, s, effective)
                 CockpitTab.STICK -> FlightControlPanel(link, s, controlMode, onControlMode, floating, onFloating)
-                CockpitTab.ND -> { NavDisplay(s, route?.fullPath().orEmpty(), range); RangeChips(range) { range = it } }
-                CockpitTab.ENGINES -> Systems(s)
+                CockpitTab.ND -> { NavDisplay(s, route?.fullPath().orEmpty(), range, rose = rose, nav = nearby, layers = layers); VerticalProfile(s, route?.fullPath().orEmpty(), range); RangeChips(range, rose, { rose = it }) { range = it }; LayerChips(layers, toggleLayer, nearby.isNotEmpty()) }
+                CockpitTab.ENGINES -> EnginePanel(link, s, effective)
                 CockpitTab.PROGRESS -> Progress(s, route)
             }
         }
@@ -113,8 +124,11 @@ fun CockpitView(
                     Box(Modifier.clip(RoundedCornerShape(12.dp))) { Pfd(s) }
                     if (tallNd) {
                         Spacer(Modifier.size(10.dp))
-                        Box(Modifier.clip(RoundedCornerShape(12.dp))) { NavDisplay(s, route?.fullPath().orEmpty(), range) }
-                        RangeChips(range) { range = it }
+                        Box(Modifier.clip(RoundedCornerShape(12.dp))) { NavDisplay(s, route?.fullPath().orEmpty(), range, rose = rose, nav = nearby, layers = layers) }
+                        Spacer(Modifier.size(6.dp))
+                        Box(Modifier.clip(RoundedCornerShape(12.dp))) { VerticalProfile(s, route?.fullPath().orEmpty(), range) }
+                        RangeChips(range, rose, { rose = it }) { range = it }
+                        LayerChips(layers, toggleLayer, nearby.isNotEmpty())
                     }
                 }
                 Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState())) {
@@ -152,8 +166,51 @@ private fun CockpitStatus(s: FlightState, p: AircraftProfile) {
 }
 
 @Composable
-private fun RangeChips(range: Int, onRange: (Int) -> Unit) {
+private fun RangeChips(range: Int, rose: Boolean, onRose: (Boolean) -> Unit, onRange: (Int) -> Unit) {
     Row(Modifier.horizontalScroll(rememberScrollState()).padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        FilterChip(!rose, { onRose(false) }, { Text("ARC") })
+        FilterChip(rose, { onRose(true) }, { Text("ROSE") })
         listOf(10, 20, 40, 80, 160).forEach { r -> FilterChip(range == r, { onRange(r) }, { Text("$r NM") }) }
+    }
+}
+
+/**
+ * Kamera MSFS: kabina, zewnętrzna (pościg) i dron. Aktywny widok podświetlony
+ * na podstawie CAMERA STATE z symulatora, więc zmiana klawiaturą w MSFS też się tu pokaże.
+ */
+@Composable
+internal fun CameraSwitch(link: LinkClient, s: FlightState, modifier: Modifier = Modifier) {
+    val c = Fm.c
+    val cam = s.controls.cameraState
+    Row(modifier.fillMaxWidth().padding(bottom = 8.dp).clip(RoundedCornerShape(50)).background(c.terrain).padding(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        listOf(
+            Triple(2, tr("Kabina", "Cockpit"), Icons.Outlined.AirlineSeatReclineNormal),
+            Triple(3, tr("Zewnętrzna", "External"), Icons.Outlined.FlightTakeoff),
+            Triple(4, tr("Dron", "Drone"), Icons.Outlined.Videocam),
+        ).forEach { (state, label, icon) ->
+            val on = cam == state
+            Row(
+                Modifier.weight(1f).height(36.dp).clip(RoundedCornerShape(50)).background(if (on) c.ink else Color.Transparent)
+                    .clickable(role = androidx.compose.ui.semantics.Role.RadioButton, onClickLabel = label) { link.command("CAMERA_STATE", state.toDouble()) },
+                horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(icon, null, tint = if (on) c.paper else c.ink2, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(label, style = MaterialTheme.typography.labelMedium, color = if (on) c.paper else c.ink, maxLines = 1)
+            }
+        }
+    }
+}
+
+/** Przełączniki warstw ND: lotniska, VOR, NDB, punkty trasy (dane z bazy MSFS). */
+@Composable
+private fun LayerChips(layers: Set<String>, onToggle: (String) -> Unit, hasData: Boolean) {
+    val c = Fm.c
+    Row(Modifier.horizontalScroll(rememberScrollState()).padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        listOf("airport" to "APT", "vor" to "VOR", "ndb" to "NDB", "waypoint" to "WPT").forEach { (k, label) ->
+            FilterChip(k in layers, { onToggle(k) }, { Text(label) })
+        }
+        if (!hasData) Text(tr("brak danych z MSFS", "no MSFS data yet"), style = MaterialTheme.typography.labelSmall, color = c.ink2)
     }
 }

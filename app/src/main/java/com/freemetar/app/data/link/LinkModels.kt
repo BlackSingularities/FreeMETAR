@@ -53,6 +53,10 @@ data class LinkServer(val name: String, val host: String, val ip: String, val po
     val gearDown: Boolean? = null, val gearPct: Double? = null, val flapsIndex: Int? = null, val flapsPositions: Int? = null,
     val flapsPct: Double? = null, val spoilersPct: Double? = null, val spoilersArmed: Boolean? = null,
     val parkingBrake: Boolean? = null, val elevatorTrimPct: Double? = null,
+    /** Dźwignie silnika 1, 0–100 % (Link ustawia wszystkie silniki naraz). */
+    val throttlePct: Double? = null, val mixturePct: Double? = null, val propPct: Double? = null,
+    /** Kamera MSFS: 2 kabina, 3 zewnętrzna, 4 dron, inne = pozostałe widoki. */
+    val cameraState: Int? = null,
 )
 @Serializable data class Lights(
     val beacon: Boolean? = null, val strobe: Boolean? = null, val nav: Boolean? = null, val landing: Boolean? = null,

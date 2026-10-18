@@ -27,25 +27,30 @@ Do sterowania samolotem i danych z symulatora służy **OpenAirBook Link**, mał
 - **widok 3D**: pochylenie i obrót mapy, a przy śledzeniu kamera patrzy w kierunku lotu;
 - **ślad lotu z wysokością**: linia zmienia kolor wraz z wysokością, na śladzie są etykiety wysokości (stopy albo FL), a w 3D pod śladem stoi „kurtyna” do ziemi, która pokazuje profil wznoszenia i zniżania (wysokość kurtyny jest przewyższona 3×, żeby profil był czytelny);
 - bieżąca wysokość przy symbolu samolotu, budynki 3D przy dużym przybliżeniu;
-- każdy zapisany lot można otworzyć na mapie 3D z historii lotów.
+- każdy zapisany lot można otworzyć na mapie 3D z dziennika lotów.
 
 **Plan lotu**
-- import z SimBrief, wpisana trasa albo plik;
+- SimBrief: konto wpisuje się raz w Ustawieniach, potem ostatni plan pobiera jeden przycisk;
+- trasa wpisana z lotnisk i punktów albo **wskazana na mapie**: dotknięcia dodają punkty, w pobliżu lotniska z kodem ICAO lub radiolatarni wybiera się ono samo, w pustym miejscu powstaje punkt ze współrzędnymi;
 - edytor z wyborem SID, STAR i podejścia (dane z bazy MSFS przez Link);
 - eksport i import tras.
 
 **Kokpit (z OpenAirBook Link)**
-- PFD zawsze na widoku, mapa ND, silniki, postęp lotu;
-- **autopilot z pokrętłami** jak w awionice: podwójne pokrętło (zewnętrzny pierścień zmienia o duży krok, środek o mały), przyciski −/+ z powtarzaniem i okienko, w które można wpisać wartość. Pod każdą nastawą są jej przyciski trybów, a układ zależy od samolotu: Airbus FCU, Boeing MCP, Garmin (odrzutowiec i turbośmigłowy), prosty autopilot GA. Profil wybiera się automatycznie albo ręcznie;
+- **PFD**: horyzont, taśmy prędkości i wysokości z nastawami, wektor toru lotu (znos i kąt toru), trend prędkości na 10 s, Mach, QNH, wysokość nad terenem z pasem ziemi, znacznik toru, wiatr i tryby autopilota (FMA);
+- **MFD/ND** w trybach ARC i ROSE: trasa, nastawa kursu, następny punkt z odległością, namiarem i czasem, a z bazy MSFS lotniska, VOR (z częstotliwością), NDB i punkty trasy wokół samolotu (warstwy do włączenia); pod mapą profil pionowy (VSD) z wysokością wybraną i torem przy bieżącej prędkości pionowej;
+- **silniki**: wyświetlacz EICAS/ECAM (N1 albo obroty, EGT, przepływ i zapas paliwa) oraz pulpit dźwigni przeciąganych palcem — moc, a w tłokowych i turbośmigłowych także mieszanka i śmigło; odrzutowce mają zapadki IDLE/CL/FLX/TOGA, TO/GA i odwracacz ciągu;
+- **kamera MSFS**: kabina, zewnętrzna, dron;
+- **autopilot z pokrętłami** jak w awionice: podwójne pokrętło (zewnętrzny pierścień zmienia o duży krok, środek o mały), przyciski −/+ z powtarzaniem i okienko, w które można wpisać wartość. Pod każdą nastawą są jej przyciski trybów. Panel wygląda jak u producenta — Airbus FCU (bursztynowe okienka, zielone kreski lampek), Boeing MCP (kwadratowe klawisze z lampką), Garmin (cyjanowe wartości), GA w stylu KAP140 — i dopasowuje się do motywu aplikacji. Profil wybiera się automatycznie albo ręcznie;
 - radio (COM, NAV, transponder) i systemy (podwozie, klapy, spoilery, trym, światła).
 
 **Sterowanie samolotem**
 - **żyroskop** (domyślnie): trzymasz telefon jak wolant; steruje tylko podczas przytrzymania, a puszczenie od razu oddaje stery;
 - drążek pod kciukiem albo fizyczny kontroler lub joystick (Bluetooth, USB-C);
-- **pływający przycisk sterowania**: widoczny na każdej zakładce, więc można przeglądać briefing czy mapę i mieć stery pod ręką. Przytrzymaj go i przechylaj telefon (żyroskop) albo przesuwaj kciuk (drążek). Da się go przesunąć za uchwyt.
+- **pływający przycisk sterowania**: widoczny na każdej zakładce, więc można przeglądać briefing czy mapę i mieć stery pod ręką. Przytrzymaj go i przechylaj telefon (żyroskop) albo przesuwaj kciuk (drążek). Da się go przesunąć za uchwyt. Wariant **z trymem**: przy żyroskopie trymujesz przeciągnięciem palca na przycisku (w dół — nos w górę, w górę — nos w dół), przy drążku trym ma osobne przyciski.
 
-**Historia lotów**
-- automatyczny zapis każdego lotu: pozycja, wysokość, prędkość względem ziemi i przyrządowa, prędkość pionowa, kurs;
+**Dziennik lotów**
+- osobny ekran z podsumowaniem, filtrem i lotami pogrupowanymi po miesiącach; przy każdym trasa, czas, dystans, wysokość, ocena lądowania i miniatura profilu;
+- automatyczny zapis każdego lotu: pozycja, wysokość, prędkość względem ziemi i przyrządowa, prędkość pionowa, kurs; **restart lotu w symulatorze** (skok pozycji albo inny samolot) zamyka bieżący wpis i zaczyna nowy;
 - częstotliwość zapisu do wyboru w ustawieniach: 4×, 2× lub 1× na sekundę, co 2 s albo co 5 s;
 - kompaktowe archiwum: tor jest zapisywany jako różnice między punktami i pakowany gzipem, więc zajmuje ułamek zwykłego JSON-a;
 - eksport i import całej historii w jednym pliku `.oab` (kopia zapasowa, przeniesienie na inny telefon) oraz eksport pojedynczego lotu do GPX;
@@ -54,6 +59,7 @@ Do sterowania samolotem i danych z symulatora służy **OpenAirBook Link**, mał
 **Pozostałe**
 - narzędzia: kalkulator wiatru, wysokość gęstościowa, zniżanie, paliwo, jednostki, dekoder METAR i TAF, ściąga radiowa;
 - motywy AMOLED (czysta czerń), grafitowy i jasny; układy na telefon pionowo i poziomo oraz tablet;
+- dotknięcie logo wraca na ekran główny;
 - automatyczne aktualizacje z GitHuba.
 
 ### Źródła danych
@@ -66,7 +72,7 @@ Do sterowania samolotem i danych z symulatora służy **OpenAirBook Link**, mał
 | Podkład mapy i budynki | [OpenFreeMap](https://openfreemap.org/) / OpenStreetMap | ODbL |
 | Charty (USA) | [FAA d-TPP](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/dtpp/) | domena publiczna |
 | Plan lotu | [SimBrief](https://www.simbrief.com/) (publiczny eksport planu) | — |
-| Procedury, ILS, stan lotu | baza i SimConnect Twojego MSFS przez OpenAirBook Link | — |
+| Procedury, ILS, lotniska i pomoce na ND, stan lotu | baza i SimConnect Twojego MSFS przez OpenAirBook Link | — |
 
 Baza OurAirports pobiera się raz przy pierwszym uruchomieniu i odświeża co 30 dni. Historia lotów i trasy są przechowywane tylko na telefonie.
 
@@ -111,25 +117,30 @@ To fly the aircraft and read live data from the simulator, run **OpenAirBook Lin
 - **3D view**: tilt and rotate the map; while following the aircraft the camera looks along the flight path;
 - **flight track with altitude**: the line changes colour with altitude and carries altitude labels (feet or FL). In 3D a curtain drops from the track to the ground and shows the climb and descent profile (its height is exaggerated 3× so the profile is readable);
 - current altitude next to the aircraft symbol, 3D buildings when zoomed in;
-- any saved flight can be opened on the 3D map from the flight history.
+- any saved flight can be opened on the 3D map from the logbook.
 
 **Flight plan**
-- import from SimBrief, a typed route or a file;
+- SimBrief: enter your account once in Settings, then one button downloads your latest plan;
+- a route typed from airports and waypoints, or **picked on the map**: taps add points, an airport with an ICAO code or a navaid nearby is picked automatically, an empty spot becomes a coordinate waypoint;
 - editor with SID, STAR and approach selection (from the MSFS database via Link);
 - route export and import.
 
 **Cockpit (with OpenAirBook Link)**
-- PFD always in view, ND map, engines, flight progress;
-- **autopilot with knobs** like real avionics: a dual knob (the outer ring moves in big steps, the centre in small ones), −/+ buttons that repeat when held, and a window you can tap to type a value. Each setting has its mode buttons right below it, and the layout follows the aircraft: Airbus FCU, Boeing MCP, Garmin (jet and turboprop), simple GA autopilot. The profile is picked automatically or by hand;
+- **PFD**: horizon, speed and altitude tapes with selected values, flight path vector (drift and flight path angle), 10-second speed trend, Mach, QNH, height above terrain with a ground band, track marker, wind and autopilot modes (FMA);
+- **MFD/ND** in ARC and ROSE modes: route, selected heading, next waypoint with distance, bearing and time, and from the MSFS database the airports, VORs (with frequency), NDBs and waypoints around the aircraft (layers can be toggled); below it a vertical situation display (VSD) with the selected altitude and the path at the current vertical speed;
+- **engines**: an EICAS/ECAM display (N1 or RPM, EGT, fuel flow and fuel on board) and a throttle quadrant you drag with your finger — thrust, plus mixture and propeller on piston and turboprop aircraft; jets get IDLE/CL/FLX/TOGA detents, TO/GA and reverse thrust;
+- **MSFS camera**: cockpit, external, drone;
+- **autopilot with knobs** like real avionics: a dual knob (the outer ring moves in big steps, the centre in small ones), −/+ buttons that repeat when held, and a window you can tap to type a value. Each setting has its mode buttons right below it. The panel looks like the manufacturer's — Airbus FCU (amber windows, green lamp bars), Boeing MCP (square keys with a lamp), Garmin (cyan values), GA in KAP140 style — and adapts to the app theme. The profile is picked automatically or by hand;
 - radios (COM, NAV, transponder) and systems (gear, flaps, spoilers, trim, lights).
 
 **Flying the aircraft**
 - **gyro** (default): hold the phone like a yoke; it only flies while you hold the pad, and letting go hands control back at once;
 - an on-screen thumb stick, or a physical controller or joystick (Bluetooth, USB-C);
-- **floating control button**: shown on every tab, so you can read the briefing or the map with the controls under your thumb. Hold it and tilt the phone (gyro) or move your thumb (stick). Drag it by the handle to move it.
+- **floating control button**: shown on every tab, so you can read the briefing or the map with the controls under your thumb. Hold it and tilt the phone (gyro) or move your thumb (stick). Drag it by the handle to move it. The **with trim** variant: with the gyro you trim by dragging your finger on the button (down — nose up, up — nose down); with the stick, trim has its own buttons.
 
-**Flight history**
-- every flight is recorded automatically: position, altitude, ground and indicated speed, vertical speed, heading;
+**Logbook**
+- its own screen with a summary, a filter and flights grouped by month; each shows the route, time, distance, altitude, landing score and a profile thumbnail;
+- every flight is recorded automatically: position, altitude, ground and indicated speed, vertical speed, heading; **restarting the flight in the simulator** (a position jump or another aircraft) closes the current entry and starts a new one;
 - recording rate is set in Settings: 4, 2 or 1 times per second, every 2 s or every 5 s;
 - compact archive: the track is stored as differences between points and gzip-compressed, a fraction of the size of plain JSON;
 - export and import of the whole history as a single `.oab` file (backup or moving to another phone), plus GPX export of a single flight;
@@ -138,6 +149,7 @@ To fly the aircraft and read live data from the simulator, run **OpenAirBook Lin
 **Also**
 - tools: wind calculator, density altitude, descent, fuel, unit converter, METAR and TAF decoder, radio phraseology;
 - AMOLED (true black), graphite and bright themes; layouts for phones in portrait and landscape and for tablets;
+- tapping the logo takes you back to the home screen;
 - automatic updates from GitHub.
 
 ### Data sources
@@ -150,7 +162,7 @@ To fly the aircraft and read live data from the simulator, run **OpenAirBook Lin
 | Base map and buildings | [OpenFreeMap](https://openfreemap.org/) / OpenStreetMap | ODbL |
 | Charts (USA) | [FAA d-TPP](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/dtpp/) | public domain |
 | Flight plan | [SimBrief](https://www.simbrief.com/) (public plan export) | — |
-| Procedures, ILS, live flight data | your MSFS database and SimConnect via OpenAirBook Link | — |
+| Procedures, ILS, airports and navaids on the ND, live flight data | your MSFS database and SimConnect via OpenAirBook Link | — |
 
 The OurAirports database downloads once on first launch and refreshes every 30 days. Flight history and routes stay on the phone.
 

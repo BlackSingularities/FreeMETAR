@@ -208,7 +208,7 @@ private fun PanelFor(v: LiveView, s: FlightState, link: LinkClient, profile: com
         LiveView.RADIO -> RadioPanel(link, s)
         LiveView.CONTROLS -> SystemsPanel(link, s, effective)
         LiveView.YOKE -> YokePanel(link, s)
-        LiveView.ENGINES -> Systems(s)
+        LiveView.ENGINES -> EnginePanel(link, s, effective)
         else -> {}
     }
 }

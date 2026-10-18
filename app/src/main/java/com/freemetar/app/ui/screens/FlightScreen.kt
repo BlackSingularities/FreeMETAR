@@ -72,7 +72,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.freemetar.app.MainViewModel
 import com.freemetar.app.RouteBriefing
 import com.freemetar.app.ui.flight.ConnectionSection
-import com.freemetar.app.ui.flight.FlightHistorySection
 import com.freemetar.app.ui.flight.CockpitView
 import com.freemetar.app.domain.AircraftProfile
 import com.freemetar.app.data.SavedRoute
@@ -91,7 +90,7 @@ import java.util.Date
 /** Sekcja Lot: aktywny plan z pogodą na trasie, import (SimBrief, tekst, plik), zapisane trasy, symulator. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> Unit, onEditPlan: (String) -> Unit, onOpenFlight: (String) -> Unit) {
+fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> Unit, onEditPlan: (String) -> Unit, onOpenFlight: (String) -> Unit, onOpenLogbook: () -> Unit = {}, onOpenSettings: () -> Unit = {}) {
     val c = Fm.c
     val settings by vm.settings.collectAsStateWithLifecycle()
     val routes by vm.routes.collectAsStateWithLifecycle()
@@ -117,7 +116,8 @@ fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> U
             Column(Modifier.fillMaxSize().statusBarsPadding()) {
                 ModeSwitch(cockpit) { cockpit = it }
                 CockpitView(vm.link, state, active, AircraftProfile.fromName(settings.aircraftProfile), { p -> vm.setAircraftProfile(p) },
-                    settings.controlMode, { vm.setControlMode(it) }, settings.floatingControl, { vm.setFloatingControl(it) })
+                    settings.controlMode, { vm.setControlMode(it) }, settings.floatingControl, { vm.setFloatingControl(it) },
+                    vm.nearbyNav.collectAsStateWithLifecycle().value)
             }
         } else Column(
             Modifier.fillMaxSize().wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 820.dp)
@@ -131,16 +131,22 @@ fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> U
             if (active != null) ActivePlan(active, briefing, onOpen, onShowMap, { onEditPlan(active.id) }) { vm.refreshRouteBriefing() }
 
             Section(loc("Nowy plan lotu", "New flight plan"), Icons.Outlined.CloudDownload) {
-                var user by rememberSaveable(settings.simbriefUser) { mutableStateOf(settings.simbriefUser) }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(
-                        user, { user = it }, Modifier.weight(1f),
-                        label = { Text(loc("Użytkownik SimBrief lub Pilot ID", "SimBrief username or Pilot ID")) }, singleLine = true,
-                        shape = RoundedCornerShape(8.dp),
-                    )
-                    Button({ vm.importSimbrief(user) }, enabled = !importing) { Text(if (importing) loc("Pobieranie…", "Loading…") else loc("Pobierz", "Download")) }
+                // SimBrief: login zapisany na stałe w Ustawieniach — tu tylko pobranie ostatniego planu
+                if (settings.simbriefUser.isNotBlank()) {
+                    Button({ vm.importSimbrief(settings.simbriefUser) }, enabled = !importing, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Outlined.CloudDownload, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
+                        Text(if (importing) loc("Pobieranie…", "Loading…") else loc("Pobierz ostatni plan z SimBrief", "Download latest SimBrief plan"))
+                    }
+                    Text(loc("Konto ${settings.simbriefUser}. Zmienisz je w Ustawieniach.", "Account ${settings.simbriefUser}. Change it in Settings."),
+                        style = MaterialTheme.typography.bodySmall, color = c.ink2, modifier = Modifier.padding(top = 4.dp))
+                } else {
+                    OutlinedButton(onOpenSettings, modifier = Modifier.fillMaxWidth()) { Text(loc("Ustaw konto SimBrief w Ustawieniach", "Set your SimBrief account in Settings")) }
                 }
-                Text(loc("Pobiera ostatni plan wygenerowany na simbrief.com.", "Loads the latest plan generated on simbrief.com."), style = MaterialTheme.typography.bodySmall, color = c.ink2, modifier = Modifier.padding(top = 4.dp))
+
+                Spacer(Modifier.size(10.dp))
+                OutlinedButton({ vm.startMapPlanning(); onShowMap() }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Outlined.Map, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(loc("Zaplanuj na mapie", "Plan on the map"))
+                }
 
                 Spacer(Modifier.size(14.dp))
                 Rule()
@@ -149,7 +155,7 @@ fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> U
                 var fl by rememberSaveable { mutableStateOf("") }
                 OutlinedTextField(
                     text, { text = it.uppercase() }, Modifier.fillMaxWidth(),
-                    label = { Text(loc("Trasa, np. EPWA SOXER N871 BIMPA EPGD", "Route, e.g. EPWA SOXER N871 BIMPA EPGD")) },
+                    label = { Text(loc("Albo wpisz trasę: lotniska i punkty, np. EPWA SOXER EPGD", "Or type a route: airports and waypoints, e.g. EPWA SOXER EPGD")) },
                     textStyle = RawText, minLines = 2, shape = RoundedCornerShape(8.dp),
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
                 )
@@ -189,7 +195,7 @@ fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> U
                 }
             }
 
-            FlightHistorySection(vm, onOpenFlight)
+            com.freemetar.app.ui.flight.LogbookEntry(vm, onOpenLogbook)
         }
         SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).padding(12.dp).widthIn(max = 560.dp))
     }

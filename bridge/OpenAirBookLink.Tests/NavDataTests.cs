@@ -113,6 +113,20 @@ public class NavDataTests
     }
 
     [Fact]
+    public async Task Nearby_returns_airports_and_navaids_sorted_by_distance()
+    {
+        var svc = new NavDataService();
+        var r = (NearbyInfo)await svc.ExecuteAsync(Query(new { v = 1, type = "x", kind = "nearby", lat = 52.17, lon = 20.97, radiusNm = 20 }), _sim, "simulation", default);
+        Assert.Contains(r.Results, f => f.Ident == "EPWA" && f.Type == FixTypes.Airport);
+        Assert.Contains(r.Results, f => f.Ident == "WAR" && f.Type == FixTypes.Vor);
+        Assert.DoesNotContain(r.Results, f => f.Ident == "EPGD");
+        var d = r.Results.Select(f => NavMath.DistanceNm(52.17, 20.97, f.Lat, f.Lon)).ToList();
+        Assert.Equal(d.OrderBy(x => x), d);
+        Assert.Null(NavdataQuery.Parse(Msg(new { v = 1, type = "x", kind = "nearby", lat = 95.0, lon = 1.0 }), out var err));
+        Assert.NotNull(err);
+    }
+
+    [Fact]
     public async Task Fix_results_sorted_by_distance()
     {
         var svc = new NavDataService();

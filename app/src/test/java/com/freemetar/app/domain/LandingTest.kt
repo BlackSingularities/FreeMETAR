@@ -80,7 +80,8 @@ class LandingTest {
         val d = 1500.0 / 364_000.0
         val lat = rw29.thresholdLat + d * kotlin.math.cos(Math.toRadians(292.0))
         val lon = rw29.thresholdLon + d * kotlin.math.sin(Math.toRadians(292.0)) / kotlin.math.cos(Math.toRadians(54.38))
-        t += 1000
+        // Ostatni odcinek podejścia (~2 NM) trwa realnie ok. minuty — krótszy czas rejestrator uznałby za restart lotu
+        t += 60_000
         r.onState(st(lat, lon, 130.0, true, td = Touchdown(seq = 1, vsFpm = -150.0, gForce = 1.15, pitchDeg = 4.0, bankDeg = 1.0, headingTrueDeg = 292.0, lat = lat, lon = lon, iasKt = 132.0)), t)
         val first = r.lastLanding
         assertNotNull(first)

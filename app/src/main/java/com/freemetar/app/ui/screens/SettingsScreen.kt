@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Straighten
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.ScreenRotation
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Upload
@@ -50,6 +51,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -113,6 +115,20 @@ fun SettingsScreen(vm: MainViewModel) {
             ToggleRow(Icons.Outlined.Autorenew, loc("Automatyczne odświeżanie", "Auto refresh"), loc("Co 5 minut, gdy aplikacja jest otwarta", "Every 5 minutes while the app is open"), s.autoRefresh) { vm.setAutoRefresh(it) }
         }
 
+        SectionCard("SimBrief", icon = Icons.Outlined.CloudDownload) {
+            var user by androidx.compose.runtime.saveable.rememberSaveable(s.simbriefUser) { androidx.compose.runtime.mutableStateOf(s.simbriefUser) }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                androidx.compose.material3.OutlinedTextField(user, { user = it.trim() }, Modifier.weight(1f), singleLine = true,
+                    label = { Text(loc("Użytkownik lub Pilot ID", "Username or Pilot ID")) }, shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                OutlinedButton({ vm.setSimbriefUser(user) }, enabled = user != s.simbriefUser) { Text(loc("Zapisz", "Save")) }
+            }
+            Text(
+                if (s.simbriefUser.isBlank()) loc("Zapisz konto raz — na ekranie Lot wystarczy potem jeden przycisk, żeby pobrać ostatni plan.", "Save your account once — then one button on the Flight screen downloads your latest plan.")
+                else loc("Zapisane konto: ${s.simbriefUser}.", "Saved account: ${s.simbriefUser}."),
+                color = Fm.c.ink2, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+
         SectionCard(loc("Sterowanie samolotem", "Flying the aircraft"), icon = Icons.Outlined.ScreenRotation) {
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("TILT" to loc("Żyroskop", "Gyro"), "TOUCH" to loc("Drążek palcem", "Thumb stick"), "GAMEPAD" to loc("Kontroler", "Controller")).forEach { (code, label) ->
@@ -122,6 +138,15 @@ fun SettingsScreen(vm: MainViewModel) {
             ToggleRow(Icons.Outlined.TouchApp, loc("Pływający przycisk sterowania", "Floating control button"),
                 loc("Widoczny na każdej zakładce, gdy symulator jest połączony. Przytrzymaj go, żeby sterować.", "Shown on every tab while the simulator is connected. Hold it to fly."),
                 s.floatingControl) { vm.setFloatingControl(it) }
+            if (s.floatingControl) androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(start = 32.dp)) {
+                FilterChip(s.floatingStyle == "SIMPLE", { vm.setFloatingStyle("SIMPLE") }, { Text(loc("Prosty", "Simple")) })
+                FilterChip(s.floatingStyle == "TRIM", { vm.setFloatingStyle("TRIM") }, { Text(loc("Z trymem", "With trim")) })
+            }
+            if (s.floatingControl && s.floatingStyle == "TRIM") Text(
+                loc("Żyroskop: trzymając przycisk, przeciągnij palec w dół, żeby trymować nos w górę, albo w górę, żeby trymować nos w dół. Drążek palcem: trym ma osobne przyciski obok.",
+                    "Gyro: while holding the button, drag your finger down to trim nose up, or up to trim nose down. Thumb stick: trim has its own buttons next to it."),
+                color = Fm.c.ink2, fontSize = 12.sp, modifier = Modifier.padding(start = 32.dp, top = 4.dp),
+            )
         }
 
         SectionCard(loc("Zapis lotów", "Flight recording"), icon = Icons.Outlined.History) {

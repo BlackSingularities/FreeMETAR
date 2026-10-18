@@ -33,6 +33,8 @@ data class Settings(
     val controlMode: String = "TILT",
     /** Pływający przycisk sterowania nad wszystkimi zakładkami. */
     val floatingControl: Boolean = false,
+    /** SIMPLE — sam przycisk sterowania; TRIM — dodatkowo przyciski trymu wysokości. */
+    val floatingStyle: String = "SIMPLE",
     /** Odstęp między punktami zapisu lotu (ms). */
     val recordIntervalMs: Int = 1000,
 )
@@ -53,6 +55,7 @@ class Prefs(private val context: Context) {
     private val CONTROL = stringPreferencesKey("control_mode")
     private val FLOATING = booleanPreferencesKey("floating_control")
     private val RECORD_MS = intPreferencesKey("record_interval_ms")
+    private val FLOAT_STYLE = stringPreferencesKey("floating_style")
 
     private fun list(v: String?) = v?.split(",")?.filter { it.isNotBlank() }
 
@@ -70,6 +73,7 @@ class Prefs(private val context: Context) {
             language = p[LANGUAGE] ?: "SYSTEM",
             controlMode = p[CONTROL] ?: "TILT",
             floatingControl = p[FLOATING] ?: false,
+            floatingStyle = p[FLOAT_STYLE] ?: "SIMPLE",
             recordIntervalMs = p[RECORD_MS] ?: 1000,
         )
     }
@@ -121,6 +125,7 @@ class Prefs(private val context: Context) {
 
     suspend fun setControlMode(v: String) = context.dataStore.edit { it[CONTROL] = v }
     suspend fun setFloatingControl(v: Boolean) = context.dataStore.edit { it[FLOATING] = v }
+    suspend fun setFloatingStyle(v: String) = context.dataStore.edit { it[FLOAT_STYLE] = v }
     suspend fun setRecordInterval(ms: Int) = context.dataStore.edit { it[RECORD_MS] = ms }
     suspend fun setLanguage(v: String) = context.dataStore.edit { it[LANGUAGE] = v }
     suspend fun setAircraftProfile(name: String?) = context.dataStore.edit { if (name == null) it.remove(PROFILE) else it[PROFILE] = name }

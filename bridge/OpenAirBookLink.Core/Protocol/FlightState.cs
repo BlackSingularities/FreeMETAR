@@ -146,6 +146,12 @@ public sealed class ControlsData
     public bool SpoilersArmed { get; set; }
     public bool ParkingBrake { get; set; }
     public double ElevatorTrimPct { get; set; }
+    // Dźwignie (silnik 1; THROTTLE_SET/MIXTURE_SET/PROPELLER_SET ustawiają wszystkie silniki), 0–100 %
+    public double ThrottlePct { get; set; }
+    public double MixturePct { get; set; }
+    public double PropPct { get; set; }
+    // Kamera MSFS (CAMERA STATE): 2 kabina, 3 zewnętrzna, 4 dron, inne = pozostałe widoki
+    public int CameraState { get; set; }
 }
 
 public sealed class LightsData

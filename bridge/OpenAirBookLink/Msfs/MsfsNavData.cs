@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using System.Text;
 using OpenAirBookLink.Core.NavData;
@@ -32,6 +32,8 @@ public sealed class MsfsNavData : INavDataProvider
     private readonly ConcurrentDictionary<uint, Pending> _pending = new();
     private readonly ConcurrentDictionary<uint, uint> _packetToRequest = new();
     private readonly ConcurrentDictionary<uint, uint> _earlyExceptions = new();
+    private readonly ConcurrentDictionary<uint, ListPending> _lists = new();
+    private static readonly TimeSpan ListTimeout = TimeSpan.FromSeconds(5);
     private SimConnectClient? _client;
     private uint _nextRequest = FirstRequestId;
 
@@ -215,6 +217,77 @@ public sealed class MsfsNavData : INavDataProvider
         var all = (await Task.WhenAll(lookups)).SelectMany(x => x).ToList();
         // Ten sam obiekt bywa zwrócony przez dwa zapytania (np. VOR i waypoint w tym samym miejscu).
         return all.GroupBy(f => (f.Type, f.Region, Math.Round(f.Lat, 3), Math.Round(f.Lon, 3))).Select(g => g.First()).ToList();
+    }
+
+    // Lotniska, punkty trasy, NDB i VOR z „bańki rzeczywistości” MSFS wokół samolotu
+    // (SimConnect_RequestFacilitiesList_EX1). Filtr promienia i limit robi NavDataService.
+    public async Task<IReadOnlyList<FixResult>> NearbyAsync(double lat, double lon, double radiusNm, CancellationToken ct)
+    {
+        var kinds = new[] { (0, FixTypes.Airport), (1, FixTypes.Waypoint), (2, FixTypes.Ndb), (3, FixTypes.Vor) };
+        var lists = await Task.WhenAll(kinds.Select(k => RequestListAsync(k.Item1, k.Item2, ct)));
+        return lists.SelectMany(x => x).ToList();
+    }
+
+    private async Task<List<FixResult>> RequestListAsync(int listType, string fixType, CancellationToken ct)
+    {
+        var pending = new ListPending(fixType);
+        uint requestId;
+        lock (_nativeLock)
+        {
+            if (_client is not { IsConnected: true } client) throw new NavDataException(ErrorCodes.SimUnavailable, "Brak połączenia z MSFS");
+            requestId = _nextRequest++;
+            if (_nextRequest == 0) _nextRequest = FirstRequestId;
+            _lists[requestId] = pending;
+            var hr = Native.SimConnect_RequestFacilitiesList_EX1(client.Handle, listType, requestId);
+            if (hr < 0)
+            {
+                _lists.TryRemove(requestId, out _);
+                return new();
+            }
+        }
+        try
+        {
+            return await pending.Task.WaitAsync(ListTimeout, ct);
+        }
+        catch (TimeoutException)
+        {
+            // Pusta bańka albo MSFS nie odpowiedział — zwróć to, co przyszło
+            return pending.Snapshot();
+        }
+        finally
+        {
+            _lists.TryRemove(requestId, out _);
+        }
+    }
+
+    // Wpis listy: Ident[n] + Region[3] + lat/lon/alt (3 × double), potem pola zależne od typu
+    // (waypoint: magvar; NDB: + częstotliwość; VOR: + flagi, lokalizator, ścieżka). Długość identyfikatora
+    // różni się między wersjami SDK, więc wyznaczamy ją z rozmiaru wpisu i znanego ogona danego typu.
+    private static List<FixResult> ParseList(byte[] data, int count, string fixType)
+    {
+        var result = new List<FixResult>();
+        if (count <= 0) return result;
+        var entry = data.Length / count;
+        var tail = fixType switch { FixTypes.Airport => 0, FixTypes.Waypoint => 4, FixTypes.Ndb => 8, _ => 44 };
+        var identLen = entry - 3 - 24 - tail;
+        if (identLen is < 4 or > 16) return result;
+        for (var i = 0; i < count; i++)
+        {
+            var o = i * entry;
+            var ident = Ascii(data, o, identLen);
+            var region = Ascii(data, o + identLen, 3);
+            var lat = BitConverter.ToDouble(data, o + identLen + 3);
+            var lon = BitConverter.ToDouble(data, o + identLen + 11);
+            double? mhz = null;
+            if (fixType is FixTypes.Ndb or FixTypes.Vor) mhz = FreqMhz(BitConverter.ToUInt32(data, o + identLen + 3 + 24 + 4));
+            if (ident.Length == 0 || (lat == 0 && lon == 0)) continue;
+            result.Add(new FixResult
+            {
+                Ident = ident, Type = fixType, Lat = NavMath.Round(lat, 6), Lon = NavMath.Round(lon, 6),
+                FreqMhz = mhz, Region = region.Length > 0 ? region : null,
+            });
+        }
+        return result;
     }
 
     // ---------- zapytania pomocnicze ----------
@@ -528,6 +601,18 @@ public sealed class MsfsNavData : INavDataProvider
                     if (entry + 1 >= outOf) p.Complete();
                     break;
                 }
+                case SimConnectRecvId.AirportList or SimConnectRecvId.WaypointList or SimConnectRecvId.NdbList or SimConnectRecvId.VorList
+                    when size >= MinimalListHeader:
+                {
+                    var request = (uint)Marshal.ReadInt32(ptr, 12);
+                    if (!_lists.TryGetValue(request, out var l)) return;
+                    var count = Marshal.ReadInt32(ptr, 16);
+                    var entry = Marshal.ReadInt32(ptr, 20);
+                    var outOf = Marshal.ReadInt32(ptr, 24);
+                    if (count > 0) l.Add(ParseList(Copy(ptr, MinimalListHeader, size - MinimalListHeader), count, l.FixType));
+                    if (entry + 1 >= outOf) l.Complete();
+                    break;
+                }
                 case SimConnectRecvId.Exception when size >= 24:
                 {
                     var exception = (uint)Marshal.ReadInt32(ptr, 12);
@@ -678,6 +763,26 @@ public sealed class MsfsNavData : INavDataProvider
         }
     }
 
+    private sealed class ListPending(string fixType)
+    {
+        private readonly List<FixResult> _items = new();
+        private readonly TaskCompletionSource<List<FixResult>> _tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public string FixType { get; } = fixType;
+        public Task<List<FixResult>> Task => _tcs.Task;
+
+        public void Add(IEnumerable<FixResult> items)
+        {
+            lock (_items) _items.AddRange(items);
+        }
+
+        public List<FixResult> Snapshot()
+        {
+            lock (_items) return _items.ToList();
+        }
+
+        public void Complete() => _tcs.TrySetResult(Snapshot());
+    }
+
     private sealed class Pending
     {
         private readonly List<Node> _nodes = new();
@@ -742,6 +847,10 @@ public sealed class MsfsNavData : INavDataProvider
         [DllImport("SimConnect.dll")]
         public static extern int SimConnect_RequestFacilityData_EX1(IntPtr hSimConnect, uint defineId, uint requestId,
             [MarshalAs(UnmanagedType.LPStr)] string icao, [MarshalAs(UnmanagedType.LPStr)] string region, byte type);
+
+        // type: 0 lotniska, 1 punkty trasy, 2 NDB, 3 VOR (SIMCONNECT_FACILITY_LIST_TYPE)
+        [DllImport("SimConnect.dll")]
+        public static extern int SimConnect_RequestFacilitiesList_EX1(IntPtr hSimConnect, int type, uint requestId);
 
         [DllImport("SimConnect.dll")]
         public static extern int SimConnect_GetLastSentPacketID(IntPtr hSimConnect, out uint sendId);

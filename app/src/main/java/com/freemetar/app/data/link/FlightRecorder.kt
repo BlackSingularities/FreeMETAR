@@ -69,6 +69,7 @@ class FlightRecorder(
     private var landingAt = 0L
     private var bounces = 0
     private var prev: FlightState? = null
+    private var lastAt = 0L
     private var airborneSince: Long? = null
 
     /** Ostatnia ocena lądowania (do pokazania od razu po przyziemieniu). */
@@ -102,11 +103,29 @@ class FlightRecorder(
                 points += point(s, now, lat, lon, alt, gs)
             }
             prev = s
+            lastAt = now
             return null
+        }
+        // Restart lotu w symulatorze (nowy lot, powrót na start, zmiana samolotu): zamknij bieżący
+        // i zacznij od nowa. Skok pozycji większy niż możliwy przelot od poprzedniego stanu = teleport.
+        val p = prev
+        val pLat = p?.position?.lat; val pLon = p?.position?.lon
+        if (pLat != null && pLon != null) {
+            val dtH = (now - lastAt).coerceAtLeast(1) / 3_600_000.0
+            val possibleNm = (maxOf(gs, p.speed.gsKt ?: 0.0) + 100) * dtH * 1.5 + 1.0
+            val jumped = Geo.distanceNm(pLat, pLon, lat, lon) > possibleNm
+            val otherAircraft = aircraft != null && s.aircraft.title != null && s.aircraft.title != aircraft
+            if (jumped || otherAircraft) {
+                val done = finish(lastAt)
+                prev = null
+                val next = onState(s, now)   // nowy stan od zera: może od razu zacząć nowe nagranie
+                return done ?: next
+            }
         }
         if (!onGround && airborneSince == null) airborneSince = now
         detectTouchdown(s, now)
         prev = s
+        lastAt = now
         val last = points.last()
         // Punkt co [intervalMs] (ustawienie); archiwum trzyma tor w kolumnach różnic spakowanych gzipem
         if (now - last.t >= intervalMs) {
