@@ -114,10 +114,10 @@ fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> U
         val state = live
         if (state != null && cockpit) {
             Column(Modifier.fillMaxSize().statusBarsPadding()) {
-                ModeSwitch(cockpit) { cockpit = it }
                 CockpitView(vm.link, state, active, AircraftProfile.fromName(settings.aircraftProfile), { p -> vm.setAircraftProfile(p) },
                     settings.controlMode, { vm.setControlMode(it) }, settings.floatingControl, { vm.setFloatingControl(it) },
-                    vm.nearbyNav.collectAsStateWithLifecycle().value)
+                    vm.nearbyNav.collectAsStateWithLifecycle().value, floatingTrim = settings.floatingStyle == "TRIM",
+                    onShowPlan = { cockpit = false })
             }
         } else Column(
             Modifier.fillMaxSize().wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 820.dp)
@@ -308,14 +308,14 @@ private fun RouteRow(r: SavedRoute, active: Boolean, onClick: () -> Unit, onEdit
 private fun ModeSwitch(cockpit: Boolean, onChange: (Boolean) -> Unit) {
     val c = Fm.c
     Row(
-        Modifier.padding(horizontal = 16.dp, vertical = 10.dp).clip(RoundedCornerShape(50)).border(1.dp, c.rule, RoundedCornerShape(50)).padding(3.dp),
+        Modifier.padding(horizontal = 10.dp, vertical = 4.dp).clip(RoundedCornerShape(50)).border(1.dp, c.rule, RoundedCornerShape(50)).padding(2.dp),
     ) {
         listOf(true to loc("Kokpit", "Cockpit"), false to loc("Plan i loty", "Plan & flights")).forEach { (v, label) ->
             val on = v == cockpit
             Text(
-                label, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = if (on) c.paper else c.ink2,
+                label, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = if (on) c.paper else c.ink2,
                 modifier = Modifier.clip(RoundedCornerShape(50)).background(if (on) c.ink else c.paper)
-                    .clickable { onChange(v) }.padding(horizontal = 16.dp, vertical = 7.dp),
+                    .clickable { onChange(v) }.padding(horizontal = 14.dp, vertical = 5.dp),
             )
         }
     }

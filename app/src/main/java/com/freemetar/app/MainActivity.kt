@@ -206,7 +206,8 @@ class MainActivity : ComponentActivity() {
                         Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.TopCenter) {
                             // Pływające stery nad wszystkimi zakładkami (rysowane po NavHost, więc na wierzchu)
                             val floating: @androidx.compose.runtime.Composable () -> Unit = {
-                                if (settings.floatingControl && liveState != null && settings.controlMode != "GAMEPAD")
+                                // Na ekranie Lot kokpit ma własny przycisk — tu tylko na pozostałych zakładkach
+                                if (settings.floatingControl && liveState != null && settings.controlMode != "GAMEPAD" && activeTab != "flight")
                                     com.freemetar.app.ui.flight.FloatingControl(vm.link, settings.controlMode, liveState, withTrim = settings.floatingStyle == "TRIM")
                             }
                             NavHost(

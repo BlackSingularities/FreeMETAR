@@ -177,14 +177,14 @@ fun DualKnob(
 
 /** Mały okrągły przycisk −/+ z powtarzaniem przy przytrzymaniu (400 ms, potem co 90 ms). */
 @Composable
-private fun NudgeKey(label: String, desc: String, modifier: Modifier = Modifier, skin: PanelSkin? = null, action: () -> Unit) {
+private fun NudgeKey(label: String, desc: String, modifier: Modifier = Modifier, skin: PanelSkin? = null, size: Dp = 38.dp, action: () -> Unit) {
     val c = Fm.c
     val scope = rememberCoroutineScope()
     val act by rememberUpdatedState(action)
     val haptic = LocalHapticFeedback.current
     var pressed by remember { mutableStateOf(false) }
     Box(
-        modifier.size(38.dp).clip(CircleShape).background(if (pressed) (skin?.keyPressed ?: c.ink) else (skin?.key ?: c.terrain))
+        modifier.size(size).clip(CircleShape).background(if (pressed) (skin?.keyPressed ?: c.ink) else (skin?.key ?: c.terrain))
             .semantics { contentDescription = desc; role = Role.Button; onClick { act(); true } }
             .pointerInput(Unit) {
                 awaitEachGesture {
@@ -265,9 +265,9 @@ private data class Selector(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SelectorModule(sel: Selector, skin: PanelSkin, onEnter: (String) -> Unit, onKey: (String) -> Unit, modifier: Modifier = Modifier) {
+private fun SelectorModule(sel: Selector, skin: PanelSkin, onEnter: (String) -> Unit, onKey: (String) -> Unit, modifier: Modifier = Modifier, compact: Boolean = false) {
     Column(
-        modifier.clip(RoundedCornerShape(12.dp)).border(1.dp, skin.plateEdge, RoundedCornerShape(12.dp)).padding(10.dp),
+        modifier.clip(RoundedCornerShape(12.dp)).border(1.dp, skin.plateEdge, RoundedCornerShape(12.dp)).padding(if (compact) 6.dp else 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Okienko wartości: dotknięcie = wpisanie liczby
@@ -280,19 +280,20 @@ private fun SelectorModule(sel: Selector, skin: PanelSkin, onEnter: (String) -> 
                 Text(sel.label, fontFamily = Mono, fontSize = 10.sp, color = skin.windowLabel, modifier = Modifier.weight(1f), maxLines = 1)
                 Text(sel.unit, fontFamily = Mono, fontSize = 10.sp, color = skin.windowLabel.copy(alpha = 0.7f))
             }
-            Text(sel.value, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 26.sp, color = skin.windowText, maxLines = 1)
+            Text(sel.value, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = if (compact) 19.sp else 26.sp, color = skin.windowText, maxLines = 1)
         }
         Spacer(Modifier.height(10.dp))
         // Pokrętło z −/+ w dolnych narożnikach; średnica wg szerokości modułu, żeby −/+ go nie zachodziły
         BoxWithConstraints(Modifier.fillMaxWidth()) {
-            val knob = (maxWidth - 52.dp).coerceIn(64.dp, 96.dp)
+            val nudge = if (compact) 30.dp else 38.dp
+            val knob = (maxWidth - nudge - 14.dp).coerceIn(if (compact) 48.dp else 64.dp, 96.dp)
             Box(Modifier.fillMaxWidth().height(knob + 14.dp)) {
             DualKnob(
                 knob, loc("Pokrętło ${sel.label}: ${sel.value}", "${sel.label} knob: ${sel.value}"), Modifier.align(Alignment.TopCenter), skin,
                 onStep = sel.step, onBigStep = sel.big, onPush = { onEnter(sel.enter) },
             )
-            NudgeKey("−", loc("${sel.label} w dół", "${sel.label} down"), Modifier.align(Alignment.BottomStart), skin) { sel.step(-1) }
-            NudgeKey("+", loc("${sel.label} w górę", "${sel.label} up"), Modifier.align(Alignment.BottomEnd), skin) { sel.step(1) }
+            NudgeKey("−", loc("${sel.label} w dół", "${sel.label} down"), Modifier.align(Alignment.BottomStart), skin, nudge) { sel.step(-1) }
+            NudgeKey("+", loc("${sel.label} w górę", "${sel.label} up"), Modifier.align(Alignment.BottomEnd), skin, nudge) { sel.step(1) }
             }
         }
         if (sel.keys.isNotEmpty()) {
@@ -308,7 +309,7 @@ private fun SelectorModule(sel: Selector, skin: PanelSkin, onEnter: (String) -> 
 /** Panel autopilota dopasowany do profilu samolotu, z wyborem profilu (automatycznie / ręcznie). */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AutopilotPanelV2(link: LinkClient, s: FlightState, override: AircraftProfile?, onOverride: (AircraftProfile?) -> Unit) {
+fun AutopilotPanelV2(link: LinkClient, s: FlightState, override: AircraftProfile?, onOverride: (AircraftProfile?) -> Unit, compact: Boolean = false) {
     val c = Fm.c
     val detected = AircraftProfile.detect(s.aircraft.title, s.aircraft.atcModel, s.aircraft.category, s.aircraft.engineType)
     val p = override ?: detected
@@ -347,7 +348,7 @@ fun AutopilotPanelV2(link: LinkClient, s: FlightState, override: AircraftProfile
         AircraftProfile.PISTON -> listOf(Key("AP", ap.master, "AP_MASTER"))
     }
     // Płyta panelu: od tego miejsca wszystko na tle i w kolorach producenta
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(skin.plate).border(1.dp, skin.plateEdge, RoundedCornerShape(14.dp)).padding(10.dp)) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(skin.plate).border(1.dp, skin.plateEdge, RoundedCornerShape(14.dp)).padding(if (compact) 6.dp else 10.dp)) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
         Text(skin.name, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = skin.legend)
         Spacer(Modifier.width(8.dp))
@@ -402,19 +403,19 @@ fun AutopilotPanelV2(link: LinkClient, s: FlightState, override: AircraftProfile
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         // Moduł potrzebuje ~168 dp; trzy kolumny przy czterech modułach zostawiłyby sierotę — wtedy dwie
         // Moduł mieści się od ~150 dp: telefon 2 kolumny, szeroki ekran wszystkie w rzędzie
-        var cols = ((maxWidth + 8.dp) / 158.dp).toInt().coerceIn(1, modules.size)
+        var cols = ((maxWidth + 8.dp) / (if (compact) 112.dp else 158.dp)).toInt().coerceIn(1, modules.size)
         if (cols == 3 && modules.size == 4) cols = 2
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             modules.chunked(cols).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEach { sel -> SelectorModule(sel, skin, { enter = it }, { cmd(it) }, Modifier.weight(1f)) }
+                    row.forEach { sel -> SelectorModule(sel, if (compact) skin.copy(keyHeight = 36.dp) else skin, { enter = it }, { cmd(it) }, Modifier.weight(1f), compact) }
                     repeat(cols - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }
     }
     }
-    Text(loc("Kręć palcem wokół pokrętła: pierścień zmienia o duży krok, środek o mały. Dotknij okienka, aby wpisać wartość.",
+    if (!compact) Text(loc("Kręć palcem wokół pokrętła: pierścień zmienia o duży krok, środek o mały. Dotknij okienka, aby wpisać wartość.",
         "Turn a knob with your finger: the outer ring moves in big steps, the centre in small ones. Tap the window to type a value."),
         style = MaterialTheme.typography.labelSmall, color = c.ink2, modifier = Modifier.padding(top = 8.dp))
 

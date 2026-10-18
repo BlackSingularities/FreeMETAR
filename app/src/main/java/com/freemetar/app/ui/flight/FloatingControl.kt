@@ -103,8 +103,10 @@ fun FloatingControl(link: LinkClient, modeName: String, s: FlightState? = null, 
     val max = link.limits.maxDeflection
 
     // Pozycja przycisku (ułamek dostępnego obszaru) przetrwa obrót ekranu i zmianę zakładki
-    var fx by rememberSaveable { mutableFloatStateOf(1f) }
-    var fy by rememberSaveable { mutableFloatStateOf(0.62f) }
+    // Domyślnie lewa strona — z prawej są dźwignie mocy w widoku lotu
+    var fx by rememberSaveable { mutableFloatStateOf(0f) }
+    // Pionowo: dolna część ekranu (w widoku lotu lewa połowa łuku ND jest zwykle pusta)
+    var fy by rememberSaveable { mutableFloatStateOf(0.72f) }
 
     fun axes(): Pair<Double, Double> = if (tiltMode) {
         ControlMath.axis(tilt.roll - roll0, 35.0, 2.0, 1.0, max) to ControlMath.axis(tilt.pitch - pitch0, 30.0, 2.0, 1.0, max)

@@ -175,7 +175,7 @@ fun Pfd(s: FlightState, modifier: Modifier = Modifier) {
             }
         }
         readout(m, Rect(2f, center.y - 18, tapeW - 2, center.y + 18), ias.roundToInt().toString(), WHITE)
-        s.autopilot.spdKt?.let { label(m, it.roundToInt().toString(), Offset(tapeW / 2, att.top + 14f), c.accent, 13.sp, true) }
+        s.autopilot.spdKt?.let { drawRect(Color.Black, Offset(2f, att.top), Size(tapeW - 4, 30f)); label(m, it.roundToInt().toString(), Offset(tapeW / 2, att.top + 15f), c.accent, 13.sp, true) }
         s.speed.mach?.takeIf { it >= 0.4 }?.let { label(m, "M" + "%.2f".format(java.util.Locale.US, it).removePrefix("0"), Offset(tapeW / 2, att.bottom - 12f), WHITE, 12.sp, true) }
 
         // --- taśma wysokości ---
@@ -203,11 +203,11 @@ fun Pfd(s: FlightState, modifier: Modifier = Modifier) {
             }
         }
         readout(m, Rect(ax + 2, center.y - 18, ax + tapeW - 2, center.y + 18), alt.roundToInt().toString(), WHITE)
-        s.autopilot.altFt?.let { label(m, it.roundToInt().toString(), Offset(ax + tapeW / 2, att.top + 14f), c.accent, 13.sp, true) }
+        s.autopilot.altFt?.let { drawRect(Color.Black, Offset(ax + 2, att.top), Size(tapeW - 4, 30f)); label(m, it.roundToInt().toString(), Offset(ax + tapeW / 2, att.top + 15f), c.accent, 13.sp, true) }
         s.environment.qnhHpa?.let { label(m, "QNH ${it.roundToInt()}", Offset(ax + tapeW / 2, att.bottom - 12f), c.accent, 11.sp, true) }
         // Wysokość nad terenem: od 2500 ft w dół, na dole horyzontu
         s.position.altAglFt?.takeIf { it < 2500 && s.aircraft.onGround != true }?.let { agl ->
-            label(m, "${(agl / 10).roundToInt() * 10}", Offset(center.x, att.bottom - att.height * 0.1f), if (agl < 500) SYMBOL else FPV, 17.sp, true)
+            label(m, "${(agl / 10).roundToInt() * 10}", Offset(center.x, att.bottom - att.height * 0.24f), if (agl < 500) SYMBOL else FPV, 17.sp, true)
         }
         // Wiatr w lewym dolnym rogu horyzontu: kierunek/prędkość i strzałka względem kursu
         val wdir = s.environment.windDirDeg; val wspd = s.environment.windSpdKt
@@ -302,10 +302,11 @@ private fun DrawScope.readout(m: TextMeasurer, r: Rect, text: String, color: Col
 fun NavDisplay(
     s: FlightState, route: List<RoutePoint>, rangeNm: Int, modifier: Modifier = Modifier, rose: Boolean = false,
     nav: List<com.freemetar.app.data.nav.FixResult> = emptyList(), layers: Set<String> = setOf("airport", "vor", "ndb"),
+    aspect: Float = 1f,
 ) {
     val m = rememberTextMeasurer()
     val c = Fm.c
-    Canvas(modifier.fillMaxWidth().aspectRatio(1f).semantics { contentDescription = loc("Mapa nawigacyjna, zasięg $rangeNm mil", "Navigation display, range $rangeNm miles") }) {
+    Canvas(modifier.fillMaxWidth().aspectRatio(aspect).semantics { contentDescription = loc("Mapa nawigacyjna, zasięg $rangeNm mil", "Navigation display, range $rangeNm miles") }) {
         val w = size.width; val h = size.height
         val ac = if (rose) Offset(w / 2, h * 0.53f) else Offset(w / 2, h * 0.78f)
         val radius = if (rose) h * 0.38f else h * 0.7f
@@ -422,7 +423,6 @@ fun NavDisplay(
                 ete?.let { right("ETE %d:%02d".format(it.toInt() / 60, (it % 60).toInt()), h * 0.12f, WHITE, 11.sp) }
             }
         }
-        label(m, if (rose) "ROSE" else "ARC", Offset(w * 0.06f, h * 0.96f), WHITE.copy(alpha = 0.6f), 10.sp)
 
         // Samolot
         drawPath(Path().apply {
@@ -430,13 +430,19 @@ fun NavDisplay(
         }, SYMBOL)
 
         // Rogi: GS/TAS, wiatr
-        label(m, "GS ${(s.speed.gsKt ?: 0.0).roundToInt()}  TAS ${(s.speed.tasKt ?: 0.0).roundToInt()}", Offset(w * 0.2f, h * 0.05f), WHITE, 12.sp, true)
+        // Lewy górny róg: GS i TAS w dwóch liniach (na wąskim ND jedna linia nachodziła na TRK), pod nimi wiatr
+        fun left(text: String, y: Float, col: Color, sz: TextUnit, bold: Boolean = false) {
+            val l = m.measure(text, TextStyle(color = col, fontSize = sz, fontFamily = Mono, fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal))
+            drawText(l, topLeft = Offset(w * 0.025f, y))
+        }
+        left("GS ${(s.speed.gsKt ?: 0.0).roundToInt()}", h * 0.015f, WHITE, 12.sp, true)
+        left("TAS ${(s.speed.tasKt ?: 0.0).roundToInt()}", h * 0.065f, WHITE, 11.sp)
         val wd = s.environment.windDirDeg; val wsp = s.environment.windSpdKt
         if (wd != null && wsp != null) {
-            label(m, "%03d°/%d".format(wd.roundToInt(), wsp.roundToInt()), Offset(w * 0.15f, h * 0.11f), WHITE, 12.sp)
+            left("%03d°/%d".format(wd.roundToInt(), wsp.roundToInt()), h * 0.115f, WHITE, 11.sp)
             // Strzałka: dokąd wieje wiatr, względem kursu
             val rel = Math.toRadians(wd + 180 - heading)
-            val o = Offset(w * 0.08f, h * 0.2f)
+            val o = Offset(w * 0.07f, h * 0.22f)
             val tip = Offset(o.x + (sin(rel) * 18).toFloat(), o.y - (cos(rel) * 18).toFloat())
             val tail = Offset(o.x - (sin(rel) * 18).toFloat(), o.y + (cos(rel) * 18).toFloat())
             drawLine(c.green, tail, tip, 3f)
