@@ -1,0 +1,186 @@
+package com.freemetar.app.ui.screens
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.freemetar.app.data.CalloutsList
+import com.freemetar.app.domain.loc
+
+/**
+ * Ekran ustawień Callouts - konfiguracja zapowiedzi głosowych.
+ */
+@Composable
+fun CalloutsSettingsScreen(
+    enabled: Boolean,
+    enabledCallouts: Set<String>,
+    language: String,
+    speechRate: Float,
+    onEnabledChange: (Boolean) -> Unit,
+    onCalloutToggle: (String, Boolean) -> Unit,
+    onLanguageChange: (String) -> Unit,
+    onSpeechRateChange: (Float) -> Unit,
+    onBack: () -> Unit
+) {
+    Scaffold(
+        topBar = {
+            androidx.compose.material3.TopAppBar(
+                title = { Text(loc("Callouts", "Callouts")) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        androidx.compose.material.icons.Icons.Outlined.ArrowBack
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Główny przełącznik
+            Card(
+                Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            loc("Zapowiedzi głosowe", "Voice callouts"),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            loc("Automatyczne zapowiedzi podczas lotu", "Automatic announcements during flight"),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = enabled,
+                        onCheckedChange = onEnabledChange
+                    )
+                }
+            }
+
+            if (enabled) {
+                // Ustawienia języka
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            loc("Język", "Language"),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FilterChip(
+                                selected = language == "en",
+                                onClick = { onLanguageChange("en") },
+                                label = { Text("English") }
+                            )
+                            FilterChip(
+                                selected = language == "pl",
+                                onClick = { onLanguageChange("pl") },
+                                label = { Text("Polski") }
+                            )
+                        }
+                    }
+                }
+
+                // Prędkość mowy
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            loc("Prędkość mowy", "Speech rate"),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Slider(
+                            value = speechRate,
+                            onValueChange = onSpeechRateChange,
+                            valueRange = 0.5f..1.5f,
+                            steps = 4
+                        )
+                        Text(
+                            "${(speechRate * 100).toInt()}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                // Callouts przy lądowaniu
+                CalloutGroupCard(
+                    title = loc("Lądowanie", "Landing"),
+                    callouts = CalloutsList.LANDING,
+                    enabledCallouts = enabledCallouts,
+                    onToggle = onCalloutToggle
+                )
+
+                // Callouts przy starcie
+                CalloutGroupCard(
+                    title = loc("Start", "Takeoff"),
+                    callouts = CalloutsList.TAKEOFF,
+                    enabledCallouts = enabledCallouts,
+                    onToggle = onCalloutToggle
+                )
+
+                // Callouts autopilota
+                CalloutGroupCard(
+                    title = loc("Autopilot", "Autopilot"),
+                    callouts = CalloutsList.AUTOPILOT,
+                    enabledCallouts = enabledCallouts,
+                    onToggle = onCalloutToggle
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CalloutGroupCard(
+    title: String,
+    callouts: List<Pair<String, String>>,
+    enabledCallouts: Set<String>,
+    onToggle: (String, Boolean) -> Unit
+) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+
+            callouts.forEach { (id, description) ->
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(id, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Checkbox(
+                        checked = enabledCallouts.contains(id),
+                        onCheckedChange = { onToggle(id, it) }
+                    )
+                }
+            }
+        }
+    }
+}
