@@ -140,9 +140,23 @@ private fun NdWithControls(s: FlightState, route: SavedRoute?, nearby: List<FixR
     var layersMenu by remember { mutableStateOf(false) }
     val layers = layersText.split(",").filter { it.isNotBlank() }.toSet()
     val range = RANGES[rangeIdx]
+    var ndMode by remember { mutableStateOf(NdMode.ARC) }
+
     BoxWithConstraints(modifier.clip(RoundedCornerShape(10.dp))) {
         val narrow = maxWidth < 230.dp
-        NavDisplay(s, route?.fullPath().orEmpty(), range, rose = rose, nav = nearby, layers = layers, aspect = aspect)
+
+        // Użyj nowego EnhancedNavDisplay z trybami
+        EnhancedNavDisplay(
+            state = s,
+            route = route?.fullPath().orEmpty(),
+            rangeNm = range,
+            nav = nearby,
+            modifier = Modifier.fillMaxSize(),
+            onModeChange = { ndMode = it },
+            onRangeChange = { newRange ->
+                rangeIdx = RANGES.indexOf(newRange).coerceIn(0, RANGES.lastIndex)
+            }
+        )
         Row(Modifier.align(Alignment.BottomStart).padding(6.dp)) {
             EfisKey(if (rose) "ROSE" else "ARC", loc("Tryb mapy: dotknij, aby zmienić", "Map mode: tap to switch")) { rose = !rose }
         }
