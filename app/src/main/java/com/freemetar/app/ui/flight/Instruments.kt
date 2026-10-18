@@ -152,6 +152,9 @@ fun Pfd(s: FlightState, modifier: Modifier = Modifier) {
         drawLine(SYMBOL, Offset(center.x + 30, center.y), Offset(center.x + wing + 30, center.y), 7f, cap = StrokeCap.Round)
         drawRect(SYMBOL, Offset(center.x - 5, center.y - 5), Size(10f, 10f))
 
+        // --- ILS indicators (localizer i glideslope) ---
+        drawIlsIndicators(m, s, center, att)
+
         // --- taśma prędkości ---
         val pxKt = att.height / 90f
         drawRect(TAPE, Offset(0f, att.top), Size(tapeW, att.height))
@@ -548,5 +551,83 @@ fun VerticalProfile(s: FlightState, route: List<RoutePoint>, rangeNm: Int, modif
         val ay = y(alt)
         drawPath(Path().apply { moveTo(left + 14, ay); lineTo(left, ay - 7); lineTo(left, ay + 7); close() }, SYMBOL)
         label(m, "VSD", Offset(w * 0.95f, h * 0.06f), WHITE.copy(alpha = 0.6f), 9.sp)
+    }
+}
+
+/**
+ * ILS indicators - localizer i glideslope na PFD.
+ *
+ * Localizer: pozioma belka odchylenia (±2.5 dots od centerline)
+ * Glideslope: pionowa belka odchylenia (±2.5 dots od ścieżki)
+ * DME: dystans do progu
+ */
+private fun DrawScope.drawIlsIndicators(
+    m: TextMeasurer,
+    s: FlightState,
+    center: Offset,
+    att: Rect
+) {
+    // TODO: Przekazać AirportNav z głównego ViewModel
+    // Na razie placeholder - rysuj scale zawsze, wskaźniki gdy są dane
+
+    val ilsDev: IlsCalculator.IlsDeviation? = null // TODO: Calculate from actual data
+
+    val localizerY = center.y + att.height * 0.42f // Pod symbolem samolotu
+    val glideslopeX = center.x + att.width * 0.38f // Po prawej stronie
+
+    // --- Localizer scale (pozioma, 5 dots) ---
+    val locDotSpacing = 20f
+    for (i in -2..2) {
+        val x = center.x + i * locDotSpacing
+        if (i == 0) {
+            drawCircle(Color(0xFF00FF00), 3f, Offset(x, localizerY))
+        } else {
+            drawCircle(Color.White.copy(alpha = 0.5f), 2f, Offset(x, localizerY))
+        }
+    }
+
+    // Wskaźnik localizer (jeśli są dane)
+    ilsDev?.let { dev ->
+        val locX = center.x + (dev.localizerDots * locDotSpacing).toFloat()
+        drawLine(
+            Color(0xFF00FF00),
+            Offset(locX, localizerY - 8),
+            Offset(locX, localizerY + 8),
+            3f
+        )
+    }
+
+    // --- Glideslope scale (pionowa, 5 dots) ---
+    val gsDotSpacing = 20f
+    for (i in -2..2) {
+        val y = center.y - i * gsDotSpacing
+        if (i == 0) {
+            drawCircle(Color(0xFF00FF00), 3f, Offset(glideslopeX, y))
+        } else {
+            drawCircle(Color.White.copy(alpha = 0.5f), 2f, Offset(glideslopeX, y))
+        }
+    }
+
+    // Wskaźnik glideslope (jeśli są dane)
+    ilsDev?.let { dev ->
+        val gsY = center.y - (dev.glideslopeDots * gsDotSpacing).toFloat()
+        drawLine(
+            Color(0xFF00FF00),
+            Offset(glideslopeX - 8, gsY),
+            Offset(glideslopeX + 8, gsY),
+            3f
+        )
+
+        // DME distance
+        dev.dmeNm?.let { dme ->
+            label(
+                m,
+                "%.1f".format(dme),
+                Offset(glideslopeX, center.y + att.height * 0.45f),
+                Color(0xFF00FF00),
+                11.sp,
+                true
+            )
+        }
     }
 }
