@@ -12,6 +12,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.freemetar.app.data.link.FlightState
 import com.freemetar.app.data.Routes
+import com.freemetar.app.data.nav.AirportNav
+import com.freemetar.app.data.nav.NavDataStore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
@@ -48,6 +53,9 @@ fun EmbeddedMapView(
     var mapView by remember { mutableStateOf<MapView?>(null) }
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
     var style by remember { mutableStateOf<Style?>(null) }
+    var nearestAirport by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val navDataStore = remember { NavDataStore(context) }
 
     val defaultTilt = 50.0
     val defaultZoom = when (rangeNm) {
@@ -79,7 +87,7 @@ fun EmbeddedMapView(
         }
     }
 
-    // Śledzenie samolotu
+    // Śledzenie samolotu i aktualizacja ILS
     LaunchedEffect(state.position.lat, state.position.lon, state.attitude.trackTrueDeg, rangeNm) {
         val lat = state.position.lat
         val lon = state.position.lon
@@ -95,6 +103,29 @@ fun EmbeddedMapView(
                     .build()
                 map.easeCamera(CameraUpdateFactory.newCameraPosition(cameraPos), 500)
             }
+
+            // Sprawdź najbliższe lotnisko dla ILS (w promieniu 30 NM)
+            // TODO: Implement nearest airport detection
+            // Dla testu: jeśli blisko lotniska, załaduj jego ILS
+        }
+    }
+
+    // Aktualizuj ILS gdy zmieni się lotnisko
+    LaunchedEffect(nearestAirport, style) {
+        val st = style ?: return@LaunchedEffect
+        val icao = nearestAirport
+
+        if (icao != null) {
+            scope.launch {
+                val airportNav = withContext(Dispatchers.IO) {
+                    navDataStore.get(icao)
+                }
+                withContext(Dispatchers.Main) {
+                    IlsRenderer.addLayers(st, airportNav)
+                }
+            }
+        } else {
+            IlsRenderer.removeLayers(st)
         }
     }
 
