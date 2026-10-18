@@ -269,14 +269,14 @@ fun RadioPanel(link: LinkClient, s: FlightState) {
 private fun RadioRow(name: String, r: Radio?, fmt: String, onSwap: () -> Unit, onEdit: () -> Unit) {
     val c = Fm.c
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(name, fontFamily = Mono, fontSize = 12.sp, color = c.ink2, modifier = Modifier.width(44.dp))
-        Text(r?.activeMhz?.let { fmt.format(java.util.Locale.US, it) } ?: "—", fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 19.sp, color = c.green,
-            modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-        Box(Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)).background(c.terrain).clickable(role = Role.Button, onClick = onSwap), contentAlignment = Alignment.Center) {
+        Text(name, fontFamily = Mono, fontSize = 11.sp, color = c.ink2, modifier = Modifier.width(38.dp))
+        Text(r?.activeMhz?.let { fmt.format(java.util.Locale.US, it) } ?: "—", fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = c.green,
+            modifier = Modifier.weight(1f), textAlign = TextAlign.Center, maxLines = 1, softWrap = false)
+        Box(Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)).background(c.terrain).clickable(role = Role.Button, onClick = onSwap), contentAlignment = Alignment.Center) {
             Icon(Icons.Outlined.SwapHoriz, loc("Zamień aktywną i zapasową $name", "Swap active and standby $name"), tint = c.accent)
         }
-        Text(r?.standbyMhz?.let { fmt.format(java.util.Locale.US, it) } ?: "—", fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 19.sp, color = c.accent,
-            modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).clickable(onClick = onEdit).padding(vertical = 10.dp), textAlign = TextAlign.Center)
+        Text(r?.standbyMhz?.let { fmt.format(java.util.Locale.US, it) } ?: "—", fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = c.accent,
+            modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).clickable(onClick = onEdit).padding(vertical = 10.dp), textAlign = TextAlign.Center, maxLines = 1, softWrap = false)
     }
 }
 

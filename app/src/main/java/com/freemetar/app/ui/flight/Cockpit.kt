@@ -131,7 +131,7 @@ fun CockpitView(
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         FlyDeck(link, s, route, effective, nearby, screenH - 40.dp - 14.dp, Modifier.weight(1f))
                         Column(Modifier.width(sideW)) {
-                            PanelBar(shownTab, onTab, Modifier.padding(top = 0.dp))
+                            PanelBar(shownTab, onTab, indicatorTop = false)
                             Column(Modifier.fillMaxWidth().weight(1f, fill = false).verticalScroll(rememberScrollState())) {
                                 panelFor(shownTab!!, false)
                                 Spacer(Modifier.height(16.dp))
@@ -140,7 +140,7 @@ fun CockpitView(
                     }
                 } else if (tabletPortrait) {
                     FlyDeck(link, s, route, effective, nearby, screenH * 0.5f)
-                    PanelBar(shownTab, onTab)
+                    PanelBar(shownTab, onTab, indicatorTop = false)
                     Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) {
                         panelFor(shownTab!!, false)
                         Spacer(Modifier.height(16.dp))
@@ -185,46 +185,79 @@ private fun CockpitHeader(link: LinkClient, s: FlightState, p: AircraftProfile, 
     }
 }
 
-/** Pasek paneli w pionie (ekran poziomy): te same ikony co [PanelBar], przy prawej krawędzi. */
+/** Podpis zakładki: krótki, ale słowem (AP zostaje skrótem, jak na panelu). */
+@Composable
+private fun CockpitTab.tabName(): String = when (this) {
+    CockpitTab.AP -> "AP"
+    CockpitTab.RADIO -> tr("Radio", "Radio")
+    CockpitTab.SYSTEMS -> tr("Systemy", "Systems")
+    CockpitTab.ENGINES -> tr("Silniki", "Engines")
+    CockpitTab.STICK -> tr("Stery", "Controls")
+    CockpitTab.PROGRESS -> tr("Postęp", "Progress")
+}
+
+/**
+ * Zakładki w pionie (telefon poziomo, panel po lewej): aktywna ma jaśniejsze tło i kropkę przy ikonie
+ * — bez pionowej belki z boku.
+ */
 @Composable
 private fun PanelRail(tab: CockpitTab?, onTab: (CockpitTab) -> Unit) {
     val c = Fm.c
-    Column(Modifier.width(52.dp).clip(RoundedCornerShape(12.dp)).background(c.terrain).padding(3.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+    Column(Modifier.width(58.dp).border(1.dp, c.rule, RoundedCornerShape(12.dp)).padding(vertical = 4.dp)) {
         CockpitTab.entries.forEach { t ->
             val on = t == tab
             val label = t.label()
             Column(
-                Modifier.fillMaxWidth().height(40.dp).clip(RoundedCornerShape(9.dp)).background(if (on) c.ink else Color.Transparent)
+                Modifier.fillMaxWidth().height(46.dp).padding(horizontal = 4.dp).clip(RoundedCornerShape(8.dp))
+                    .background(if (on) c.terrain else Color.Transparent)
                     .semantics { contentDescription = label }
                     .clickable(role = Role.Tab) { onTab(t) },
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
             ) {
-                Icon(t.icon, null, tint = if (on) c.paper else c.ink2, modifier = Modifier.size(16.dp))
-                Text(t.short, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 8.sp, color = if (on) c.paper else c.ink2)
+                Box {
+                    Icon(t.icon, null, tint = if (on) c.ink else c.ink2, modifier = Modifier.size(18.dp))
+                    if (on) Box(Modifier.align(Alignment.TopEnd).padding(start = 18.dp).size(5.dp).clip(CircleShape).background(c.accent))
+                }
+                Text(t.tabName(), fontWeight = FontWeight.SemiBold, fontSize = 9.sp, color = if (on) c.ink else c.ink2, maxLines = 1)
             }
         }
     }
 }
 
-/** Pasek paneli: ikony z krótkim podpisem; aktywny panel podświetlony, drugie dotknięcie chowa. */
+/**
+ * Zakładki paneli: ikona z podpisem, aktywna ma jasny napis i linię wskaźnika od strony otwartego panelu
+ * ([indicatorTop] = panel nad zakładkami, jak na telefonie; inaczej panel pod nimi, jak na tablecie).
+ * Cienka linia oddziela zakładki od panelu. Na telefonie drugie dotknięcie chowa panel.
+ */
 @Composable
-private fun PanelBar(tab: CockpitTab?, onTab: (CockpitTab) -> Unit, modifier: Modifier = Modifier) {
+private fun PanelBar(tab: CockpitTab?, onTab: (CockpitTab) -> Unit, modifier: Modifier = Modifier, indicatorTop: Boolean = true) {
     val c = Fm.c
-    Row(modifier.fillMaxWidth().padding(vertical = 8.dp).height(44.dp).clip(RoundedCornerShape(12.dp)).background(c.terrain).padding(3.dp),
-        horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-        CockpitTab.entries.forEach { t ->
-            val on = t == tab
-            val label = t.label()
-            Column(
-                Modifier.weight(1f).fillMaxSize().clip(RoundedCornerShape(9.dp)).background(if (on) c.ink else Color.Transparent)
-                    .semantics { contentDescription = label }
-                    .clickable(role = Role.Tab) { onTab(t) },
-                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
-            ) {
-                Icon(t.icon, null, tint = if (on) c.paper else c.ink2, modifier = Modifier.size(17.dp))
-                Text(t.short, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 9.sp, color = if (on) c.paper else c.ink2)
+    Column(modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        if (indicatorTop) Box(Modifier.fillMaxWidth().height(1.dp).background(c.rule))
+        Row(Modifier.fillMaxWidth().height(50.dp)) {
+            CockpitTab.entries.forEach { t ->
+                val on = t == tab
+                val label = t.label()
+                Box(
+                    Modifier.weight(1f).fillMaxSize()
+                        .semantics { contentDescription = label }
+                        .clickable(role = Role.Tab) { onTab(t) },
+                ) {
+                    // Wskaźnik aktywnej zakładki przy krawędzi, od której otwiera się panel
+                    if (on) Box(
+                        Modifier.align(if (indicatorTop) Alignment.TopCenter else Alignment.BottomCenter)
+                            .fillMaxWidth(0.62f).height(3.dp).clip(RoundedCornerShape(50)).background(c.ink),
+                    )
+                    Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(t.icon, null, tint = if (on) c.ink else c.ink2, modifier = Modifier.size(19.dp))
+                        Spacer(Modifier.height(2.dp))
+                        Text(t.tabName(), fontWeight = if (on) FontWeight.Bold else FontWeight.Medium, fontSize = 10.sp,
+                            color = if (on) c.ink else c.ink2, maxLines = 1)
+                    }
+                }
             }
         }
+        if (!indicatorTop) Box(Modifier.fillMaxWidth().height(1.dp).background(c.rule))
     }
 }
 
