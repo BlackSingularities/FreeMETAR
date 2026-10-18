@@ -3,6 +3,7 @@ package com.freemetar.app.data
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -28,6 +29,12 @@ data class Settings(
     val aircraftProfile: String? = null,
     /** SYSTEM / PL / EN */
     val language: String = "SYSTEM",
+    /** Sterowanie samolotem: TILT (żyroskop, domyślnie) / TOUCH (drążek palcem) / GAMEPAD. */
+    val controlMode: String = "TILT",
+    /** Pływający przycisk sterowania nad wszystkimi zakładkami. */
+    val floatingControl: Boolean = false,
+    /** Odstęp między punktami zapisu lotu (ms). */
+    val recordIntervalMs: Int = 1000,
 )
 
 class Prefs(private val context: Context) {
@@ -43,6 +50,9 @@ class Prefs(private val context: Context) {
     private val LANGUAGE = stringPreferencesKey("language")
     private val LINK_TOKENS = stringPreferencesKey("link_tokens")   // ip=token;ip=token
     private val LINK_LAST = stringPreferencesKey("link_last_ip")
+    private val CONTROL = stringPreferencesKey("control_mode")
+    private val FLOATING = booleanPreferencesKey("floating_control")
+    private val RECORD_MS = intPreferencesKey("record_interval_ms")
 
     private fun list(v: String?) = v?.split(",")?.filter { it.isNotBlank() }
 
@@ -58,6 +68,9 @@ class Prefs(private val context: Context) {
             activeRouteId = p[ROUTE],
             aircraftProfile = p[PROFILE],
             language = p[LANGUAGE] ?: "SYSTEM",
+            controlMode = p[CONTROL] ?: "TILT",
+            floatingControl = p[FLOATING] ?: false,
+            recordIntervalMs = p[RECORD_MS] ?: 1000,
         )
     }
 
@@ -106,6 +119,9 @@ class Prefs(private val context: Context) {
 
     suspend fun lastLinkIp(): String? = context.dataStore.data.first()[LINK_LAST]
 
+    suspend fun setControlMode(v: String) = context.dataStore.edit { it[CONTROL] = v }
+    suspend fun setFloatingControl(v: Boolean) = context.dataStore.edit { it[FLOATING] = v }
+    suspend fun setRecordInterval(ms: Int) = context.dataStore.edit { it[RECORD_MS] = ms }
     suspend fun setLanguage(v: String) = context.dataStore.edit { it[LANGUAGE] = v }
     suspend fun setAircraftProfile(name: String?) = context.dataStore.edit { if (name == null) it.remove(PROFILE) else it[PROFILE] = name }
     suspend fun setActiveRoute(id: String?) = context.dataStore.edit { if (id == null) it.remove(ROUTE) else it[ROUTE] = id }

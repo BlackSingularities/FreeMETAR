@@ -75,7 +75,10 @@ private fun CockpitTab.label(): String = when (this) {
  * Na szerokim ekranie z miejscem w pionie pod PFD jest też mapa ND.
  */
 @Composable
-fun CockpitView(link: LinkClient, s: FlightState, route: SavedRoute?, profile: AircraftProfile?, onProfile: (AircraftProfile?) -> Unit) {
+fun CockpitView(
+    link: LinkClient, s: FlightState, route: SavedRoute?, profile: AircraftProfile?, onProfile: (AircraftProfile?) -> Unit,
+    controlMode: String = "TILT", onControlMode: (String) -> Unit = {}, floating: Boolean = false, onFloating: (Boolean) -> Unit = {},
+) {
     val c = Fm.c
     var tab by rememberSaveable { mutableStateOf(CockpitTab.AP) }
     var range by rememberSaveable { mutableIntStateOf(40) }
@@ -90,7 +93,7 @@ fun CockpitView(link: LinkClient, s: FlightState, route: SavedRoute?, profile: A
                 CockpitTab.AP -> AutopilotPanelV2(link, s, profile, onProfile)
                 CockpitTab.RADIO -> RadioPanel(link, s)
                 CockpitTab.SYSTEMS -> SystemsPanel(link, s, effective)
-                CockpitTab.STICK -> FlightControlPanel(link, s)
+                CockpitTab.STICK -> FlightControlPanel(link, s, controlMode, onControlMode, floating, onFloating)
                 CockpitTab.ND -> { NavDisplay(s, route?.fullPath().orEmpty(), range); RangeChips(range) { range = it } }
                 CockpitTab.ENGINES -> Systems(s)
                 CockpitTab.PROGRESS -> Progress(s, route)

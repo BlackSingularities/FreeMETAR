@@ -32,6 +32,7 @@ import androidx.compose.material.icons.outlined.FlightLand
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
 import androidx.compose.material.icons.outlined.Timeline
+import androidx.compose.material.icons.outlined.ViewInAr
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -132,7 +133,7 @@ fun FlightHistorySection(vm: MainViewModel, onOpenFlight: (String) -> Unit) {
 
 /** Szczegóły lotu: ocena lądowania, tor, wykresy, eksport. */
 @Composable
-fun FlightDetailScreen(vm: MainViewModel, id: String, onBack: () -> Unit) {
+fun FlightDetailScreen(vm: MainViewModel, id: String, onBack: () -> Unit, onShowMap: () -> Unit = {}) {
     val c = Fm.c
     val logs by vm.flightLogs.collectAsStateWithLifecycle()
     val f = logs.firstOrNull { it.id == id } ?: return
@@ -165,6 +166,11 @@ fun FlightDetailScreen(vm: MainViewModel, id: String, onBack: () -> Unit) {
                 ))
                 Spacer(Modifier.size(12.dp))
                 TrackPlot(f)
+                androidx.compose.material3.OutlinedButton({ vm.showFlightOnMap(f.id); onShowMap() }, Modifier.padding(top = 10.dp)) {
+                    Icon(Icons.Outlined.ViewInAr, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(loc("Pokaż na mapie 3D", "Show on the 3D map"))
+                }
             }
             Section(loc("Profil lotu", "Flight profile"), Icons.AutoMirrored.Outlined.ShowChart) {
                 TrendChart(loc("Wysokość ft", "Altitude ft"), f.track.map { it.altFt.toDouble() }, "", c.magenta, Modifier.fillMaxWidth())

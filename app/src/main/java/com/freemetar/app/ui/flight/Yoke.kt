@@ -61,6 +61,48 @@ import com.freemetar.app.ui.theme.Mono
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
+/** Bieżące pochylenie telefonu w stopniach (roll + = w prawo, pitch + = odchylony do siebie). */
+class TiltState {
+    var roll by mutableDoubleStateOf(0.0)
+    var pitch by mutableDoubleStateOf(0.0)
+}
+
+/**
+ * Czujnik orientacji (bez magnetometru — stabilniejszy przy elektronice w pobliżu), aktywny tylko,
+ * gdy [enabled]. Układ współrzędnych zgodny z tym, jak użytkownik trzyma telefon.
+ */
+@Composable
+fun rememberTilt(enabled: Boolean = true): TiltState {
+    val ctx = LocalContext.current
+    val tilt = remember { TiltState() }
+    DisposableEffect(enabled) {
+        if (!enabled) return@DisposableEffect onDispose { }
+        val sm = ctx.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        val sensor = sm.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR) ?: sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+        val r = FloatArray(9); val out = FloatArray(9); val o = FloatArray(3)
+        @Suppress("DEPRECATION")
+        val display = (ctx.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay
+        val listener = object : SensorEventListener {
+            override fun onSensorChanged(e: SensorEvent) {
+                SensorManager.getRotationMatrixFromVector(r, e.values)
+                when (display.rotation) {
+                    Surface.ROTATION_90 -> SensorManager.remapCoordinateSystem(r, SensorManager.AXIS_Y, SensorManager.AXIS_MINUS_X, out)
+                    Surface.ROTATION_270 -> SensorManager.remapCoordinateSystem(r, SensorManager.AXIS_MINUS_Y, SensorManager.AXIS_X, out)
+                    Surface.ROTATION_180 -> SensorManager.remapCoordinateSystem(r, SensorManager.AXIS_MINUS_X, SensorManager.AXIS_MINUS_Y, out)
+                    else -> r.copyInto(out)
+                }
+                SensorManager.getOrientation(out, o)
+                tilt.pitch = -Math.toDegrees(o[1].toDouble())
+                tilt.roll = Math.toDegrees(o[2].toDouble())
+            }
+            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+        }
+        if (sensor != null) sm.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_GAME)
+        onDispose { sm.unregisterListener(listener) }
+    }
+    return tilt
+}
+
 /**
  * Wolant z przechylania telefonu. Steruje tylko podczas przytrzymania przycisku;
  * pozycja zerowa jest zapamiętywana w chwili naciśnięcia, a puszczenie natychmiast oddaje stery.
@@ -68,11 +110,9 @@ import kotlinx.coroutines.isActive
 @Composable
 fun YokePanel(link: LinkClient, s: FlightState) {
     val c = Fm.c
-    val ctx = LocalContext.current
     val haptic = LocalHapticFeedback.current
     var holding by remember { mutableStateOf(false) }
-    var roll by remember { mutableDoubleStateOf(0.0) }   // stopnie, + = w prawo
-    var pitch by remember { mutableDoubleStateOf(0.0) }  // stopnie, + = nos w górę (telefon odchylony do siebie)
+    val tilt = rememberTilt()
     var roll0 by remember { mutableDoubleStateOf(0.0) }
     var pitch0 by remember { mutableDoubleStateOf(0.0) }
     var sensitivity by rememberSaveable { mutableFloatStateOf(1f) }
@@ -80,38 +120,10 @@ fun YokePanel(link: LinkClient, s: FlightState) {
     var rudder by remember { mutableFloatStateOf(0f) }
     val max = link.limits.maxDeflection
 
-    // Czujnik orientacji (bez magnetometru — stabilniejszy przy elektronice w pobliżu)
-    DisposableEffect(Unit) {
-        val sm = ctx.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-        val sensor = sm.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR) ?: sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
-        val r = FloatArray(9); val out = FloatArray(9); val o = FloatArray(3)
-        val listener = object : SensorEventListener {
-            override fun onSensorChanged(e: SensorEvent) {
-                SensorManager.getRotationMatrixFromVector(r, e.values)
-                @Suppress("DEPRECATION")
-                val rot = (ctx.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation
-                // Układ współrzędnych zgodny z tym, jak użytkownik trzyma telefon
-                when (rot) {
-                    Surface.ROTATION_90 -> SensorManager.remapCoordinateSystem(r, SensorManager.AXIS_Y, SensorManager.AXIS_MINUS_X, out)
-                    Surface.ROTATION_270 -> SensorManager.remapCoordinateSystem(r, SensorManager.AXIS_MINUS_Y, SensorManager.AXIS_X, out)
-                    Surface.ROTATION_180 -> SensorManager.remapCoordinateSystem(r, SensorManager.AXIS_MINUS_X, SensorManager.AXIS_MINUS_Y, out)
-                    else -> r.copyInto(out)
-                }
-                SensorManager.getOrientation(out, o)
-                pitch = -Math.toDegrees(o[1].toDouble())
-                roll = Math.toDegrees(o[2].toDouble())
-            }
-            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
-        }
-        if (sensor != null) sm.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_GAME)
-        onDispose {
-            sm.unregisterListener(listener)
-            link.releaseAxes()
-        }
-    }
+    DisposableEffect(Unit) { onDispose { link.releaseAxes() } }
 
-    val ail = if (holding) ControlMath.axis(roll - roll0, 35.0, 2.0, sensitivity.toDouble(), max) else 0.0
-    val elv0 = if (holding) ControlMath.axis(pitch - pitch0, 30.0, 2.0, sensitivity.toDouble(), max) else 0.0
+    val ail = if (holding) ControlMath.axis(tilt.roll - roll0, 35.0, 2.0, sensitivity.toDouble(), max) else 0.0
+    val elv0 = if (holding) ControlMath.axis(tilt.pitch - pitch0, 30.0, 2.0, sensitivity.toDouble(), max) else 0.0
     val elv = if (invert) -elv0 else elv0
 
     // Wysyłanie 20 Hz podczas przytrzymania; po puszczeniu — natychmiastowe zwolnienie osi
@@ -119,8 +131,8 @@ fun YokePanel(link: LinkClient, s: FlightState) {
         if (!holding) { link.releaseAxes(); return@LaunchedEffect }
         while (isActive && holding) {
             link.axis(
-                ControlMath.axis(roll - roll0, 35.0, 2.0, sensitivity.toDouble(), max),
-                ControlMath.axis(pitch - pitch0, 30.0, 2.0, sensitivity.toDouble(), max).let { if (invert) -it else it },
+                ControlMath.axis(tilt.roll - roll0, 35.0, 2.0, sensitivity.toDouble(), max),
+                ControlMath.axis(tilt.pitch - pitch0, 30.0, 2.0, sensitivity.toDouble(), max).let { if (invert) -it else it },
                 rudder.toDouble().coerceIn(-max, max),
             )
             delay(50)
@@ -140,7 +152,7 @@ fun YokePanel(link: LinkClient, s: FlightState) {
             .pointerInput(Unit) {
                 awaitEachGesture {
                     awaitFirstDown()
-                    roll0 = roll; pitch0 = pitch
+                    roll0 = tilt.roll; pitch0 = tilt.pitch
                     holding = true
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     waitForUpOrCancellation()

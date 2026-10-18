@@ -116,7 +116,8 @@ fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> U
         if (state != null && cockpit) {
             Column(Modifier.fillMaxSize().statusBarsPadding()) {
                 ModeSwitch(cockpit) { cockpit = it }
-                CockpitView(vm.link, state, active, AircraftProfile.fromName(settings.aircraftProfile)) { p -> vm.setAircraftProfile(p) }
+                CockpitView(vm.link, state, active, AircraftProfile.fromName(settings.aircraftProfile), { p -> vm.setAircraftProfile(p) },
+                    settings.controlMode, { vm.setControlMode(it) }, settings.floatingControl, { vm.setFloatingControl(it) })
             }
         } else Column(
             Modifier.fillMaxSize().wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 820.dp)

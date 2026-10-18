@@ -15,7 +15,10 @@ import java.io.File
 import java.util.UUID
 
 @Serializable
-data class TrackPoint(val t: Long, val lat: Double, val lon: Double, val altFt: Int, val gsKt: Int, val vsFpm: Int? = null, val iasKt: Int? = null)
+data class TrackPoint(
+    val t: Long, val lat: Double, val lon: Double, val altFt: Int, val gsKt: Int,
+    val vsFpm: Int? = null, val iasKt: Int? = null, val hdg: Int? = null,
+)
 
 /** Zapisany lot z symulatora: tor, lotniska, czasy. */
 @Serializable
@@ -47,7 +50,15 @@ class FlightRecorder(
     private val runwaysNear: (Double, Double) -> List<RunwayGeom> = { _, _ -> emptyList() },
     private val nearestAirport: (Double, Double) -> String?,
 ) {
+    /** Odstęp między punktami toru (ms) — z ustawień, 250 ms…10 s. */
+    var intervalMs: Long = 1_000
+
     private val points = ArrayList<TrackPoint>()
+
+    private fun point(s: FlightState, now: Long, lat: Double, lon: Double, alt: Int, gs: Double) = TrackPoint(
+        now, lat, lon, alt, gs.toInt(), s.speed.vsFpm?.toInt(), s.speed.iasKt?.toInt(),
+        (s.attitude.hdgTrueDeg ?: s.attitude.trackTrueDeg)?.let { ((it % 360 + 360) % 360).toInt() },
+    )
     private var aircraft: String? = null
     private var category: String? = null
     private var stoppedSince: Long? = null
@@ -67,6 +78,7 @@ class FlightRecorder(
         private set
 
     val currentTrack: List<TrackPoint> get() = points.toList()
+    val pointCount: Int get() = points.size
 
     /** Przyjmuje kolejny stan; zwraca zakończony lot, gdy samolot stanął po lądowaniu. */
     fun onState(s: FlightState, now: Long = System.currentTimeMillis()): FlightLog? {
@@ -87,7 +99,7 @@ class FlightRecorder(
                 landing = null; bounces = 0; lastLanding = null
                 airborneSince = now
                 lastTdSeq = s.touchdown?.seq
-                points += TrackPoint(now, lat, lon, alt, gs.toInt(), s.speed.vsFpm?.toInt(), s.speed.iasKt?.toInt())
+                points += point(s, now, lat, lon, alt, gs)
             }
             prev = s
             return null
@@ -96,9 +108,9 @@ class FlightRecorder(
         detectTouchdown(s, now)
         prev = s
         val last = points.last()
-        // Punkt co 5 s albo po 0,5 NM — wystarcza do rysowania toru, a plik pozostaje mały
-        if (now - last.t >= 5_000 || Geo.distanceNm(last.lat, last.lon, lat, lon) >= 0.5) {
-            points += TrackPoint(now, lat, lon, alt, gs.toInt(), s.speed.vsFpm?.toInt(), s.speed.iasKt?.toInt())
+        // Punkt co [intervalMs] (ustawienie); archiwum trzyma tor w kolumnach różnic spakowanych gzipem
+        if (now - last.t >= intervalMs) {
+            points += point(s, now, lat, lon, alt, gs)
         }
         if (onGround && gs < 5) {
             val since = stoppedSince ?: now.also { stoppedSince = it }
@@ -146,6 +158,8 @@ class FlightRecorder(
 
     private fun report(): LandingReport? = landing?.let { LandingScore.evaluate(it.copy(bounces = bounces)) }
 
+    companion object { const val MAX_POINTS = 60_000 }
+
     /** Kończy nagrywanie (np. po rozłączeniu); krótkie loty (< 2 min) są odrzucane. */
     fun finish(now: Long = System.currentTimeMillis()): FlightLog? {
         if (!recording) return null
@@ -160,24 +174,9 @@ class FlightRecorder(
             to = nearestAirport(pts.last().lat, pts.last().lon),
             maxAltFt = pts.maxOf { it.altFt }, distanceNm = dist.toInt(),
             landing = report(), category = category,
-            // Ograniczenie rozmiaru: co n-ty punkt, końce zawsze zostają
-            track = if (pts.size <= 2000) pts else pts.filterIndexed { i, _ -> i % (pts.size / 2000 + 1) == 0 } + pts.last(),
+            // Bezpiecznik: ponad 60 tys. punktów (np. 4 Hz przez 4 h) — co n-ty punkt, końce zawsze zostają
+            track = if (pts.size <= MAX_POINTS) pts else pts.filterIndexed { i, _ -> i % (pts.size / MAX_POINTS + 1) == 0 } + pts.last(),
         )
     }
 }
 
-/** Historia lotów w pliku flights.json (dane aplikacji — przetrwa aktualizację). */
-class FlightLogStore(context: Context) {
-    private val file = File(context.filesDir, "flights.json")
-    private val json = LinkJson
-
-    suspend fun load(): List<FlightLog> = withContext(Dispatchers.IO) {
-        if (!file.exists()) emptyList() else runCatching { json.decodeFromString(FlightLogFile.serializer(), file.readText()).flights }.getOrDefault(emptyList())
-    }
-
-    suspend fun save(list: List<FlightLog>) = withContext(Dispatchers.IO) {
-        val tmp = File(file.parentFile, file.name + ".tmp")
-        tmp.writeText(json.encodeToString(FlightLogFile.serializer(), FlightLogFile(flights = list)))
-        if (!tmp.renameTo(file)) { file.delete(); tmp.renameTo(file) }
-    }
-}

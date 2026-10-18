@@ -362,7 +362,7 @@ private fun WeatherFacts(m: Metar, d: AirportDetail, s: Settings) {
     val ceiling = ceilingFt(m)
 
     val facts = buildList {
-        add(Fact(loc("Pas wg wiatru", "Runway for the wind"), best?.let { "RWY ${it.runwayEnd}" } ?: "dowolny", accent = c.accent,
+        add(Fact(loc("Pas wg wiatru", "Runway for the wind"), best?.let { "RWY ${it.runwayEnd}" } ?: loc("dowolny", "any"), accent = c.accent,
             sub = best?.let { loc("czołowy ${it.steady.headwind.roundToInt()}, boczny ${abs(it.steady.crosswind).roundToInt()} kt", "headwind ${it.steady.headwind.roundToInt()}, crosswind ${abs(it.steady.crosswind).roundToInt()} kt") } ?: loc("wiatr słaby lub zmienny", "light or variable wind")))
         add(Fact(loc("Wiatr", "Wind"), windShort(m) + if ((m.windKt ?: 0) > 0) " kt" else "",
             accent = if ((m.gustKt ?: m.windKt ?: 0) >= 25) c.caution else null,
@@ -467,12 +467,12 @@ private fun Trends(hist: List<Metar>) {
 private fun History(hist: List<Metar>) {
     val c = Fm.c
     hist.forEach { h ->
-        Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.Top) {
-            Column(Modifier.width(60.dp)) {
-                Text(hhmm.format(Instant.ofEpochSecond(h.obsTimeEpoch)) + "Z", fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = c.ink)
-                CategoryTag(h.flightCategory, Modifier.padding(top = 3.dp))
-            }
-            Text(h.raw.substringAfter(loc("Z ", "From ")), style = RawText.copy(fontSize = 12.sp, lineHeight = 18.sp), color = c.ink2)
+        // Godzina, kategoria i depesza w jednej linii; stałe szerokości trzymają depesze w równej kolumnie
+        Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.Top) {
+            Text(hhmm.format(Instant.ofEpochSecond(h.obsTimeEpoch)) + "Z", fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 13.sp, lineHeight = 18.sp,
+                color = c.ink, modifier = Modifier.width(54.dp))
+            Box(Modifier.width(52.dp).padding(top = 1.dp), contentAlignment = Alignment.TopStart) { CategoryTag(h.flightCategory) }
+            Text(h.raw.substringAfter("Z "), style = RawText.copy(fontSize = 12.sp, lineHeight = 18.sp), color = c.ink2, modifier = Modifier.weight(1f))
         }
     }
 }

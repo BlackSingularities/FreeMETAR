@@ -198,7 +198,13 @@ class MainActivity : ComponentActivity() {
                             }
                             Box(Modifier.width(1.dp).fillMaxHeight().background(c.rule))
                         }
+                        val liveState by vm.flightState.collectAsStateWithLifecycle()
                         Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.TopCenter) {
+                            // Pływające stery nad wszystkimi zakładkami (rysowane po NavHost, więc na wierzchu)
+                            val floating: @androidx.compose.runtime.Composable () -> Unit = {
+                                if (settings.floatingControl && liveState != null && settings.controlMode != "GAMEPAD")
+                                    com.freemetar.app.ui.flight.FloatingControl(vm.link, settings.controlMode)
+                            }
                             NavHost(
                                 nav, startDestination = "home",
                                 modifier = Modifier.widthIn(max = 1280.dp),
@@ -246,11 +252,12 @@ class MainActivity : ComponentActivity() {
                                     PlanEditorScreen(vm, onBack = { nav.popBackStack() }, onShowMap = { vm.focusRouteOnMap(); nav.goTab("map") })
                                 }
                                 composable("flightlog/{id}") { backStack ->
-                                    FlightDetailScreen(vm, backStack.arguments?.getString("id").orEmpty(), onBack = { nav.popBackStack() })
+                                    FlightDetailScreen(vm, backStack.arguments?.getString("id").orEmpty(), onBack = { nav.popBackStack() }, onShowMap = { nav.goTab("map") })
                                 }
                                 composable("tools") { ToolsScreen(vm) }
                                 composable("settings") { SettingsScreen(vm) }
                             }
+                            floating()
                         }
                     }
                 }

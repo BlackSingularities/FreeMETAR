@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material.icons.outlined.MyLocation
+import androidx.compose.material.icons.outlined.ViewInAr
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -74,10 +75,12 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
+import org.maplibre.android.style.layers.FillExtrusionLayer
 import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
+import org.maplibre.android.style.sources.GeoJsonOptions
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
@@ -93,6 +96,17 @@ private const val SRC_ROUTE_PROC = "oab-route-proc"
 private const val SRC_PLANE = "oab-plane"
 private const val SRC_TRACK = "oab-track"
 private const val IMG_PLANE = "oab-plane-icon"
+private const val SRC_CURTAIN = "oab-track-curtain"
+private const val SRC_TRACK_LBL = "oab-track-labels"
+private const val LYR_CURTAIN = "oab-track-curtain-3d"
+private const val LYR_BUILDINGS = "oab-buildings-3d"
+private const val LYR_TRACK = "oab-track-line"
+
+/** Kolor wysokości: nisko zieleń, średnio cyjan, wyżej błękit, poziom przelotowy magenta. */
+private fun altColor(): Expression = Expression.interpolate(
+    Expression.linear(), Expression.get("alt"),
+    *ALT_STOPS.map { (ft, c) -> Expression.stop(ft, Expression.rgb(c[0], c[1], c[2])) }.toTypedArray(),
+)
 
 /** Symbol samolotu (żółty jak na wyświetlaczach) jako bitmapa dla warstwy mapy. */
 private fun planeBitmap(): android.graphics.Bitmap {
@@ -165,10 +179,16 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
     val focus by vm.mapRouteFocus.collectAsStateWithLifecycle()
     val route = routes.firstOrNull { it.id == settings.activeRouteId }
     val live by vm.flightState.collectAsStateWithLifecycle()
-    val track by vm.track.collectAsStateWithLifecycle()
+    val liveTrack by vm.track.collectAsStateWithLifecycle()
+    val logs by vm.flightLogs.collectAsStateWithLifecycle()
+    val mapFlightId by vm.mapFlight.collectAsStateWithLifecycle()
+    // Zapisany lot wybrany w historii ma pierwszeństwo przed torem bieżącego lotu
+    val shownFlight = logs.firstOrNull { it.id == mapFlightId }
+    val track = shownFlight?.track ?: liveTrack
     var follow by rememberSaveable { mutableStateOf(true) }
     var handledFocus by rememberSaveable { mutableStateOf(0) }
     var showSigmets by rememberSaveable { mutableStateOf(true) }
+    var threeD by rememberSaveable { mutableStateOf(false) }
     var picked by remember { mutableStateOf<Metar?>(null) }
     var style by remember { mutableStateOf<Style?>(null) }
     var wired by remember { mutableStateOf(false) }
@@ -207,9 +227,12 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
                 map.cameraPosition = CameraPosition.Builder()
                     .target(LatLng(home?.lat ?: 52.0, home?.lon ?: 19.0)).zoom(if (home != null) 6.5 else 5.0).build()
             }
-            map.uiSettings.isRotateGesturesEnabled = false
+            // Pochylanie i obracanie dwoma palcami; przycisk 3D ustawia perspektywę jednym dotknięciem
+            map.uiSettings.isRotateGesturesEnabled = true
+            map.uiSettings.isTiltGesturesEnabled = true
             map.setStyle(Style.Builder().fromUri(styleUrl)) { st ->
                 addOverlay(st, c)
+                set3dLayers(st, threeD)
                 style = st
             }
             if (wired) return@getMapAsync
@@ -237,15 +260,53 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
         val fc = if (lat == null || lon == null) FeatureCollection.fromFeatures(emptyList())
         else FeatureCollection.fromFeature(Feature.fromGeometry(Point.fromLngLat(lon, lat)).apply {
             addNumberProperty("hdg", live?.attitude?.hdgTrueDeg ?: 0.0)
+            live?.position?.altMslFt?.let { addStringProperty("label", altLabel(it.roundToInt())) }
         })
         (st.getSource(SRC_PLANE) as? GeoJsonSource)?.setGeoJson(fc)
-        if (follow && lat != null && lon != null) mapView.getMapAsync { it.moveCamera(CameraUpdateFactory.newLatLng(LatLng(lat, lon))) }
+        if (follow && lat != null && lon != null) mapView.getMapAsync { m ->
+            val b = CameraPosition.Builder().target(LatLng(lat, lon))
+            // W 3D kamera patrzy w kierunku lotu, zza samolotu
+            if (threeD) (live?.attitude?.trackTrueDeg ?: live?.attitude?.hdgTrueDeg)?.let { b.bearing(it) }
+            m.moveCamera(CameraUpdateFactory.newCameraPosition(b.build()))
+        }
     }
-    LaunchedEffect(style, track.size) {
-        val pts = track.map { Point.fromLngLat(it.lon, it.lat) }
-        (style?.getSource(SRC_TRACK) as? GeoJsonSource)?.setGeoJson(
-            if (pts.size < 2) FeatureCollection.fromFeatures(emptyList()) else FeatureCollection.fromFeature(Feature.fromGeometry(LineString.fromLngLats(pts)))
-        )
+    // Zapisany lot: widok 3D i kadr na cały tor
+    // Kadr i pochylenie w jednej animacji — dwie osobne przerywałyby się nawzajem
+    val pendingFit = remember { arrayOfNulls<LatLngBounds>(1) }
+    fun moveCamera3d(on: Boolean) = mapView.getMapAsync { m ->
+        // Kadr płaski, potem oddalenie — po pochyleniu bliższy koniec toru inaczej ucieka za dolną krawędź
+        val fit = pendingFit[0]?.let { m.getCameraForLatLngBounds(it, intArrayOf(80, 240, 80, 160)) }
+        pendingFit[0] = null
+        val b = CameraPosition.Builder(fit ?: m.cameraPosition).tilt(if (on) 55.0 else 0.0)
+        if (fit != null && on) b.zoom(fit.zoom - 0.7)
+        if (!on) b.bearing(0.0)
+        m.animateCamera(CameraUpdateFactory.newCameraPosition(b.build()), 900)
+    }
+    // Przed efektem zapisanego lotu: przy jednoczesnym starcie późniejsza animacja (z kadrem) wygrywa
+    LaunchedEffect(style, threeD) {
+        val st = style ?: return@LaunchedEffect
+        set3dLayers(st, threeD)
+        moveCamera3d(threeD)
+    }
+    // Zapisany lot: widok 3D i kadr na cały tor
+    LaunchedEffect(style, shownFlight?.id) {
+        val f = shownFlight ?: return@LaunchedEffect
+        if (style == null || f.track.size < 2) return@LaunchedEffect
+        follow = false
+        pendingFit[0] = LatLngBounds.Builder().apply { f.track.forEach { include(LatLng(it.lat, it.lon)) } }.build()
+        if (threeD) moveCamera3d(true) else threeD = true
+    }
+    LaunchedEffect(style, track.size, shownFlight?.id) {
+        val st = style ?: return@LaunchedEffect
+        (st.getSource(SRC_TRACK) as? GeoJsonSource)?.setGeoJson(trackLine(track))
+        // Kolor wysokości wzdłuż linii (line-progress = ułamek długości)
+        val stops = trackGradient(track)
+        if (stops.size >= 2) (st.getLayer(LYR_TRACK) as? LineLayer)?.setProperties(PropertyFactory.lineGradient(
+            Expression.interpolate(Expression.linear(), Expression.lineProgress(),
+                *stops.map { (f, alt) -> val c = altRgb(alt); Expression.stop(f, Expression.rgb(c[0], c[1], c[2])) }.toTypedArray()),
+        ))
+        (st.getSource(SRC_CURTAIN) as? GeoJsonSource)?.setGeoJson(trackCurtain(track))
+        (st.getSource(SRC_TRACK_LBL) as? GeoJsonSource)?.setGeoJson(trackLabels(track))
     }
     LaunchedEffect(style, route) {
         (style?.getSource(SRC_ROUTE) as? GeoJsonSource)?.setGeoJson(routeLines(route, procedures = false))
@@ -270,8 +331,10 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
         // Przełączniki warstw u góry (przewijane, by nie łamały się na wąskim ekranie), legenda pod nimi
         Column(Modifier.statusBarsPadding().padding(12.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MapChip("3D", threeD, Icons.Outlined.ViewInAr) { threeD = !threeD }
                 MapChip("SIGMET", showSigmets, Icons.Outlined.WarningAmber) { showSigmets = !showSigmets }
                 if (live != null) MapChip(loc("Śledź samolot", "Follow aircraft"), follow, Icons.Outlined.MyLocation) { follow = !follow }
+                if (shownFlight != null) MapChip("${shownFlight.from ?: "?"} → ${shownFlight.to ?: "?"}", true, Icons.Outlined.Close) { vm.showFlightOnMap(null) }
                 if (route != null) MapChip(route.origin + " → " + route.destination, false, Icons.Outlined.Route) { follow = false; vm.focusRouteOnMap() }
             }
             Legend()
@@ -350,10 +413,39 @@ private fun addOverlay(st: Style, c: FmColors) {
         PropertyFactory.textHaloWidth(1.5f),
         PropertyFactory.textOptional(true),
     ).apply { minZoom = 5.5f })
-    // Tor lotu i samolot nad wszystkim
-    st.addSource(GeoJsonSource(SRC_TRACK))
-    st.addLayer(LineLayer("oab-track-line", SRC_TRACK).withProperties(
-        PropertyFactory.lineColor(hex(c.ink)), PropertyFactory.lineWidth(2f), PropertyFactory.lineOpacity(0.7f),
+    // Budynki 3D z kafli OpenMapTiles (OpenFreeMap) — tylko w widoku 3D i przy dużym przybliżeniu
+    if (st.getSource("openmaptiles") != null) st.addLayer(FillExtrusionLayer(LYR_BUILDINGS, "openmaptiles").withSourceLayer("building").withProperties(
+        PropertyFactory.fillExtrusionColor(if (c.isNight) "#2A2A2A" else "#D5DBE1"),
+        PropertyFactory.fillExtrusionHeight(Expression.coalesce(Expression.get("render_height"), Expression.literal(8))),
+        PropertyFactory.fillExtrusionBase(Expression.coalesce(Expression.get("render_min_height"), Expression.literal(0))),
+        PropertyFactory.fillExtrusionOpacity(0.85f),
+    ).apply { minZoom = 14f })
+    // Tor lotu w kolorze wysokości, pod nim (w 3D) kurtyna do ziemi; samolot nad wszystkim
+    // Bez upraszczania: wąskie wstęgi znikałyby przy małym przybliżeniu
+    st.addSource(GeoJsonSource(SRC_CURTAIN, GeoJsonOptions().withTolerance(0f)))
+    st.addLayer(FillExtrusionLayer(LYR_CURTAIN, SRC_CURTAIN).withProperties(
+        PropertyFactory.fillExtrusionColor(altColor()),
+        PropertyFactory.fillExtrusionHeight(Expression.get("h")),
+        PropertyFactory.fillExtrusionBase(0f),
+        PropertyFactory.fillExtrusionOpacity(0.55f),
+    ))
+    st.addSource(GeoJsonSource(SRC_TRACK, GeoJsonOptions().withLineMetrics(true)))
+    st.addLayer(LineLayer(LYR_TRACK, SRC_TRACK).withProperties(
+        PropertyFactory.lineColor(hex(c.ink)), PropertyFactory.lineWidth(3.5f),
+        PropertyFactory.lineCap("round"), PropertyFactory.lineJoin("round"),
+    ))
+    st.addSource(GeoJsonSource(SRC_TRACK_LBL))
+    st.addLayer(SymbolLayer("oab-track-label", SRC_TRACK_LBL).withProperties(
+        PropertyFactory.textField(Expression.get("label")),
+        PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+        PropertyFactory.textSize(11f),
+        PropertyFactory.textOffset(arrayOf(0f, -1.1f)),
+        PropertyFactory.textColor(altColor()),
+        PropertyFactory.textHaloColor(hex(c.paper)),
+        PropertyFactory.textHaloWidth(1.5f),
+        // Wysokości toru są ważniejsze niż nazwy miejscowości podkładu
+        PropertyFactory.textAllowOverlap(true),
+        PropertyFactory.textIgnorePlacement(true),
     ))
     st.addImage(IMG_PLANE, planeBitmap())
     st.addSource(GeoJsonSource(SRC_PLANE))
@@ -383,7 +475,23 @@ private fun addOverlay(st: Style, c: FmColors) {
         PropertyFactory.iconAllowOverlap(true),
         PropertyFactory.iconIgnorePlacement(true),
         PropertyFactory.iconSize(0.7f),
+        // Bieżąca wysokość pod symbolem samolotu
+        PropertyFactory.textField(Expression.get("label")),
+        PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+        PropertyFactory.textSize(11f),
+        PropertyFactory.textOffset(arrayOf(0f, 2.0f)),
+        PropertyFactory.textColor(hex(c.ink)),
+        PropertyFactory.textHaloColor(hex(c.paper)),
+        PropertyFactory.textHaloWidth(1.5f),
+        PropertyFactory.textAllowOverlap(true),
     ))
+}
+
+/** Kurtyna toru i budynki są widoczne tylko w widoku 3D. */
+private fun set3dLayers(st: Style, on: Boolean) {
+    val v = PropertyFactory.visibility(if (on) "visible" else "none")
+    st.getLayer(LYR_CURTAIN)?.setProperties(v)
+    st.getLayer(LYR_BUILDINGS)?.setProperties(v)
 }
 
 @Composable

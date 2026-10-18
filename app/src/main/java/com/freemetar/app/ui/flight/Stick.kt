@@ -61,7 +61,7 @@ import kotlin.math.hypot
 import kotlin.math.pow
 import kotlin.math.sign
 
-private enum class StickMode { TOUCH, TILT, GAMEPAD }
+internal enum class StickMode { TOUCH, TILT, GAMEPAD }
 
 /** Krzywa „expo” jak w aparaturach RC: precyzja przy środku, pełne wychylenie na końcu. */
 internal fun expo(v: Double, e: Double): Double = sign(v) * (abs(v).pow(1 + e * 2))
@@ -71,13 +71,26 @@ internal fun expo(v: Double, e: Double): Double = sign(v) * (abs(v).pow(1 + e * 
  * Wszystkie tryby wysyłają osie 20 Hz tylko w trakcie sterowania; koniec = natychmiastowe zwolnienie osi.
  */
 @Composable
-fun FlightControlPanel(link: LinkClient, s: FlightState) {
+fun FlightControlPanel(
+    link: LinkClient, s: FlightState,
+    modeName: String = "TILT", onMode: (String) -> Unit = {},
+    floating: Boolean = false, onFloating: (Boolean) -> Unit = {},
+) {
     val c = Fm.c
-    var mode by rememberSaveable { mutableStateOf(StickMode.TOUCH) }
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 10.dp)) {
-        FilterChip(mode == StickMode.TOUCH, { mode = StickMode.TOUCH }, { Text(tr("Drążek", "Stick")) })
-        FilterChip(mode == StickMode.TILT, { mode = StickMode.TILT }, { Text(tr("Przechylanie", "Tilt")) })
-        FilterChip(mode == StickMode.GAMEPAD, { mode = StickMode.GAMEPAD }, { Text(tr("Kontroler", "Controller")) })
+    // Domyślnie żyroskop: telefon trzymany jak wolant jest naturalniejszy niż drążek pod kciukiem
+    val mode = StickMode.entries.firstOrNull { it.name == modeName } ?: StickMode.TILT
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 6.dp)) {
+        FilterChip(mode == StickMode.TILT, { onMode(StickMode.TILT.name) }, { Text(tr("Żyroskop", "Gyro")) })
+        FilterChip(mode == StickMode.TOUCH, { onMode(StickMode.TOUCH.name) }, { Text(tr("Drążek", "Stick")) })
+        FilterChip(mode == StickMode.GAMEPAD, { onMode(StickMode.GAMEPAD.name) }, { Text(tr("Kontroler", "Controller")) })
+    }
+    if (mode != StickMode.GAMEPAD) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
+        Column(Modifier.weight(1f)) {
+            Text(tr("Pływający przycisk sterowania", "Floating control button"), style = MaterialTheme.typography.bodyMedium, color = c.ink)
+            Text(tr("Stery pod ręką na każdej zakładce. Przesuwasz go za uchwyt pod spodem.", "Controls on every tab. Move it by the handle underneath."),
+                style = MaterialTheme.typography.labelSmall, color = c.ink2)
+        }
+        Switch(floating, onFloating)
     }
     when (mode) {
         StickMode.TOUCH -> TouchStick(link, s)

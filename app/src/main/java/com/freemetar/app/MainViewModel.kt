@@ -314,6 +314,39 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             .onFailure { _flightMessage.value = loc("Nie zapisano pliku: ${it.message}", "File not saved: ${it.message}") }
     }
 
+    /** Wszystkie loty w jednym pliku .oab (gzip) — kopia zapasowa albo przeniesienie na inny telefon. */
+    fun exportFlightArchive(ctx: android.content.Context, uri: Uri) = viewModelScope.launch {
+        runCatching {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                ctx.contentResolver.openOutputStream(uri, "wt")!!.use { it.write(com.freemetar.app.data.link.FlightArchive.encode(_flightLogs.value)) }
+            }
+        }.onSuccess { _flightMessage.value = loc("Wyeksportowano ${_flightLogs.value.size} lotów.", "Exported ${_flightLogs.value.size} flights.") }
+            .onFailure { _flightMessage.value = loc("Nie zapisano pliku: ${it.message}", "File not saved: ${it.message}") }
+    }
+
+    /** Import archiwum .oab lub starego flights.json; loty o tym samym id nie są dublowane. */
+    fun importFlightArchive(ctx: android.content.Context, uri: Uri) = viewModelScope.launch {
+        runCatching {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                com.freemetar.app.data.link.FlightArchive.decode(ctx.contentResolver.openInputStream(uri)!!.use { it.readBytes() })
+            }
+        }.onSuccess { incoming ->
+            val before = _flightLogs.value.size
+            _flightLogs.value = com.freemetar.app.data.link.FlightArchive.merge(_flightLogs.value, incoming)
+            flightLogStore.save(_flightLogs.value)
+            val added = _flightLogs.value.size - before
+            _flightMessage.value = loc("Zaimportowano $added lotów (pominięto ${incoming.size - added} już zapisanych).", "Imported $added flights (skipped ${incoming.size - added} already saved).")
+        }.onFailure { _flightMessage.value = loc("To nie jest archiwum lotów OpenAirBook.", "This isn't an OpenAirBook flight archive.") }
+    }
+
+    private val _mapFlight = MutableStateFlow<String?>(null)
+    /** Zapisany lot pokazywany na mapie (zamiast toru bieżącego lotu); null = brak. */
+    val mapFlight = _mapFlight.asStateFlow()
+    fun showFlightOnMap(id: String?) { _mapFlight.value = id }
+
+    /** Rozmiar archiwum lotów na dysku (do pokazania w ustawieniach). */
+    fun flightArchiveBytes(): Long = flightLogStore.sizeBytes()
+
     fun deleteFlightLog(id: String) = viewModelScope.launch {
         _flightLogs.value = _flightLogs.value.filterNot { it.id == id }
         flightLogStore.save(_flightLogs.value)
@@ -331,11 +364,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun startLinkWatchers() {
         viewModelScope.launch { _flightLogs.value = flightLogStore.load() }
+        viewModelScope.launch { settings.collect { recorder.intervalMs = it.recordIntervalMs.toLong().coerceIn(250, 10_000) } }
         viewModelScope.launch {
             link.state.collect { st ->
                 if (st != null) {
                     saveFlight(recorder.onState(st))
-                    if (recorder.recording) _track.value = recorder.currentTrack
+                    // Kopia toru tylko po dojściu nowego punktu, nie przy każdym stanie z Link
+                    if (recorder.recording && recorder.pointCount != _track.value.size) _track.value = recorder.currentTrack
                     // Ocena zaraz po przyziemieniu — nie trzeba czekać na koniec lotu
                     recorder.lastLanding?.takeIf { it !== announcedLanding }?.let { l ->
                         announcedLanding = l
@@ -674,6 +709,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setAlt(u: com.freemetar.app.data.AltUnit) = viewModelScope.launch { prefs.setAlt(u) }
     fun setLanguage(v: String) = viewModelScope.launch { prefs.setLanguage(v) }
     fun setAircraftProfile(p: com.freemetar.app.domain.AircraftProfile?) = viewModelScope.launch { prefs.setAircraftProfile(p?.name) }
+    fun setControlMode(m: String) = viewModelScope.launch { prefs.setControlMode(m) }
+    fun setFloatingControl(v: Boolean) = viewModelScope.launch { prefs.setFloatingControl(v) }
+    fun setRecordInterval(ms: Int) = viewModelScope.launch { prefs.setRecordInterval(ms) }
     fun setTheme(m: com.freemetar.app.data.ThemeMode) = viewModelScope.launch { prefs.setTheme(m) }
     fun setAutoRefresh(v: Boolean) = viewModelScope.launch { prefs.setAutoRefresh(v) }
 }

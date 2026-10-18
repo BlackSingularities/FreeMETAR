@@ -34,6 +34,11 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Straighten
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.ScreenRotation
+import androidx.compose.material.icons.outlined.TouchApp
+import androidx.compose.material.icons.outlined.Upload
+import androidx.compose.runtime.remember
 import androidx.compose.material3.Icon
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.rememberScrollState
@@ -106,6 +111,48 @@ fun SettingsScreen(vm: MainViewModel) {
                 }
             }
             ToggleRow(Icons.Outlined.Autorenew, loc("Automatyczne odświeżanie", "Auto refresh"), loc("Co 5 minut, gdy aplikacja jest otwarta", "Every 5 minutes while the app is open"), s.autoRefresh) { vm.setAutoRefresh(it) }
+        }
+
+        SectionCard(loc("Sterowanie samolotem", "Flying the aircraft"), icon = Icons.Outlined.ScreenRotation) {
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("TILT" to loc("Żyroskop", "Gyro"), "TOUCH" to loc("Drążek palcem", "Thumb stick"), "GAMEPAD" to loc("Kontroler", "Controller")).forEach { (code, label) ->
+                    FilterChip(s.controlMode == code, { vm.setControlMode(code) }, { Text(label) })
+                }
+            }
+            ToggleRow(Icons.Outlined.TouchApp, loc("Pływający przycisk sterowania", "Floating control button"),
+                loc("Widoczny na każdej zakładce, gdy symulator jest połączony. Przytrzymaj go, żeby sterować.", "Shown on every tab while the simulator is connected. Hold it to fly."),
+                s.floatingControl) { vm.setFloatingControl(it) }
+        }
+
+        SectionCard(loc("Zapis lotów", "Flight recording"), icon = Icons.Outlined.History) {
+            Text(loc("Częstotliwość zapisu pozycji, wysokości, prędkości i prędkości pionowej", "How often position, altitude, speed and vertical speed are saved"), color = Fm.c.ink)
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+                listOf(250 to loc("4× na s", "4×/s"), 500 to loc("2× na s", "2×/s"), 1000 to loc("1× na s", "1×/s"), 2000 to loc("co 2 s", "every 2 s"), 5000 to loc("co 5 s", "every 5 s")).forEach { (ms, label) ->
+                    FilterChip(s.recordIntervalMs == ms, { vm.setRecordInterval(ms) }, { Text(label) })
+                }
+            }
+            val logs by vm.flightLogs.collectAsStateWithLifecycle()
+            val ctx = androidx.compose.ui.platform.LocalContext.current
+            val kb = remember(logs) { vm.flightArchiveBytes() / 1024 }
+            Text(
+                loc("Zapisane loty: ${logs.size}, archiwum $kb KB. Tor jest zapisywany jako różnice między punktami i spakowany, więc nawet zapis 4× na sekundę zajmuje mało miejsca. Eksport tworzy jeden plik .oab do kopii zapasowej lub przeniesienia na inny telefon.",
+                    "Saved flights: ${logs.size}, archive $kb KB. The track is stored as differences between points and compressed, so even 4×/s takes little space. Export makes one .oab file for backup or moving to another phone."),
+                color = Fm.c.ink2, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
+            )
+            val exporter = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/gzip")) { uri ->
+                uri?.let { vm.exportFlightArchive(ctx, it) }
+            }
+            val importer = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+                uri?.let { vm.importFlightArchive(ctx, it) }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton({ exporter.launch("OpenAirBook-loty.oab") }, enabled = logs.isNotEmpty()) {
+                    Icon(Icons.Outlined.Upload, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(loc("Eksportuj", "Export"))
+                }
+                OutlinedButton({ importer.launch(arrayOf("*/*")) }) {
+                    Icon(Icons.Outlined.Download, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(loc("Importuj", "Import"))
+                }
+            }
         }
 
         SectionCard(loc("Baza lotnisk", "Airport database"), icon = Icons.Outlined.Storage) {
