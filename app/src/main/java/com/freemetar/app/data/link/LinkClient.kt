@@ -81,6 +81,7 @@ class LinkClient(private val context: Context, private val tokens: LinkTokenStor
     private var target: Pair<String, Int>? = null
     private val ids = AtomicLong(1)
     private var lastStateAt = 0L
+    @Volatile private var lastMessageAt = 0L
 
     // ---------- odkrywanie ----------
 
@@ -165,6 +166,7 @@ class LinkClient(private val context: Context, private val tokens: LinkTokenStor
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
+            lastMessageAt = System.currentTimeMillis()
             // Odpowiedzi na zapytania o dane nawigacyjne trafiają do oczekującego wywołania po id
             val obj = runCatching { LinkJson.parseToJsonElement(text).jsonObject }.getOrNull() ?: return
             val type = obj["type"]?.jsonPrimitive?.contentOrNull
@@ -218,10 +220,17 @@ class LinkClient(private val context: Context, private val tokens: LinkTokenStor
 
     private fun startPing(ws: WebSocket) {
         pingJob?.cancel()
+        lastMessageAt = System.currentTimeMillis()
         pingJob = scope.launch {
+            var tick = 0
             while (isActive) {
-                delay(5000)
-                ws.send(LinkJson.encodeToString(Ping.serializer(), Ping(id = "p${ids.getAndIncrement()}", t = System.currentTimeMillis())))
+                delay(1000)
+                val now = System.currentTimeMillis()
+                // Brak stanów (MSFS zamknięty, Link bez źródła): nie pokazuj ostatniego lotu jako bieżącego
+                if (_state.value != null && now - lastStateAt > 5_000) _state.value = null
+                // Martwe połączenie (komputer uśpiony, Wi-Fi zerwane bez zamknięcia gniazda): zerwij i połącz od nowa
+                if (now - lastMessageAt > 20_000) { ws.cancel(); return@launch }
+                if (++tick % 5 == 0) ws.send(LinkJson.encodeToString(Ping.serializer(), Ping(id = "p${ids.getAndIncrement()}", t = now)))
             }
         }
     }

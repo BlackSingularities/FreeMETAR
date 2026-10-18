@@ -36,7 +36,7 @@ Do sterowania samolotem i danych z symulatora służy **OpenAirBook Link**, mał
 - eksport i import tras.
 
 **Kokpit (z OpenAirBook Link)**
-- **jeden widok do latania**: PFD, ND, dźwignie mocy i pływający przycisk sterowania na ekranie naraz, bez przewijania (telefon pionowo: PFD nad ND, dźwignie z boku; poziomo i tablet: wszystko w rzędzie). Tryb i zasięg ND oraz warstwy to małe przyciski EFIS na samym wyświetlaczu, kamera MSFS to trzy ikony w nagłówku. Autopilot, radio, systemy, silniki i postęp otwierają się z paska ikon w miejscu ND, więc PFD i dźwignie zostają na widoku;
+- **jeden widok do latania**: PFD, ND, dźwignie mocy i pływający przycisk sterowania na ekranie naraz, bez przewijania (telefon pionowo: PFD nad ND, dźwignie z boku; poziomo: wszystko w rzędzie; tablet: obok stała kolumna albo pod spodem stały panel autopilota, radia itd.). Tryb i zasięg ND oraz warstwy to małe przyciski EFIS na samym wyświetlaczu, kamera MSFS to trzy ikony w nagłówku. Autopilot, radio, systemy, silniki i postęp otwierają się z paska ikon w miejscu ND, więc PFD i dźwignie zostają na widoku;
 - **PFD**: horyzont, taśmy prędkości i wysokości z nastawami, wektor toru lotu (znos i kąt toru), trend prędkości na 10 s, Mach, QNH, wysokość nad terenem z pasem ziemi, znacznik toru, wiatr i tryby autopilota (FMA);
 - **MFD/ND** w trybach ARC i ROSE: trasa, nastawa kursu, następny punkt z odległością, namiarem i czasem, a z bazy MSFS lotniska, VOR (z częstotliwością), NDB i punkty trasy wokół samolotu (warstwy do włączenia); pod mapą profil pionowy (VSD) z wysokością wybraną i torem przy bieżącej prędkości pionowej;
 - **silniki**: wyświetlacz EICAS/ECAM (N1 albo obroty, EGT, przepływ i zapas paliwa) oraz pulpit dźwigni przeciąganych palcem — moc, a w tłokowych i turbośmigłowych także mieszanka i śmigło; odrzutowce mają zapadki IDLE/CL/FLX/TOGA, TO/GA i odwracacz ciągu;
@@ -51,7 +51,7 @@ Do sterowania samolotem i danych z symulatora służy **OpenAirBook Link**, mał
 
 **Dziennik lotów**
 - osobny ekran z podsumowaniem, filtrem i lotami pogrupowanymi po miesiącach; przy każdym trasa, czas, dystans, wysokość, ocena lądowania i miniatura profilu;
-- automatyczny zapis każdego lotu: pozycja, wysokość, prędkość względem ziemi i przyrządowa, prędkość pionowa, kurs; **restart lotu w symulatorze** (skok pozycji albo inny samolot) zamyka bieżący wpis i zaczyna nowy;
+- automatyczny zapis każdego lotu: pozycja, wysokość, prędkość względem ziemi i przyrządowa, prędkość pionowa, kurs; **restart lotu w symulatorze** (skok pozycji albo inny samolot) zamyka bieżący wpis i zaczyna nowy; lot zapisuje się także, gdy symulator przestanie wysyłać dane albo system zamknie aplikację w trakcie lotu;
 - częstotliwość zapisu do wyboru w ustawieniach: 4×, 2× lub 1× na sekundę, co 2 s albo co 5 s;
 - kompaktowe archiwum: tor jest zapisywany jako różnice między punktami i pakowany gzipem, więc zajmuje ułamek zwykłego JSON-a;
 - eksport i import całej historii w jednym pliku `.oab` (kopia zapasowa, przeniesienie na inny telefon) oraz eksport pojedynczego lotu do GPX;
@@ -127,7 +127,7 @@ To fly the aircraft and read live data from the simulator, run **OpenAirBook Lin
 - route export and import.
 
 **Cockpit (with OpenAirBook Link)**
-- **one view for flying**: PFD, ND, thrust levers and the floating control button on screen at once, without scrolling (phone in portrait: PFD above ND, levers at the side; landscape and tablet: all in one row). ND mode, range and layers are small EFIS buttons on the display itself, and the MSFS camera is three icons in the header. Autopilot, radios, systems, engines and progress open from an icon bar in place of the ND, so the PFD and levers stay in view;
+- **one view for flying**: PFD, ND, thrust levers and the floating control button on screen at once, without scrolling (phone in portrait: PFD above ND, levers at the side; landscape: all in one row; tablet: a fixed column or a fixed panel below for the autopilot, radios and more). ND mode, range and layers are small EFIS buttons on the display itself, and the MSFS camera is three icons in the header. Autopilot, radios, systems, engines and progress open from an icon bar in place of the ND, so the PFD and levers stay in view;
 - **PFD**: horizon, speed and altitude tapes with selected values, flight path vector (drift and flight path angle), 10-second speed trend, Mach, QNH, height above terrain with a ground band, track marker, wind and autopilot modes (FMA);
 - **MFD/ND** in ARC and ROSE modes: route, selected heading, next waypoint with distance, bearing and time, and from the MSFS database the airports, VORs (with frequency), NDBs and waypoints around the aircraft (layers can be toggled); below it a vertical situation display (VSD) with the selected altitude and the path at the current vertical speed;
 - **engines**: an EICAS/ECAM display (N1 or RPM, EGT, fuel flow and fuel on board) and a throttle quadrant you drag with your finger — thrust, plus mixture and propeller on piston and turboprop aircraft; jets get IDLE/CL/FLX/TOGA detents, TO/GA and reverse thrust;
@@ -142,7 +142,7 @@ To fly the aircraft and read live data from the simulator, run **OpenAirBook Lin
 
 **Logbook**
 - its own screen with a summary, a filter and flights grouped by month; each shows the route, time, distance, altitude, landing score and a profile thumbnail;
-- every flight is recorded automatically: position, altitude, ground and indicated speed, vertical speed, heading; **restarting the flight in the simulator** (a position jump or another aircraft) closes the current entry and starts a new one;
+- every flight is recorded automatically: position, altitude, ground and indicated speed, vertical speed, heading; **restarting the flight in the simulator** (a position jump or another aircraft) closes the current entry and starts a new one; a flight is also saved when the simulator stops sending data or the system closes the app mid-flight;
 - recording rate is set in Settings: 4, 2 or 1 times per second, every 2 s or every 5 s;
 - compact archive: the track is stored as differences between points and gzip-compressed, a fraction of the size of plain JSON;
 - export and import of the whole history as a single `.oab` file (backup or moving to another phone), plus GPX export of a single flight;

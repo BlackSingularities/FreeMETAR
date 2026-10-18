@@ -129,6 +129,18 @@ class LinkTest {
     }
 
     @Test
+    fun snapshotHasTheSameIdAsTheFinishedFlight() {
+        val r = FlightRecorder { _, _ -> null }
+        var t = 0L
+        repeat(40) { t += 5000; r.onState(st(52.0 + it * 0.003, 20.0, 120.0, false), t) }
+        val draft = r.snapshot(t)
+        assertNotNull(draft)
+        assertTrue(r.recording)  // migawka nie kończy nagrania
+        val done = r.finish(t + 5000)
+        assertEquals(draft!!.id, done!!.id)
+    }
+
+    @Test
     fun otherAircraftStartsANewFlight() {
         val r = FlightRecorder { _, _ -> null }
         var t = 0L

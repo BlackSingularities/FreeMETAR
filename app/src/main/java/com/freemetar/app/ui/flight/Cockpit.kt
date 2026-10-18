@@ -93,8 +93,25 @@ fun CockpitView(
             // Poziomo: pasek paneli pionowo z prawej, wyświetlacze na całą wysokość pod nagłówkiem
             val landscape = maxWidth > maxHeight * 1.3f
             val screenH = maxHeight
-            val onTab: (CockpitTab) -> Unit = { t -> tabName = if (tab == t) null else t.name }
-            val panel: (@Composable () -> Unit)? = tab?.let { t ->
+            val screenW = maxWidth
+            // Szeroki ekran (tablet poziomo): stała kolumna paneli obok wyświetlaczy.
+            // Tablet pionowo: wyświetlacze w rzędzie u góry, stały panel pod nimi. Panel nie zastępuje wtedy ND.
+            val wide = maxWidth >= 840.dp && landscape
+            val tabletPortrait = !landscape && maxWidth >= 600.dp
+            val persistent = wide || tabletPortrait
+            val shownTab = tab ?: if (persistent) CockpitTab.AP else null
+            val onTab: (CockpitTab) -> Unit = { t -> tabName = if (tab == t && !persistent) null else t.name }
+            val panelFor: @Composable (CockpitTab, Boolean) -> Unit = { t, compact ->
+                when (t) {
+                    CockpitTab.AP -> AutopilotPanelV2(link, s, profile, onProfile, compact = compact)
+                    CockpitTab.RADIO -> RadioPanel(link, s)
+                    CockpitTab.SYSTEMS -> SystemsPanel(link, s, effective)
+                    CockpitTab.STICK -> FlightControlPanel(link, s, controlMode, onControlMode, floating, onFloating)
+                    CockpitTab.ENGINES -> EnginePanel(link, s, effective)
+                    CockpitTab.PROGRESS -> Progress(s, route)
+                }
+            }
+            val panel: (@Composable () -> Unit)? = tab?.takeIf { !persistent }?.let { t ->
                 {
                     when (t) {
                         CockpitTab.AP -> AutopilotPanelV2(link, s, profile, onProfile, compact = true)
@@ -109,7 +126,26 @@ fun CockpitView(
             // Wszystko na jednym ekranie: otwarty panel zastępuje ND, PFD i dźwignie zostają
             Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 4.dp)) {
                 CockpitHeader(link, s, effective, onShowPlan)
-                if (landscape) {
+                if (wide) {
+                    val sideW = (screenW * 0.34f).coerceIn(340.dp, 480.dp)
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        FlyDeck(link, s, route, effective, nearby, screenH - 40.dp - 14.dp, Modifier.weight(1f))
+                        Column(Modifier.width(sideW)) {
+                            PanelBar(shownTab, onTab, Modifier.padding(top = 0.dp))
+                            Column(Modifier.fillMaxWidth().weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+                                panelFor(shownTab!!, false)
+                                Spacer(Modifier.height(16.dp))
+                            }
+                        }
+                    }
+                } else if (tabletPortrait) {
+                    FlyDeck(link, s, route, effective, nearby, screenH * 0.5f)
+                    PanelBar(shownTab, onTab)
+                    Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) {
+                        panelFor(shownTab!!, false)
+                        Spacer(Modifier.height(16.dp))
+                    }
+                } else if (landscape) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FlyDeck(link, s, route, effective, nearby, screenH - 40.dp - 14.dp, Modifier.weight(1f), panel)
                         PanelRail(tab, onTab)
@@ -172,9 +208,9 @@ private fun PanelRail(tab: CockpitTab?, onTab: (CockpitTab) -> Unit) {
 
 /** Pasek paneli: ikony z krótkim podpisem; aktywny panel podświetlony, drugie dotknięcie chowa. */
 @Composable
-private fun PanelBar(tab: CockpitTab?, onTab: (CockpitTab) -> Unit) {
+private fun PanelBar(tab: CockpitTab?, onTab: (CockpitTab) -> Unit, modifier: Modifier = Modifier) {
     val c = Fm.c
-    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp).height(44.dp).clip(RoundedCornerShape(12.dp)).background(c.terrain).padding(3.dp),
+    Row(modifier.fillMaxWidth().padding(vertical = 8.dp).height(44.dp).clip(RoundedCornerShape(12.dp)).background(c.terrain).padding(3.dp),
         horizontalArrangement = Arrangement.spacedBy(3.dp)) {
         CockpitTab.entries.forEach { t ->
             val on = t == tab

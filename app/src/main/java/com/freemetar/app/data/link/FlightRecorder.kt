@@ -70,6 +70,7 @@ class FlightRecorder(
     private var bounces = 0
     private var prev: FlightState? = null
     private var lastAt = 0L
+    private var recordingId = UUID.randomUUID().toString()
     private var airborneSince: Long? = null
 
     /** Ostatnia ocena lądowania (do pokazania od razu po przyziemieniu). */
@@ -93,6 +94,7 @@ class FlightRecorder(
         if (!recording) {
             if (!onGround && gs > 40) {
                 recording = true
+                recordingId = UUID.randomUUID().toString()
                 points.clear()
                 aircraft = s.aircraft.title
                 category = s.aircraft.category
@@ -183,11 +185,22 @@ class FlightRecorder(
     fun finish(now: Long = System.currentTimeMillis()): FlightLog? {
         if (!recording) return null
         recording = false
-        val pts = points.toList()
+        val log = build(points.toList(), now)
         points.clear()
+        return log
+    }
+
+    /**
+     * Bieżący lot jako wpis do dziennika (bez kończenia nagrania) — do okresowego zapisu szkicu,
+     * żeby lot nie przepadł, gdy system zamknie aplikację w trakcie. Ten sam id co wpis końcowy.
+     */
+    fun snapshot(now: Long = System.currentTimeMillis()): FlightLog? = if (recording) build(points.toList(), now) else null
+
+    private fun build(pts: List<TrackPoint>, now: Long): FlightLog? {
         if (pts.size < 2 || now - pts.first().t < 120_000) return null
         val dist = pts.zipWithNext { a, b -> Geo.distanceNm(a.lat, a.lon, b.lat, b.lon) }.sum()
         return FlightLog(
+            id = recordingId,
             start = pts.first().t, end = now, aircraft = aircraft,
             from = nearestAirport(pts.first().lat, pts.first().lon),
             to = nearestAirport(pts.last().lat, pts.last().lon),

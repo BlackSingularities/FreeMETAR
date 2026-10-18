@@ -80,7 +80,7 @@ private val RANGES = listOf(5, 10, 20, 40, 80, 160, 320)
 /**
  * Widok do latania: PFD i ND jednocześnie, obok pionowe dźwignie mocy (a w tłokowych/turbośmigłowych
  * także śmigło i mieszanka). Rozmiary liczone tak, żeby całość mieściła się na ekranie bez przewijania:
- * telefon pionowo — PFD nad ND, dźwignie z boku na całą wysokość; poziomo i tablet — wszystko w rzędzie.
+ * układ (PFD nad ND albo PFD obok ND) wybierany tak, żeby wyświetlacze były jak największe w danym prostokącie.
  * Otwarty [panel] (autopilot, radio…) zajmuje miejsce ND, więc PFD i dźwignie zostają na widoku.
  */
 @Composable
@@ -95,10 +95,13 @@ fun FlyDeck(
         val leverW = 46.dp
         val thrW = leverW * levers + gap * (levers - 1)
         val instW = maxWidth - thrW - gap
-        val landscape = maxWidth > availableHeight * 1.25f
+        // Dwa układy, wybór tego z większym PFD: obok siebie (wysokość h) albo jeden nad drugim (szerokość colW)
+        val rowH = min(availableHeight, instW / (1.12f + 1.05f) - 2.dp)
+        val colW = min(instW, (availableHeight - gap) / (1f / 1.12f + 1f / 1.45f))
+        val landscape = rowH * 1.12f > colW
         if (landscape) {
             // PFD (1,12:1) i ND (1:1) obok siebie, wysokość wg dostępnego miejsca
-            val h = min(availableHeight, instW / (1.12f + 1.05f) - 2.dp)
+            val h = rowH
             Row(horizontalArrangement = Arrangement.spacedBy(gap), verticalAlignment = Alignment.Top) {
                 Box(Modifier.clip(RoundedCornerShape(10.dp))) { Pfd(s, Modifier.width(h * 1.12f)) }
                 if (panel != null) PanelSlot(Modifier.width(h * 1.05f).height(h), panel)
@@ -106,12 +109,13 @@ fun FlyDeck(
                 Levers(link, s, profile, Modifier.height(h).width(thrW))
             }
         } else {
-            // Telefon pionowo: PFD nad ND; ND wypełnia resztę wysokości (proporcje 1,0–1,45)
-            val pfdH = instW / 1.12f
-            val ndAspect = (instW / (availableHeight - pfdH - gap).coerceAtLeast(instW / 1.45f)).coerceIn(1f, 1.45f)
-            val ndH = instW / ndAspect
+            // PFD nad ND; ND wypełnia resztę wysokości (proporcje 1,0–1,45)
+            val w = colW
+            val pfdH = w / 1.12f
+            val ndAspect = (w / (availableHeight - pfdH - gap).coerceAtLeast(w / 1.45f)).coerceIn(1f, 1.45f)
+            val ndH = w / ndAspect
             Row(horizontalArrangement = Arrangement.spacedBy(gap), verticalAlignment = Alignment.Top) {
-                Column(Modifier.width(instW), verticalArrangement = Arrangement.spacedBy(gap)) {
+                Column(Modifier.width(w), verticalArrangement = Arrangement.spacedBy(gap)) {
                     Box(Modifier.clip(RoundedCornerShape(10.dp))) { Pfd(s) }
                     if (panel != null) PanelSlot(Modifier.fillMaxWidth().height(ndH), panel)
                     else NdWithControls(s, route, nearby, Modifier.fillMaxWidth(), aspect = ndAspect)

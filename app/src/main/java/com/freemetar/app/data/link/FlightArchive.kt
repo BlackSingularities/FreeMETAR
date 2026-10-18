@@ -109,6 +109,22 @@ class FlightLogStore(context: Context) {
         if (legacy.exists()) legacy.delete()
     }
 
+    private val draft = File(context.filesDir, "flight-in-progress.oab")
+
+    /** Szkic trwającego lotu (nadpisywany co kilkadziesiąt sekund). */
+    suspend fun saveDraft(f: FlightLog) = withContext(Dispatchers.IO) {
+        val tmp = File(draft.parentFile, draft.name + ".tmp")
+        tmp.writeBytes(FlightArchive.encode(listOf(f)))
+        if (!tmp.renameTo(draft)) { draft.delete(); tmp.renameTo(draft) }
+    }
+
+    /** Szkic po poprzednim uruchomieniu (aplikacja zamknięta w trakcie lotu) albo null. */
+    suspend fun takeDraft(): FlightLog? = withContext(Dispatchers.IO) {
+        if (!draft.exists()) null else runCatching { FlightArchive.decode(draft.readBytes()).firstOrNull() }.getOrNull()
+    }
+
+    suspend fun clearDraft() = withContext(Dispatchers.IO) { draft.delete(); Unit }
+
     /** Rozmiar archiwum na dysku (bajty). */
     fun sizeBytes(): Long = if (file.exists()) file.length() else if (legacy.exists()) legacy.length() else 0
 }

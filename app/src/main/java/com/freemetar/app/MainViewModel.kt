@@ -410,7 +410,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private fun saveFlight(log: FlightLog?) {
         log ?: return
         viewModelScope.launch {
-            _flightLogs.value = listOf(log) + _flightLogs.value
+            // Ten sam id co szkic — wpis końcowy zastępuje szkic, nie dubluje go
+            _flightLogs.value = listOf(log) + _flightLogs.value.filterNot { it.id == log.id }
+            flightLogStore.clearDraft()
             flightLogStore.save(_flightLogs.value)
             val route = "${log.from ?: "?"} → ${log.to ?: "?"}"
             _flightMessage.value = loc("Zapisano lot $route (${log.durationMin} min).", "Flight $route saved (${log.durationMin} min).")
@@ -418,7 +420,27 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun startLinkWatchers() {
-        viewModelScope.launch { _flightLogs.value = flightLogStore.load() }
+        viewModelScope.launch {
+            val logs = flightLogStore.load()
+            // Lot przerwany zamknięciem aplikacji: szkic trafia do dziennika
+            val draft = flightLogStore.takeDraft()
+            _flightLogs.value = if (draft != null && logs.none { it.id == draft.id }) listOf(draft) + logs else logs
+            if (draft != null) { flightLogStore.save(_flightLogs.value); flightLogStore.clearDraft() }
+        }
+        // Szkic trwającego lotu co 30 s; po 60 s bez danych z symulatora lot jest zamykany i zapisywany
+        viewModelScope.launch {
+            var noDataSince: Long? = null
+            while (true) {
+                kotlinx.coroutines.delay(30_000)
+                if (recorder.recording) {
+                    recorder.snapshot()?.let { flightLogStore.saveDraft(it) }
+                    if (link.state.value == null) {
+                        val since = noDataSince ?: System.currentTimeMillis().also { noDataSince = it }
+                        if (System.currentTimeMillis() - since >= 60_000) { saveFlight(recorder.finish()); noDataSince = null }
+                    } else noDataSince = null
+                } else noDataSince = null
+            }
+        }
         viewModelScope.launch { settings.collect { recorder.intervalMs = it.recordIntervalMs.toLong().coerceIn(250, 10_000) } }
         // Lotniska i pomoce nawigacyjne z MSFS wokół samolotu (do ND): po ~10 NM lotu albo co 3 min
         viewModelScope.launch {
