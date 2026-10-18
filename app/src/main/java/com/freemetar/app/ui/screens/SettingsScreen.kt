@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Straighten
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Fullscreen
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.ScreenRotation
 import androidx.compose.material.icons.outlined.TouchApp
@@ -112,6 +113,9 @@ fun SettingsScreen(vm: MainViewModel) {
                         leadingIcon = { Icon(when (mode) { com.freemetar.app.data.ThemeMode.DAY -> Icons.Outlined.LightMode; com.freemetar.app.data.ThemeMode.NIGHT -> Icons.Outlined.DarkMode; else -> Icons.Outlined.Smartphone }, null, Modifier.size(16.dp)) })
                 }
             }
+            ToggleRow(Icons.Outlined.Fullscreen, loc("Ukryj pasek stanu", "Hide the status bar"),
+                loc("Aplikacja zajmuje cały ekran; pasek wysuniesz przeciągnięciem od góry.", "The app uses the whole screen; swipe down from the top to show the bar."),
+                s.hideStatusBar) { vm.setHideStatusBar(it) }
             ToggleRow(Icons.Outlined.Autorenew, loc("Automatyczne odświeżanie", "Auto refresh"), loc("Co 5 minut, gdy aplikacja jest otwarta", "Every 5 minutes while the app is open"), s.autoRefresh) { vm.setAutoRefresh(it) }
         }
 

@@ -152,6 +152,9 @@ public sealed class ControlsData
     public double PropPct { get; set; }
     // Kamera MSFS (CAMERA STATE): 2 kabina, 3 zewnętrzna, 4 dron, inne = pozostałe widoki
     public int CameraState { get; set; }
+    // Kąty kamery odczytane z MSFS (stopnie; pochylenie + w górę, obrót + w prawo) — do sprawdzenia, czy rozglądanie działa
+    public double CameraPitchDeg { get; set; }
+    public double CameraYawDeg { get; set; }
 }
 
 public sealed class LightsData

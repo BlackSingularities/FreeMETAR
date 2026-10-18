@@ -332,8 +332,12 @@ internal fun CameraSwitch(link: LinkClient, s: FlightState, modifier: Modifier =
         horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
         if (looking) {
             // W trakcie rozglądania zamiast ikon bieżące kąty
-            Text("↔ ${yaw.roundToInt()}°  ↕ ${pitch.roundToInt()}°", fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = c.accent,
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp))
+            // Wysyłane kąty i (mniejszym drukiem) te, które MSFS faktycznie ma — od razu widać, czy kamera reaguje
+            Column(Modifier.padding(horizontal = 10.dp, vertical = 2.dp)) {
+                Text("↔ ${yaw.roundToInt()}°  ↕ ${pitch.roundToInt()}°", fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = c.accent)
+                val my = s.controls.cameraYawDeg; val mp = s.controls.cameraPitchDeg
+                if (my != null && mp != null) Text("MSFS ${my.roundToInt()}° / ${mp.roundToInt()}°", fontFamily = Mono, fontSize = 9.sp, color = c.ink2)
+            }
         }
         listOf(
             Triple(2, tr("Kamera: kabina", "Camera: cockpit"), Icons.Outlined.AirlineSeatReclineNormal),

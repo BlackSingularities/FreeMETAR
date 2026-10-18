@@ -57,6 +57,8 @@ data class LinkServer(val name: String, val host: String, val ip: String, val po
     val throttlePct: Double? = null, val mixturePct: Double? = null, val propPct: Double? = null,
     /** Kamera MSFS: 2 kabina, 3 zewnętrzna, 4 dron, inne = pozostałe widoki. */
     val cameraState: Int? = null,
+    /** Kąty kamery odczytane z MSFS (stopnie) — porównanie z wysyłanymi przy rozglądaniu. */
+    val cameraPitchDeg: Double? = null, val cameraYawDeg: Double? = null,
 )
 @Serializable data class Lights(
     val beacon: Boolean? = null, val strobe: Boolean? = null, val nav: Boolean? = null, val landing: Boolean? = null,

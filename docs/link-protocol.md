@@ -121,7 +121,8 @@ serwera w ms od epoki Unix.
     "controls": {
       "gearDown": true, "gearPct": 100, "flapsIndex": 1, "flapsPositions": 5, "flapsPct": 25,
       "spoilersPct": 0, "spoilersArmed": true, "parkingBrake": false, "elevatorTrimPct": 2.5,
-      "throttlePct": 85, "mixturePct": 100, "propPct": 100, "cameraState": 2
+      "throttlePct": 85, "mixturePct": 100, "propPct": 100, "cameraState": 2,
+      "cameraPitchDeg": 0, "cameraYawDeg": 0
     },
     "lights": { "beacon": true, "strobe": true, "nav": true, "landing": true, "taxi": false,
                 "logo": true, "wing": false, "panel": true, "cabin": true },
@@ -417,6 +418,10 @@ Wartość musi być liczbą całkowitą (lub liczbą z zerową częścią ułamk
 | `CAMERA_STATE` | 2 kabina, 3 zewnętrzna (pościg), 4 dron |
 | `CAMERA_PITCH_SET` | pochylenie kamery w stopniach: −90 (w dół) … 90 (w górę); zapis SimVar `CAMERA GAMEPLAY PITCH YAW:0` |
 | `CAMERA_YAW_SET` | obrót kamery w stopniach: −180 (w lewo) … 180 (w prawo); zapis SimVar `CAMERA GAMEPLAY PITCH YAW:1` |
+
+Rozglądanie się: Link najpierw zapisuje SimVar, a odczytane kąty kamery zwraca w `controls.cameraPitchDeg` /
+`controls.cameraYawDeg`. Jeśli po kilku żądaniach kamera nie podąża (MSFS nie przyjmuje zapisu), Link sam
+przechodzi na zdarzenia widoku `PAN_VIEW` (kierunek), `AXIS_PAN_HEADING`, `AXIS_PAN_PITCH` i `PAN_RESET_COCKPIT` (środek).
 
 Odpowiedź: `ack` po przekazaniu do symulatora (nie oznacza, że samolot zareagował — skutek
 widać w kolejnych `state`), albo `error`.

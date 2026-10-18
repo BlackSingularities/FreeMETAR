@@ -35,6 +35,8 @@ data class Settings(
     val floatingControl: Boolean = false,
     /** SIMPLE — sam przycisk sterowania; TRIM — dodatkowo przyciski trymu wysokości. */
     val floatingStyle: String = "SIMPLE",
+    /** Pasek stanu ukryty — aplikacja zajmuje jego miejsce (wysuwa się przeciągnięciem od góry). */
+    val hideStatusBar: Boolean = false,
     /** Odstęp między punktami zapisu lotu (ms). */
     val recordIntervalMs: Int = 1000,
 )
@@ -56,6 +58,7 @@ class Prefs(private val context: Context) {
     private val FLOATING = booleanPreferencesKey("floating_control")
     private val RECORD_MS = intPreferencesKey("record_interval_ms")
     private val FLOAT_STYLE = stringPreferencesKey("floating_style")
+    private val HIDE_STATUS = booleanPreferencesKey("hide_status_bar")
 
     private fun list(v: String?) = v?.split(",")?.filter { it.isNotBlank() }
 
@@ -74,6 +77,7 @@ class Prefs(private val context: Context) {
             controlMode = p[CONTROL] ?: "TILT",
             floatingControl = p[FLOATING] ?: false,
             floatingStyle = p[FLOAT_STYLE] ?: "SIMPLE",
+            hideStatusBar = p[HIDE_STATUS] ?: false,
             recordIntervalMs = p[RECORD_MS] ?: 1000,
         )
     }
@@ -125,6 +129,7 @@ class Prefs(private val context: Context) {
 
     suspend fun setControlMode(v: String) = context.dataStore.edit { it[CONTROL] = v }
     suspend fun setFloatingControl(v: Boolean) = context.dataStore.edit { it[FLOATING] = v }
+    suspend fun setHideStatusBar(v: Boolean) = context.dataStore.edit { it[HIDE_STATUS] = v }
     suspend fun setFloatingStyle(v: String) = context.dataStore.edit { it[FLOAT_STYLE] = v }
     suspend fun setRecordInterval(ms: Int) = context.dataStore.edit { it[RECORD_MS] = ms }
     suspend fun setLanguage(v: String) = context.dataStore.edit { it[LANGUAGE] = v }

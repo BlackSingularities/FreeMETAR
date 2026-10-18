@@ -119,6 +119,15 @@ class MainActivity : ComponentActivity() {
             OpenAirBookTheme(settings.themeMode) {
                 val night = Fm.c.isNight
                 // Ikony paska stanu muszą pasować do motywu wybranego w aplikacji, nie do systemu
+                // Pełny ekran: pasek stanu schowany, wysuwa się na chwilę przeciągnięciem od góry.
+                // Ekrany używają wstawek paska stanu, więc same zajmują zwolnione miejsce.
+                LaunchedEffect(settings.hideStatusBar) {
+                    val ctl = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+                    if (settings.hideStatusBar) {
+                        ctl.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                        ctl.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+                    } else ctl.show(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+                }
                 LaunchedEffect(night) {
                     val style = if (night) SystemBarStyle.dark(AndroidColor.TRANSPARENT)
                     else SystemBarStyle.light(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT)
@@ -203,6 +212,13 @@ class MainActivity : ComponentActivity() {
                             Box(Modifier.width(1.dp).fillMaxHeight().background(c.rule))
                         }
                         val liveState by vm.flightState.collectAsStateWithLifecycle()
+                        // Połączony symulator: ekran nie wygasa (stery, przyrządy); po rozłączeniu znów normalnie
+                        val rootView = androidx.compose.ui.platform.LocalView.current
+                        val simActive = liveState != null
+                        androidx.compose.runtime.DisposableEffect(simActive) {
+                            rootView.keepScreenOn = simActive
+                            onDispose { rootView.keepScreenOn = false }
+                        }
                         Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.TopCenter) {
                             // Pływające stery nad wszystkimi zakładkami (rysowane po NavHost, więc na wierzchu)
                             val floating: @androidx.compose.runtime.Composable () -> Unit = {

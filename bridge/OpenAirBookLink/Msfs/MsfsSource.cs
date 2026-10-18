@@ -45,6 +45,7 @@ public sealed class MsfsSource : IFlightSource
         uint id = FirstClientEventId;
         foreach (var spec in CommandAllowlist.All.Where(s => s.Target == CommandTarget.Event)) _eventIds[spec.Name] = id++;
         foreach (var axis in CommandAllowlist.AxisEvents) _eventIds[axis] = id++;
+        foreach (var ev in CameraEvents) _eventIds[ev] = id++;
         _navData.Log += m => Log?.Invoke(m);
     }
 
@@ -87,13 +88,7 @@ public sealed class MsfsSource : IFlightSource
         if (client is not { IsConnected: true }) return CommandResult.Fail(ErrorCodes.SimUnavailable, "Brak połączenia z MSFS");
 
         if (command.Spec.Target is CommandTarget.CameraPitch or CommandTarget.CameraYaw)
-        {
-            // Kamera gry: indeks 0 = pochylenie, 1 = obrót (radiany). W MSFS dodatnie pochylenie patrzy w dół.
-            var index = command.Spec.Target == CommandTarget.CameraPitch ? 0 : 1;
-            var deg = command.Spec.Target == CommandTarget.CameraPitch ? -command.Value : command.Value;
-            await client.SimVars.SetAsync($"CAMERA GAMEPLAY PITCH YAW:{index}", "radians", deg * Math.PI / 180.0, cancellationToken: ct);
-            return CommandResult.Success;
-        }
+            return await LookAsync(client, command.Spec.Target == CommandTarget.CameraPitch, command.Value, ct);
 
         if (command.Spec.Target == CommandTarget.CameraState)
         {
@@ -242,6 +237,67 @@ public sealed class MsfsSource : IFlightSource
         client.InputEvents.TransmitClientEventAsync(UserAircraft, _eventIds[eventName], data, PriorityHighest,
             SimConnectEventOptions.GroupIdIsPriority, ct);
 
+    // ---------- rozglądanie się ----------
+
+    // Zdarzenia widoku używane, gdy MSFS nie przyjmuje zapisu CAMERA GAMEPLAY PITCH YAW (wewnętrzne, spoza listy telefonu)
+    private static readonly string[] CameraEvents = { "PAN_VIEW", "PAN_RESET_COCKPIT", "AXIS_PAN_HEADING", "AXIS_PAN_PITCH" };
+    private bool _lookByEvents;
+    private int _lookMisses;
+    private long _lookYaw, _lookPitch;
+    private double _lookBaseYaw, _lookBasePitch;
+
+    /// <summary>
+    /// Rozglądanie się. Najpierw zapis SimVar CAMERA GAMEPLAY PITCH YAW; odczyt zwrotny w kolejnych klatkach mówi,
+    /// czy kamera za nim idzie. Jeśli po 6 żądaniach z wyraźnym kątem nie idzie (albo zapis się nie udaje),
+    /// przełączamy się na zdarzenia widoku: PAN_VIEW (kierunek 0–359°, środek = PAN_RESET_COCKPIT) i AXIS_PAN_HEADING / AXIS_PAN_PITCH.
+    /// </summary>
+    private async Task<CommandResult> LookAsync(SimConnectClient client, bool pitchAxis, long valueDeg, CancellationToken ct)
+    {
+        if (pitchAxis) _lookPitch = valueDeg; else _lookYaw = valueDeg;
+        if (!_lookByEvents)
+        {
+            try
+            {
+                // Indeks 0 = pochylenie, 1 = obrót (radiany); w MSFS dodatnie pochylenie patrzy w dół
+                var index = pitchAxis ? 0 : 1;
+                var deg = pitchAxis ? -valueDeg : valueDeg;
+                await client.SimVars.SetAsync($"CAMERA GAMEPLAY PITCH YAW:{index}", "radians", deg * Math.PI / 180.0, cancellationToken: ct);
+                // Odczyt zwrotny z ostatniej klatki: czy kamera faktycznie jest blisko żądanego kąta
+                MsfsData? d;
+                lock (_lock) d = _last;
+                if (d is { } last)
+                {
+                    // Nie wiadomo, czy MSFS podaje kąt względem samolotu, czy bezwzględny — sprawdzamy więc tylko,
+                    // czy kamera w ogóle się ruszyła od chwili, gdy patrzyliśmy na wprost
+                    var actual = pitchAxis ? -last.CamPitchRad * 180 / Math.PI : last.CamYawRad * 180 / Math.PI;
+                    if (Math.Abs(valueDeg) < 5) { if (pitchAxis) _lookBasePitch = actual; else _lookBaseYaw = actual; }
+                    else if (Math.Abs(valueDeg) >= 15)
+                        _lookMisses = Math.Abs(Wrap(actual - (pitchAxis ? _lookBasePitch : _lookBaseYaw))) < 2 ? _lookMisses + 1 : 0;
+                }
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                _lookMisses = 99;
+                Log?.Invoke($"Kamera: zapis CAMERA GAMEPLAY PITCH YAW nie powiódł się ({e.Message})");
+            }
+            if (_lookMisses < 6) return CommandResult.Success;
+            _lookByEvents = true;
+            Log?.Invoke("Kamera: MSFS nie przyjmuje zapisu SimVar — rozglądanie przez zdarzenia widoku (PAN_VIEW / AXIS_PAN_*)");
+        }
+
+        // Zdarzenia widoku
+        if (Math.Abs(_lookYaw) < 5 && Math.Abs(_lookPitch) < 5)
+        {
+            await TransmitAsync(client, "PAN_RESET_COCKPIT", 0, ct);
+            return CommandResult.Success;
+        }
+        if (!pitchAxis) await TransmitAsync(client, "PAN_VIEW", (uint)(((_lookYaw % 360) + 360) % 360), ct);
+        await TransmitAsync(client, pitchAxis ? "AXIS_PAN_PITCH" : "AXIS_PAN_HEADING", unchecked((uint)(int)(pitchAxis ? -_lookPitch : _lookYaw)), ct);
+        return CommandResult.Success;
+    }
+
+    private static double Wrap(double deg) => ((deg % 360) + 540) % 360 - 180;
+
     private void SetStatus(bool connected, string text)
     {
         var changed = connected != _connected || text != _status;
@@ -331,6 +387,7 @@ public sealed class MsfsSource : IFlightSource
                 SpoilersPct = R(d.SpoilersPct, 0), SpoilersArmed = B(d.SpoilersArmed),
                 ParkingBrake = B(d.ParkingBrake), ElevatorTrimPct = R(d.ElevTrimPct, 1),
                 ThrottlePct = R(d.Throttle1, 0), MixturePct = R(d.Mixture1, 0), PropPct = R(d.Prop1, 0), CameraState = (int)d.CameraState,
+                CameraPitchDeg = R(-d.CamPitchRad * 180 / Math.PI, 0), CameraYawDeg = R(d.CamYawRad * 180 / Math.PI, 0),
             },
             Lights = new LightsData
             {
