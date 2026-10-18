@@ -78,7 +78,7 @@ import kotlin.math.roundToInt
  * więc trym ma osobne przyciski obok.
  */
 @Composable
-fun FloatingControl(link: LinkClient, modeName: String, s: FlightState? = null, withTrim: Boolean = false, modifier: Modifier = Modifier) {
+fun FloatingControl(link: LinkClient, modeName: String, s: FlightState? = null, withTrim: Boolean = false, positionKey: String = "default", modifier: Modifier = Modifier) {
     val c = Fm.c
     val haptic = LocalHapticFeedback.current
     val density = LocalDensity.current
@@ -102,11 +102,16 @@ fun FloatingControl(link: LinkClient, modeName: String, s: FlightState? = null, 
     }
     val max = link.limits.maxDeflection
 
-    // Pozycja przycisku (ułamek dostępnego obszaru) przetrwa obrót ekranu i zmianę zakładki
-    // Domyślnie lewa strona — z prawej są dźwignie mocy w widoku lotu
-    var fx by rememberSaveable { mutableFloatStateOf(0f) }
-    // Pionowo: dolna część ekranu (w widoku lotu lewa połowa łuku ND jest zwykle pusta)
-    var fy by rememberSaveable { mutableFloatStateOf(0.72f) }
+    // Pozycja przycisku (ułamek dostępnego obszaru) zapamiętana osobno dla każdego widoku aplikacji
+    // Domyślnie lewa strona (z prawej są dźwignie mocy w widoku lotu), dolna część ekranu
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val store = remember { context.getSharedPreferences("floating_control_pos", android.content.Context.MODE_PRIVATE) }
+    var fx by remember(positionKey) { mutableFloatStateOf(store.getFloat("$positionKey.x", 0f)) }
+    var fy by remember(positionKey) { mutableFloatStateOf(store.getFloat("$positionKey.y", 0.72f)) }
+    LaunchedEffect(positionKey, fx, fy) {
+        delay(300)   // zapis po zakończeniu przeciągania, nie co klatkę
+        store.edit().putFloat("$positionKey.x", fx).putFloat("$positionKey.y", fy).apply()
+    }
 
     fun axes(): Pair<Double, Double> = if (tiltMode) {
         ControlMath.axis(tilt.roll - roll0, 35.0, 2.0, 1.0, max) to ControlMath.axis(tilt.pitch - pitch0, 30.0, 2.0, 1.0, max)

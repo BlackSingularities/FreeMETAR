@@ -92,8 +92,7 @@ public sealed class MsfsSource : IFlightSource
 
         if (command.Spec.Target == CommandTarget.CameraState)
         {
-            await client.SimVars.SetAsync("CAMERA STATE", "Enum", (double)command.Value, cancellationToken: ct);
-            return CommandResult.Success;
+            return await SetCameraAsync(client, (int)command.Value, ct);
         }
 
         if (command.Spec.Target == CommandTarget.TransponderState)
@@ -240,7 +239,7 @@ public sealed class MsfsSource : IFlightSource
     // ---------- rozglądanie się ----------
 
     // Zdarzenia widoku używane, gdy MSFS nie przyjmuje zapisu CAMERA GAMEPLAY PITCH YAW (wewnętrzne, spoza listy telefonu)
-    private static readonly string[] CameraEvents = { "PAN_VIEW", "PAN_RESET_COCKPIT", "AXIS_PAN_HEADING", "AXIS_PAN_PITCH" };
+    private static readonly string[] CameraEvents = { "PAN_VIEW", "PAN_RESET_COCKPIT", "AXIS_PAN_HEADING", "AXIS_PAN_PITCH", "VIEW_MODE" };
     private bool _lookByEvents;
     private int _lookMisses;
     private long _lookYaw, _lookPitch;
@@ -294,6 +293,42 @@ public sealed class MsfsSource : IFlightSource
         if (!pitchAxis) await TransmitAsync(client, "PAN_VIEW", (uint)(((_lookYaw % 360) + 360) % 360), ct);
         await TransmitAsync(client, pitchAxis ? "AXIS_PAN_PITCH" : "AXIS_PAN_HEADING", unchecked((uint)(int)(pitchAxis ? -_lookPitch : _lookYaw)), ct);
         return CommandResult.Success;
+    }
+
+    /// <summary>
+    /// Zmiana kamery. Najpierw zapis SimVar CAMERA STATE; jeśli odczyt zwrotny pokazuje, że MSFS go zignorował
+    /// (bywa tak w MSFS 2024 i przy niektórych samolotach), przełączamy widok zdarzeniem VIEW_MODE aż do skutku.
+    /// </summary>
+    private async Task<CommandResult> SetCameraAsync(SimConnectClient client, int target, CancellationToken ct)
+    {
+        try
+        {
+            await client.SimVars.SetAsync("CAMERA STATE", "Enum", (double)target, cancellationToken: ct);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            Log?.Invoke($"Kamera: zapis CAMERA STATE nie powiódł się ({e.Message})");
+        }
+        if (await WaitForCameraAsync(target, ct)) return CommandResult.Success;
+
+        Log?.Invoke($"Kamera: MSFS nie przyjął CAMERA STATE={target} — przełączam przez VIEW_MODE");
+        for (var i = 0; i < 4; i++)
+        {
+            await TransmitAsync(client, "VIEW_MODE", 0, ct);
+            if (await WaitForCameraAsync(target, ct)) return CommandResult.Success;
+        }
+        Log?.Invoke($"Kamera: nie udało się ustawić widoku {target}");
+        return CommandResult.Success;
+    }
+
+    private async Task<bool> WaitForCameraAsync(int target, CancellationToken ct)
+    {
+        for (var i = 0; i < 8; i++)
+        {
+            await Task.Delay(60, ct);
+            lock (_lock) if (_last is { } d && (int)d.CameraState == target) return true;
+        }
+        return false;
     }
 
     private static double Wrap(double deg) => ((deg % 360) + 540) % 360 - 180;

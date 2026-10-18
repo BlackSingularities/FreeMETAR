@@ -224,7 +224,7 @@ class MainActivity : ComponentActivity() {
                             val floating: @androidx.compose.runtime.Composable () -> Unit = {
                                 // Na ekranie Lot kokpit ma własny przycisk — tu tylko na pozostałych zakładkach
                                 if (settings.floatingControl && liveState != null && settings.controlMode != "GAMEPAD" && activeTab != "flight")
-                                    com.freemetar.app.ui.flight.FloatingControl(vm.link, settings.controlMode, liveState, withTrim = settings.floatingStyle == "TRIM")
+                                    com.freemetar.app.ui.flight.FloatingControl(vm.link, settings.controlMode, liveState, withTrim = settings.floatingStyle == "TRIM", positionKey = activeTab ?: "home")
                             }
                             NavHost(
                                 nav, startDestination = "home",
