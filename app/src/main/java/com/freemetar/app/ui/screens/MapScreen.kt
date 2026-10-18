@@ -30,7 +30,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material.icons.outlined.MyLocation
-import androidx.compose.material.icons.outlined.ViewInAr
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Remove
@@ -209,7 +208,8 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
     val statusTop = WindowInsets.statusBars.getTop(density)
     val compassTop = statusTop + with(density) { 64.dp.roundToPx() }
     val compassRight = with(density) { 14.dp.roundToPx() }
-    var threeD by rememberSaveable { mutableStateOf(false) }
+    // Mapa zawsze w 3D - domyślne pochylenie 50°
+    val defaultTilt = 50.0
     val lastFollowAt = remember { longArrayOf(0L) }
     var picked by remember { mutableStateOf<Metar?>(null) }
     var style by remember { mutableStateOf<Style?>(null) }
@@ -250,9 +250,12 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
             if (map.cameraPosition.zoom < 2.0) {
                 val home = vm.mapHome()
                 map.cameraPosition = CameraPosition.Builder()
-                    .target(LatLng(home?.lat ?: 52.0, home?.lon ?: 19.0)).zoom(if (home != null) 6.5 else 5.0).build()
+                    .target(LatLng(home?.lat ?: 52.0, home?.lon ?: 19.0))
+                    .zoom(if (home != null) 6.5 else 5.0)
+                    .tilt(defaultTilt)
+                    .build()
             }
-            // Pochylanie i obracanie dwoma palcami; przycisk 3D ustawia perspektywę jednym dotknięciem
+            // Tilt i rotate dwoma palcami
             map.uiSettings.isRotateGesturesEnabled = true
             map.uiSettings.isTiltGesturesEnabled = true
             map.uiSettings.compassGravity = android.view.Gravity.TOP or android.view.Gravity.END
@@ -260,7 +263,7 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
             map.uiSettings.setCompassFadeFacingNorth(true)
             map.setStyle(Style.Builder().fromUri(styleUrl)) { st ->
                 addOverlay(st, c)
-                set3dLayers(st, threeD)
+                set3dLayers(st, true) // Zawsze 3D
                 style = st
             }
             if (wired) return@getMapAsync
@@ -303,38 +306,37 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
         if (follow && lat != null && lon != null && nowMs - lastFollowAt[0] >= 330) {
             lastFollowAt[0] = nowMs
             mapView.getMapAsync { m ->
-                val b = CameraPosition.Builder().target(LatLng(lat, lon))
-                // W 3D kamera patrzy w kierunku lotu, zza samolotu
-                if (threeD) (live?.attitude?.trackTrueDeg ?: live?.attitude?.hdgTrueDeg)?.let { b.bearing(it) }
+                val b = CameraPosition.Builder()
+                    .target(LatLng(lat, lon))
+                    .tilt(defaultTilt)
+                // Kamera patrzy w kierunku lotu
+                (live?.attitude?.trackTrueDeg ?: live?.attitude?.hdgTrueDeg)?.let { b.bearing(it) }
                 m.easeCamera(CameraUpdateFactory.newCameraPosition(b.build()), 320)
             }
         }
     }
-    // Zapisany lot: widok 3D i kadr na cały tor
-    // Kadr i pochylenie w jednej animacji — dwie osobne przerywałyby się nawzajem
+    // Zapisany lot: kadr na cały tor z pochyleniem
     val pendingFit = remember { arrayOfNulls<LatLngBounds>(1) }
-    fun moveCamera3d(on: Boolean) = mapView.getMapAsync { m ->
-        // Kadr płaski, potem oddalenie — po pochyleniu bliższy koniec toru inaczej ucieka za dolną krawędź
+    fun fitTrackCamera() = mapView.getMapAsync { m ->
         val fit = pendingFit[0]?.let { m.getCameraForLatLngBounds(it, intArrayOf(80, 240, 80, 160)) }
         pendingFit[0] = null
-        val b = CameraPosition.Builder(fit ?: m.cameraPosition).tilt(if (on) 55.0 else 0.0)
-        if (fit != null && on) b.zoom(fit.zoom - 0.7)
-        if (!on) b.bearing(0.0)
+        val b = CameraPosition.Builder(fit ?: m.cameraPosition)
+            .tilt(defaultTilt)
+            .zoom((fit?.zoom ?: m.cameraPosition.zoom) - 0.7)
         m.animateCamera(CameraUpdateFactory.newCameraPosition(b.build()), 900)
     }
-    // Przed efektem zapisanego lotu: przy jednoczesnym starcie późniejsza animacja (z kadrem) wygrywa
-    LaunchedEffect(style, threeD) {
+    // Warstwy 3D zawsze włączone
+    LaunchedEffect(style) {
         val st = style ?: return@LaunchedEffect
-        set3dLayers(st, threeD)
-        moveCamera3d(threeD)
+        set3dLayers(st, true)
     }
-    // Zapisany lot: widok 3D i kadr na cały tor
+    // Zapisany lot: kadr na cały tor
     LaunchedEffect(style, shownFlight?.id) {
         val f = shownFlight ?: return@LaunchedEffect
         if (style == null || f.track.size < 2) return@LaunchedEffect
         follow = false
         pendingFit[0] = LatLngBounds.Builder().apply { f.track.forEach { include(LatLng(it.lat, it.lon)) } }.build()
-        if (threeD) moveCamera3d(true) else threeD = true
+        fitTrackCamera()
     }
     LaunchedEffect(style, track.size, shownFlight?.id) {
         val st = style ?: return@LaunchedEffect
@@ -422,7 +424,7 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
                     item(loc("Pomoce nawigacyjne z MSFS", "Navaids from MSFS") + if (nearbyNav.isEmpty()) loc(" (brak danych)", " (no data)") else "", showNav) { showNav = !showNav }
                 }
             }
-            MapKey(Icons.Outlined.ViewInAr, loc("Widok 3D", "3D view"), threeD) { threeD = !threeD }
+            // Usunięto przycisk 3D - mapa zawsze w trybie 3D
             if (live != null) MapKey(Icons.Outlined.MyLocation, loc("Śledź samolot", "Follow aircraft"), follow) { follow = !follow }
             MapKey(Icons.Outlined.Add, loc("Przybliż", "Zoom in"), false) { mapView.getMapAsync { it.animateCamera(CameraUpdateFactory.zoomIn(), 250) } }
             MapKey(Icons.Outlined.Remove, loc("Oddal", "Zoom out"), false) { mapView.getMapAsync { it.animateCamera(CameraUpdateFactory.zoomOut(), 250) } }
