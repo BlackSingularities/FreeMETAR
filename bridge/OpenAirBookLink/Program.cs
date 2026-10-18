@@ -6,11 +6,11 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
-        using var mutex = new Mutex(true, "OpenAirBook-Link-single-instance", out var first);
+        using var mutex = new Mutex(true, "OpenTakeoff-Link-single-instance", out var first);
         if (!first)
         {
-            MessageBox.Show("OpenAirBook Link już działa — sprawdź ikonę w zasobniku obok zegara.",
-                "OpenAirBook Link", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("OpenTakeoff Link już działa — sprawdź ikonę w zasobniku obok zegara.",
+                "OpenTakeoff Link", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
@@ -27,7 +27,7 @@ internal static class Program
         catch (System.Net.Sockets.SocketException e)
         {
             MessageBox.Show($"Nie można otworzyć portu {Core.Protocol.LinkProtocol.WebSocketPort}: {e.Message}\n" +
-                            "Czy inny program go nie zajmuje?", "OpenAirBook Link", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            "Czy inny program go nie zajmuje?", "OpenTakeoff Link", MessageBoxButtons.OK, MessageBoxIcon.Error);
             return;
         }
         Application.Run(form);

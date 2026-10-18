@@ -64,7 +64,7 @@ public sealed class HelloOkMessage : LinkMessage
     public override string Type => "hello_ok";
     public string? Id { get; init; }
     public required string Token { get; init; }
-    public string Server { get; init; } = "OpenAirBook Link";
+    public string Server { get; init; } = "OpenTakeoff Link";
     public required string Version { get; init; }
     public required string Source { get; init; }
     public int RateHz { get; init; }
@@ -114,7 +114,7 @@ public sealed class PongMessage : LinkMessage
 public sealed class AnnounceMessage : LinkMessage
 {
     public override string Type => "announce";
-    public string Name { get; init; } = "OpenAirBook Link";
+    public string Name { get; init; } = "OpenTakeoff Link";
     public required string Version { get; init; }
     public required string Host { get; init; }
     public int Port { get; init; }

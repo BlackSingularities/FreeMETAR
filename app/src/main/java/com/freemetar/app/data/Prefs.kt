@@ -111,7 +111,7 @@ class Prefs(private val context: Context) {
     private fun tokenMap(v: String?): Map<String, String> =
         v?.split(";")?.mapNotNull { e -> e.split("=", limit = 2).takeIf { it.size == 2 }?.let { it[0] to it[1] } }?.toMap().orEmpty()
 
-    /** Zapis tokenów parowania OpenAirBook Link — osobno dla każdego komputera. */
+    /** Zapis tokenów parowania OpenTakeoff Link — osobno dla każdego komputera. */
     val linkTokens = object : com.freemetar.app.data.link.LinkTokenStore {
         override suspend fun token(ip: String): String? = tokenMap(context.dataStore.data.first()[LINK_TOKENS])[ip]
         override suspend fun saveToken(ip: String, token: String) {

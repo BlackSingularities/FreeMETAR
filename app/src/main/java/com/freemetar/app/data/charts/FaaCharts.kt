@@ -412,7 +412,7 @@ class FaaCharts(
 
     companion object {
         private const val INDEX = "index.json"
-        private const val UA = "OpenAirBook-Android/1.0"
+        private const val UA = "OpenTakeoff-Android/1.0"
         private val json = Json { ignoreUnknownKeys = true; encodeDefaults = false; explicitNulls = false }
 
         @Volatile private var instance: FaaCharts? = null

@@ -16,7 +16,7 @@ object Http {
         .readTimeout(60, TimeUnit.SECONDS)
         .build()
 
-    private const val UA = "OpenAirBook-Android/1.0"
+    private const val UA = "OpenTakeoff-Android/1.0"
 
     suspend fun get(url: String): String = withContext(Dispatchers.IO) {
         val req = Request.Builder().url(url).header("User-Agent", UA).build()

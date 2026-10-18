@@ -6,6 +6,7 @@ import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
@@ -73,6 +74,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -86,6 +88,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.freemetar.app.DbState
 import com.freemetar.app.MainViewModel
 import com.freemetar.app.NearMe
+import com.freemetar.app.R
 import com.freemetar.app.data.Airport
 import com.freemetar.app.data.Locator
 import com.freemetar.app.data.Metar
@@ -246,10 +249,17 @@ private fun Header(onLogo: () -> Unit) {
     val local = now.withZoneSameInstant(ZoneId.systemDefault())
     val c = Fm.c
     Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 10.dp), verticalAlignment = Alignment.Bottom) {
+        Image(
+            painter = painterResource(R.drawable.opentakeoff_mark),
+            contentDescription = loc("OpenTakeoff — pulpit", "OpenTakeoff — dashboard"),
+            modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp))
+                .clickable(onClickLabel = loc("Pulpit", "Dashboard"), onClick = onLogo),
+        )
+        Spacer(Modifier.width(10.dp))
         Text(
             buildAnnotatedString {
                 append("Open")
-                withStyle(SpanStyle(color = c.ink2)) { append("AirBook") }
+                withStyle(SpanStyle(color = c.ink2)) { append("Takeoff") }
             },
             style = MaterialTheme.typography.headlineLarge, color = c.ink,
             modifier = Modifier.weight(1f).clickable(onClickLabel = loc("Pulpit", "Dashboard"), onClick = onLogo),

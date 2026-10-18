@@ -144,7 +144,7 @@ public sealed class MsfsSource : IFlightSource
 
     private async Task ConnectAsync(CancellationToken ct)
     {
-        var client = new SimConnectClient("OpenAirBook Link");
+        var client = new SimConnectClient("OpenTakeoff Link");
         _client = client;
         await client.ConnectAsync(cancellationToken: ct);
 

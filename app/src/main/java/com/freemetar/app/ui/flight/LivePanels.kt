@@ -72,7 +72,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Date
 import kotlin.math.roundToInt
 
-/** Połączenie z OpenAirBook Link: znalezione komputery, parowanie kodem, ręczne IP. */
+/** Połączenie z OpenTakeoff Link: znalezione komputery, parowanie kodem, ręczne IP. */
 @Composable
 fun ConnectionSection(vm: MainViewModel) {
     val c = Fm.c
@@ -108,7 +108,7 @@ fun ConnectionSection(vm: MainViewModel) {
             Spacer(Modifier.size(10.dp))
             if (servers.isEmpty()) {
                 Text(
-                    loc("Szukam OpenAirBook Link w sieci… Uruchom program na komputerze z MSFS 2024; telefon musi być w tej samej sieci Wi-Fi.", "Looking for OpenAirBook Link on the network… Run it on the PC with MSFS 2024; the phone must be on the same Wi-Fi network."),
+                    loc("Szukam OpenTakeoff Link w sieci… Uruchom program na komputerze z MSFS 2024; telefon musi być w tej samej sieci Wi-Fi.", "Looking for OpenTakeoff Link on the network… Run it on the PC with MSFS 2024; the phone must be on the same Wi-Fi network."),
                     style = MaterialTheme.typography.bodyMedium, color = c.ink2,
                 )
             }
@@ -138,7 +138,7 @@ fun ConnectionSection(vm: MainViewModel) {
             title = { Text(loc("Parowanie z ${s.ip}", "Pairing with ${s.ip}")) },
             text = {
                 Column {
-                    Text(loc("Wpisz 6-cyfrowy kod widoczny w oknie OpenAirBook Link. Telefon zapamięta parowanie.", "Enter the 6-digit code shown in the OpenAirBook Link window. The phone will remember the pairing."), style = MaterialTheme.typography.bodyMedium)
+                    Text(loc("Wpisz 6-cyfrowy kod widoczny w oknie OpenTakeoff Link. Telefon zapamięta parowanie.", "Enter the 6-digit code shown in the OpenTakeoff Link window. The phone will remember the pairing."), style = MaterialTheme.typography.bodyMedium)
                     s.error?.let { Text(it, color = c.danger, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp)) }
                     OutlinedTextField(code, { code = it.filter(Char::isDigit).take(6) }, Modifier.padding(top = 10.dp), singleLine = true,
                         textStyle = MaterialTheme.typography.headlineSmall.copy(fontFamily = Mono), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword))

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.OpenTakeoff" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#16202B</item>
+        <item name="android:windowSplashScreenBackground">#16202B</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/opentakeoff_mark</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">#16202B</item>
+    </style>
+</resources>

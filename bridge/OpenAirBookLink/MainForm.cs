@@ -31,7 +31,7 @@ public sealed class MainForm : Form
         _host = host;
         _startMinimized = startMinimized;
 
-        Text = $"OpenAirBook Link {host.Version}";
+        Text = $"OpenTakeoff Link {host.Version}";
         Icon = CreateIcon();
         Font = new Font("Segoe UI", 9.5f);
         MinimumSize = new Size(620, 640);
@@ -62,7 +62,7 @@ public sealed class MainForm : Form
         // Parowanie
         var pairBox = Group("Parowanie telefonu");
         var pairFlow = Flow();
-        pairFlow.Controls.Add(new Label { AutoSize = true, Text = "Wpisz ten kod w aplikacji OpenAirBook na telefonie:" });
+        pairFlow.Controls.Add(new Label { AutoSize = true, Text = "Wpisz ten kod w aplikacji OpenTakeoff na telefonie:" });
         _code.ForeColor = Accent;
         pairFlow.Controls.Add(_code);
         var buttons = Flow(FlowDirection.LeftToRight);
@@ -72,7 +72,7 @@ public sealed class MainForm : Form
         revoke.Click += (_, _) =>
         {
             if (MessageBox.Show(this, "Wszystkie telefony będą musiały sparować się ponownie kodem. Kontynuować?",
-                    "OpenAirBook Link", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+                    "OpenTakeoff Link", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
             host.Pairing.RevokeAll();
             host.Pairing.RegenerateCode();
             UpdateCode();
@@ -110,7 +110,7 @@ public sealed class MainForm : Form
         menu.Items.Add(_traySim);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Zakończ", null, (_, _) => ExitApp());
-        _tray = new NotifyIcon { Icon = Icon, Text = "OpenAirBook Link", Visible = true, ContextMenuStrip = menu };
+        _tray = new NotifyIcon { Icon = Icon, Text = "OpenTakeoff Link", Visible = true, ContextMenuStrip = menu };
         _tray.DoubleClick += (_, _) => ShowFromTray();
 
         host.Log += m =>
@@ -131,7 +131,7 @@ public sealed class MainForm : Form
         UpdateStatus();
         UpdateClients();
         _ips.Text = IpText();
-        AddLog($"OpenAirBook Link {host.Version} uruchomiony");
+        AddLog($"OpenTakeoff Link {host.Version} uruchomiony");
     }
 
     protected override void SetVisibleCore(bool value)
@@ -154,7 +154,7 @@ public sealed class MainForm : Form
             if (!_trayHintShown)
             {
                 _trayHintShown = true;
-                _tray.ShowBalloonTip(3000, "OpenAirBook Link działa dalej",
+                _tray.ShowBalloonTip(3000, "OpenTakeoff Link działa dalej",
                     "Program jest w zasobniku obok zegara. Zakończysz go z menu ikony.", ToolTipIcon.Info);
             }
             return;
@@ -189,7 +189,7 @@ public sealed class MainForm : Form
         var connected = source.IsConnected;
         _simDot.ForeColor = connected ? Ok : Waiting;
         _simStatus.Text = source.StatusText + (_host.Axes.IsActive ? "  ·  sterowanie osiami z telefonu" : "");
-        _tray.Text = Truncate($"OpenAirBook Link — {source.StatusText}", 63);
+        _tray.Text = Truncate($"OpenTakeoff Link — {source.StatusText}", 63);
     }
 
     private void UpdateClients()

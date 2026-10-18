@@ -1,7 +1,7 @@
-# OpenAirBook Link — protokół v1
+# OpenTakeoff Link — protokół v1
 
-Protokół między programem **OpenAirBook Link** (Windows, most do MSFS 2024 przez SimConnect)
-a aplikacją **OpenAirBook** (Android) w sieci lokalnej.
+Protokół między programem **OpenTakeoff Link** (Windows, most do MSFS 2024 przez SimConnect)
+a aplikacją **OpenTakeoff** (Android) w sieci lokalnej.
 
 | Kanał | Port | Kierunek | Format |
 |---|---|---|---|
@@ -33,7 +33,7 @@ Program co 2 s wysyła broadcast (`255.255.255.255` oraz adresy rozgłoszeniowe 
 {
   "v": 1,
   "type": "announce",
-  "name": "OpenAirBook Link",
+  "name": "OpenTakeoff Link",
   "version": "1.0.12",
   "host": "PC-ADAMA",
   "port": 47810,
@@ -54,7 +54,7 @@ Telefon nasłuchuje na UDP 47811, a adres serwera bierze z adresu nadawcy datagr
 
 ```json
 { "v": 1, "type": "hello", "id": "1", "code": "482913",
-  "client": { "name": "Pixel 8", "app": "OpenAirBook", "version": "2.0.0" },
+  "client": { "name": "Pixel 8", "app": "OpenTakeoff", "version": "2.0.0" },
   "rateHz": 10 }
 ```
 
@@ -67,7 +67,7 @@ Telefon nasłuchuje na UDP 47811, a adres serwera bierze z adresu nadawcy datagr
 4. Odpowiedź po sukcesie:
 
 ```json
-{ "v": 1, "type": "hello_ok", "id": "1", "token": "Qm9n...", "server": "OpenAirBook Link",
+{ "v": 1, "type": "hello_ok", "id": "1", "token": "Qm9n...", "server": "OpenTakeoff Link",
   "version": "1.0.12", "source": "msfs", "rateHz": 10,
   "limits": { "maxDeflection": 0.8, "axisTimeoutMs": 500, "navdataPerSecond": 10 },
   "features": ["navdata", "touchdown", "aircraft_category"] }

@@ -34,7 +34,7 @@ data class TrackColumns(
 private data class StoredFlight(val meta: FlightLog, val cols: TrackColumns)
 
 @Serializable
-private data class ArchiveFile(val app: String = "OpenAirBook", val format: String = "flights", val version: Int = 2, val flights: List<StoredFlight>)
+private data class ArchiveFile(val app: String = "OpenTakeoff", val format: String = "flights", val version: Int = 2, val flights: List<StoredFlight>)
 
 /** Wcześniejszy zapis (flights.json, wersja 1): tor jako lista obiektów. */
 @Serializable

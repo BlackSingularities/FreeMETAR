@@ -160,7 +160,7 @@ private fun typography(): Typography {
 }
 
 @Composable
-fun OpenAirBookTheme(mode: ThemeMode = ThemeMode.SYSTEM, content: @Composable () -> Unit) {
+fun OpenTakeoffTheme(mode: ThemeMode = ThemeMode.SYSTEM, content: @Composable () -> Unit) {
     // SYSTEM = AMOLED (domyślny), NIGHT = grafit, DAY = jasny ekran do pracy w słońcu
     val c = when (mode) {
         ThemeMode.DAY -> DaylightColors

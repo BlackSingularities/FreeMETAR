@@ -1,12 +1,12 @@
-# OpenAirBook Link — szybki start
+# OpenTakeoff Link — szybki start
 
-OpenAirBook Link to mały program na Windows, który łączy **MSFS 2024** z aplikacją na telefonie
+OpenTakeoff Link to mały program na Windows, który łączy **MSFS 2024** z aplikacją na telefonie
 w tej samej sieci Wi-Fi. Telefon pokazuje samolot na mapie, PFD i panele, a także może sterować
 autopilotem, radiami, transponderem, podwoziem, klapami, światłami i lotem (przechylaniem telefonu).
 
 ## 1. Pobranie i uruchomienie
 
-1. Pobierz `OpenAirBook-Link.exe` z najnowszego wydania na GitHubie (ten sam release co APK).
+1. Pobierz `OpenTakeoff-Link.exe` z najnowszego wydania na GitHubie (ten sam release co APK).
 2. Uruchom plik — nie wymaga instalacji ani .NET. Przy pierwszym uruchomieniu Windows SmartScreen
    może ostrzec o nieznanym wydawcy: **Więcej informacji → Uruchom mimo to**.
 3. Kolejność nie ma znaczenia: program sam połączy się z MSFS, gdy symulator wystartuje
@@ -27,11 +27,11 @@ Jeśli okno zapory się nie pojawiło albo telefon nie widzi komputera, dodaj re
 (PowerShell **jako administrator**; broadcast UDP 47811 wychodzi z komputera i nie wymaga reguły):
 
 ```powershell
-New-NetFirewallRule -DisplayName "OpenAirBook Link (WebSocket)" -Direction Inbound -Protocol TCP -LocalPort 47810 -Action Allow -Profile Private
+New-NetFirewallRule -DisplayName "OpenTakeoff Link (WebSocket)" -Direction Inbound -Protocol TCP -LocalPort 47810 -Action Allow -Profile Private
 ```
 
 Sprawdzenie z telefonu: otwórz w przeglądarce `http://<IP komputera>:47810/` — powinien pojawić się
-napis „OpenAirBook Link dziala”. Adres IP komputera jest w oknie programu (sekcja **Parowanie**).
+napis „OpenTakeoff Link dziala”. Adres IP komputera jest w oknie programu (sekcja **Parowanie**).
 
 ## 3. Parowanie telefonu
 

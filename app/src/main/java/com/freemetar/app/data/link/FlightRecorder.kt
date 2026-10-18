@@ -39,7 +39,7 @@ data class FlightLog(
 }
 
 @Serializable
-private data class FlightLogFile(val app: String = "OpenAirBook", val version: Int = 1, val flights: List<FlightLog>)
+private data class FlightLogFile(val app: String = "OpenTakeoff", val version: Int = 1, val flights: List<FlightLog>)
 
 /**
  * Rejestrator lotu oparty wyłącznie na kolejnych stanach — bez zależności od Androida, więc testowalny.

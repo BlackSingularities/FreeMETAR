@@ -78,7 +78,7 @@ fun UpdateDialog(vm: MainViewModel) {
                     }
                     is UpdateState.Ready -> if (!Updater.canInstall(ctx)) {
                         Spacer(Modifier.size(10.dp))
-                        Text(loc("Zezwól OpenAirBook na instalowanie aplikacji, wróć i naciśnij „Zainstaluj” jeszcze raz.", "Allow OpenAirBook to install apps, come back and tap Install again."), color = Fm.c.caution, fontSize = 12.sp)
+                        Text(loc("Zezwól OpenTakeoff na instalowanie aplikacji, wróć i naciśnij „Zainstaluj” jeszcze raz.", "Allow OpenTakeoff to install apps, come back and tap Install again."), color = Fm.c.caution, fontSize = 12.sp)
                     }
                     else -> {}
                 }

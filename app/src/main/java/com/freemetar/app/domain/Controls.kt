@@ -3,7 +3,7 @@ package com.freemetar.app.domain
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
-/** Przeliczenia wartości dla komend OpenAirBook Link — czysta logika, testowalna bez Androida. */
+/** Przeliczenia wartości dla komend OpenTakeoff Link — czysta logika, testowalna bez Androida. */
 object ControlMath {
     /** Kurs po zmianie o [delta] stopni, zawinięty do 0–359. */
     fun heading(current: Double?, delta: Int): Int = (((current ?: 0.0).roundToInt() + delta) % 360 + 360) % 360

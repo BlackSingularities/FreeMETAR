@@ -45,7 +45,7 @@ public sealed class FlightSimulation
 
         _s.Aircraft = new AircraftInfo
         {
-            Title = "OpenAirBook Sim A320 (symulacja)", OnGround = true,
+            Title = "OpenTakeoff Sim A320 (symulacja)", OnGround = true,
             EngineType = "jet", AtcModel = "A320", AtcType = "AIRBUS", Category = "airliner",
         };
         _s.Position = new PositionData { Lat = Departure.Lat, Lon = Departure.Lon, AltMslFt = Departure.ElevFt, AltIndFt = Departure.ElevFt };

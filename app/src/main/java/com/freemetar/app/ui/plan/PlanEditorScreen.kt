@@ -136,7 +136,7 @@ fun PlanEditorScreen(vm: MainViewModel, onBack: () -> Unit, onShowMap: () -> Uni
                     if (originNav?.procedures == null || destNav?.procedures == null) {
                         Text(
                             if (vm.nav.connected) loc("Pobieranie procedur z MSFS… Jeśli lista zostanie pusta, baza MSFS nie ma procedur dla tego lotniska.", "Loading procedures from MSFS… If the list stays empty, the MSFS database has no procedures for this airport.")
-                            else loc("Procedury (SID, STAR, podejścia) pochodzą z bazy MSFS 2024. Połącz się z OpenAirBook Link — po pobraniu zostaną w telefonie.", "Procedures (SID, STAR, approaches) come from the MSFS 2024 database. Connect to OpenAirBook Link — once loaded they stay on the phone."),
+                            else loc("Procedury (SID, STAR, podejścia) pochodzą z bazy MSFS 2024. Połącz się z OpenTakeoff Link — po pobraniu zostaną w telefonie.", "Procedures (SID, STAR, approaches) come from the MSFS 2024 database. Connect to OpenTakeoff Link — once loaded they stay on the phone."),
                             style = MaterialTheme.typography.bodySmall, color = c.caution, modifier = Modifier.padding(top = 8.dp),
                         )
                     }

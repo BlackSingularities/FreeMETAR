@@ -6,7 +6,7 @@ import com.freemetar.app.data.link.LinkStatus
 
 /**
  * Dane nawigacyjne „najpierw lokalnie”: zwraca zapisaną kopię, a gdy jej brak (albo [refresh])
- * i telefon jest połączony z OpenAirBook Link — pobiera z bazy MSFS i zapisuje.
+ * i telefon jest połączony z OpenTakeoff Link — pobiera z bazy MSFS i zapisuje.
  */
 class NavRepository(private val link: LinkClient, val store: NavDataStore) {
     val connected: Boolean get() = link.status.value is LinkStatus.Connected

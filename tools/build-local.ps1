@@ -1,6 +1,6 @@
-﻿<#
+<#
 .SYNOPSIS
-  Lokalny build OpenAirBook na przenośnym toolchainie z %LOCALAPPDATA%\OpenAirBook-toolchain.
+  Lokalny build OpenTakeoff na przenośnym toolchainie z %LOCALAPPDATA%\OpenTakeoff-toolchain.
 
 .DESCRIPTION
   Ustawia JAVA_HOME, ANDROID_HOME i PATH, buduje APK debug i uruchamia testy JVM.
@@ -17,7 +17,7 @@ param([switch]$SkipTests)
 
 $ErrorActionPreference = 'Continue'
 $repo = Split-Path -Parent $PSScriptRoot
-$toolchain = Join-Path $env:LOCALAPPDATA 'OpenAirBook-toolchain'
+$toolchain = Join-Path $env:LOCALAPPDATA 'OpenTakeoff-toolchain'
 
 $jdk = Join-Path $toolchain 'jdk'
 $sdk = Join-Path $toolchain 'android-sdk'

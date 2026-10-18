@@ -55,7 +55,7 @@ interface LinkTokenStore {
 }
 
 /**
- * Klient OpenAirBook Link: odkrywanie po UDP, parowanie, strumień `state`, komendy.
+ * Klient OpenTakeoff Link: odkrywanie po UDP, parowanie, strumień `state`, komendy.
  * Po zerwaniu połączenia sam próbuje wrócić (co 3 s), dopóki użytkownik nie rozłączy.
  */
 class LinkClient(private val context: Context, private val tokens: LinkTokenStore, private val deviceName: String = Build.MODEL ?: "Android") {
@@ -182,7 +182,7 @@ class LinkClient(private val context: Context, private val tokens: LinkTokenStor
                 "hello_ok" -> {
                     m.token?.let { t -> scope.launch { tokens.saveToken(ip, t) } }
                     m.limits?.let { limits = it }
-                    _status.value = LinkStatus.Connected(ip, m.server ?: "OpenAirBook Link", m.source, null)
+                    _status.value = LinkStatus.Connected(ip, m.server ?: "OpenTakeoff Link", m.source, null)
                     startPing(webSocket)
                 }
                 "status" -> _status.update { s -> if (s is LinkStatus.Connected) s.copy(source = m.source, message = m.message) else s }
@@ -245,7 +245,7 @@ class LinkClient(private val context: Context, private val tokens: LinkTokenStor
      */
     suspend fun navdata(kind: String, params: Map<String, Any?>): JsonElement {
         val ws = socket
-        if (ws == null || _status.value !is LinkStatus.Connected) throw LinkException("not_connected", loc("Brak połączenia z OpenAirBook Link", "Not connected to OpenAirBook Link"))
+        if (ws == null || _status.value !is LinkStatus.Connected) throw LinkException("not_connected", loc("Brak połączenia z OpenTakeoff Link", "Not connected to OpenTakeoff Link"))
         val id = "n${ids.getAndIncrement()}"
         val msg = buildJsonObject {
             put("v", 1); put("type", "navdata_request"); put("id", id); put("kind", kind)
@@ -265,7 +265,7 @@ class LinkClient(private val context: Context, private val tokens: LinkTokenStor
             withTimeout(10_000) { waiter.await() }
         } catch (e: TimeoutCancellationException) {
             pending.remove(id)
-            throw LinkException("timeout", loc("OpenAirBook Link nie odpowiedział w 10 s", "OpenAirBook Link did not respond within 10 s"))
+            throw LinkException("timeout", loc("OpenTakeoff Link nie odpowiedział w 10 s", "OpenTakeoff Link did not respond within 10 s"))
         }
     }
 
@@ -290,5 +290,5 @@ class LinkClient(private val context: Context, private val tokens: LinkTokenStor
     fun stateAgeMs() = if (lastStateAt == 0L) Long.MAX_VALUE else System.currentTimeMillis() - lastStateAt
 }
 
-/** Błąd zwrócony przez OpenAirBook Link (kod z protokołu) albo brak połączenia. */
+/** Błąd zwrócony przez OpenTakeoff Link (kod z protokołu) albo brak połączenia. */
 class LinkException(val code: String, message: String?) : Exception(message ?: code)

@@ -246,7 +246,7 @@ private fun share(ctx: Context, d: AirportDetail, m: Metar) {
     val text = buildString {
         append("${d.ident} ${d.airport?.name.orEmpty()}\n\nMETAR ${m.raw}\n")
         d.weather?.taf?.let { append("\n${it.raw}\n") }
-        append("\nOpenAirBook")
+        append("\nOpenTakeoff")
     }
     ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), loc("Udostępnij pogodę", "Share weather")))
 }

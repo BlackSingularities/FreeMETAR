@@ -45,7 +45,7 @@ internal static class WebSocketHandshake
         if (!isUpgrade || !headers.TryGetValue("Sec-WebSocket-Key", out var key) || string.IsNullOrWhiteSpace(key))
         {
             // Zwykłe wejście przeglądarką — pozwala sprawdzić z telefonu, czy zapora przepuszcza port.
-            const string body = "OpenAirBook Link dziala. Polacz sie z aplikacji OpenAirBook.\n";
+            const string body = "OpenTakeoff Link dziala. Polacz sie z aplikacji OpenTakeoff.\n";
             await WriteAsync(stream,
                 $"HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: {body.Length}\r\nConnection: close\r\n\r\n{body}", ct);
             return Outcome.PlainHttp;

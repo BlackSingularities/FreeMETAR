@@ -1,4 +1,4 @@
-# OpenAirBook
+# OpenTakeoff
 
 **Pomysł i wykonanie: [redzikowski.com](https://redzikowski.com)**
 
@@ -10,7 +10,7 @@
 
 Aplikacja na Androida dla wirtualnych pilotów (MSFS, X-Plane, VATSIM, IVAO). Pogoda, dane lotnisk, plan lotu i kokpit na telefonie. Korzysta wyłącznie z darmowych, otwartych źródeł danych: nie wymaga kont ani kluczy API i nie ma reklam. Interfejs jest po polsku i angielsku (zgodnie z językiem systemu albo do wyboru w ustawieniach).
 
-Do sterowania samolotem i danych z symulatora służy **OpenAirBook Link**, mały program na Windows, który łączy telefon z MSFS 2024 w sieci lokalnej. Instrukcja: [docs/link-setup.md](docs/link-setup.md).
+Do sterowania samolotem i danych z symulatora służy **OpenTakeoff Link**, mały program na Windows, który łączy telefon z MSFS 2024 w sieci lokalnej. Instrukcja: [docs/link-setup.md](docs/link-setup.md).
 
 ### Funkcje
 
@@ -39,7 +39,7 @@ Do sterowania samolotem i danych z symulatora służy **OpenAirBook Link**, mał
 - edytor z wyborem SID, STAR i podejścia (dane z bazy MSFS przez Link);
 - eksport i import tras.
 
-**Kokpit (z OpenAirBook Link)**
+**Kokpit (z OpenTakeoff Link)**
 - **jeden widok do latania**: PFD, ND, dźwignie mocy i pływający przycisk sterowania na ekranie naraz, bez przewijania (telefon pionowo: PFD nad ND, dźwignie z boku; poziomo: wszystko w rzędzie; tablet: obok stała kolumna albo pod spodem stały panel autopilota, radia itd.). Tryb i zasięg ND oraz warstwy to małe przyciski EFIS na samym wyświetlaczu, kamera MSFS to trzy ikony w nagłówku. Autopilot, radio, systemy, silniki i postęp otwierają się z paska ikon w miejscu ND, więc PFD i dźwignie zostają na widoku;
 - **PFD**: horyzont, taśmy prędkości i wysokości z nastawami, wskaźnik prędkości pionowej ze skalą 1–2–6 tys. ft/min, wektor toru lotu (znos i kąt toru), trend prędkości na 10 s, Mach, QNH, wysokość nad terenem z pasem ziemi, znacznik toru, wiatr i tryby autopilota (FMA);
 - **MFD/ND** w trybach ARC i ROSE: trasa, nastawa kursu, następny punkt z odległością, namiarem i czasem, a z bazy MSFS lotniska, VOR (z częstotliwością), NDB i punkty trasy wokół samolotu (warstwy do włączenia); pod mapą profil pionowy (VSD) z wysokością wybraną i torem przy bieżącej prędkości pionowej;
@@ -78,7 +78,7 @@ Do sterowania samolotem i danych z symulatora służy **OpenAirBook Link**, mał
 | Podkład mapy i budynki | [OpenFreeMap](https://openfreemap.org/) / OpenStreetMap | ODbL |
 | Charty (USA) | [FAA d-TPP](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/dtpp/) | domena publiczna |
 | Plan lotu | [SimBrief](https://www.simbrief.com/) (publiczny eksport planu) | — |
-| Procedury, ILS, lotniska i pomoce na ND, stan lotu | baza i SimConnect Twojego MSFS przez OpenAirBook Link | — |
+| Procedury, ILS, lotniska i pomoce na ND, stan lotu | baza i SimConnect Twojego MSFS przez OpenTakeoff Link | — |
 
 Baza OurAirports pobiera się raz przy pierwszym uruchomieniu i odświeża co 30 dni. Historia lotów i trasy są przechowywane tylko na telefonie.
 
@@ -86,7 +86,7 @@ Baza OurAirports pobiera się raz przy pierwszym uruchomieniu i odświeża co 30
 
 ### Budowanie
 
-Kotlin, Jetpack Compose i Material 3, minSdk 26. OpenAirBook Link: C# i .NET 8 (folder `bridge/`).
+Kotlin, Jetpack Compose i Material 3, minSdk 26. OpenTakeoff Link: C# i .NET 8 (folder `bridge/`).
 
 Lokalnie skrypt `tools/build-local.ps1` buduje APK i Link oraz uruchamia testy:
 
@@ -96,7 +96,7 @@ powershell -ExecutionPolicy Bypass -File tools/build-local.ps1
 
 ### Wydania
 
-Każdy push na `main` uruchamia [workflow](.github/workflows/release.yml), który buduje APK i `OpenAirBook-Link.exe` i publikuje je w wydaniu `v1.0.<numer przebiegu>`.
+Każdy push na `main` uruchamia [workflow](.github/workflows/release.yml), który buduje APK i `OpenTakeoff-Link.exe` i publikuje je w wydaniu `v1.0.<numer przebiegu>`.
 
 Bez sekretów APK jest podpisane kluczem debug. Żeby aktualizacje instalowały się na stałym kluczu, dodaj sekrety repozytorium: `SIGNING_KEYSTORE_BASE64`, `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`.
 
@@ -106,7 +106,7 @@ Bez sekretów APK jest podpisane kluczem debug. Żeby aktualizacje instalowały 
 
 An Android app for flight-sim pilots (MSFS, X-Plane, VATSIM, IVAO): weather, airport data, flight planning and a cockpit on your phone. It uses free and open data sources only, with no accounts, API keys or ads. The interface is in English and Polish (follows the system language or can be set in Settings).
 
-To fly the aircraft and read live data from the simulator, run **OpenAirBook Link**, a small Windows program that connects the phone to MSFS 2024 over your local network. Setup: [docs/link-setup.md](docs/link-setup.md) (in Polish).
+To fly the aircraft and read live data from the simulator, run **OpenTakeoff Link**, a small Windows program that connects the phone to MSFS 2024 over your local network. Setup: [docs/link-setup.md](docs/link-setup.md) (in Polish).
 
 ### Features
 
@@ -135,7 +135,7 @@ To fly the aircraft and read live data from the simulator, run **OpenAirBook Lin
 - editor with SID, STAR and approach selection (from the MSFS database via Link);
 - route export and import.
 
-**Cockpit (with OpenAirBook Link)**
+**Cockpit (with OpenTakeoff Link)**
 - **one view for flying**: PFD, ND, thrust levers and the floating control button on screen at once, without scrolling (phone in portrait: PFD above ND, levers at the side; landscape: all in one row; tablet: a fixed column or a fixed panel below for the autopilot, radios and more). ND mode, range and layers are small EFIS buttons on the display itself, and the MSFS camera is three icons in the header. Autopilot, radios, systems, engines and progress open from an icon bar in place of the ND, so the PFD and levers stay in view;
 - **PFD**: horizon, speed and altitude tapes with selected values, a vertical speed indicator with a 1–2–6 thousand ft/min scale, flight path vector (drift and flight path angle), 10-second speed trend, Mach, QNH, height above terrain with a ground band, track marker, wind and autopilot modes (FMA);
 - **MFD/ND** in ARC and ROSE modes: route, selected heading, next waypoint with distance, bearing and time, and from the MSFS database the airports, VORs (with frequency), NDBs and waypoints around the aircraft (layers can be toggled); below it a vertical situation display (VSD) with the selected altitude and the path at the current vertical speed;
@@ -174,7 +174,7 @@ To fly the aircraft and read live data from the simulator, run **OpenAirBook Lin
 | Base map and buildings | [OpenFreeMap](https://openfreemap.org/) / OpenStreetMap | ODbL |
 | Charts (USA) | [FAA d-TPP](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/dtpp/) | public domain |
 | Flight plan | [SimBrief](https://www.simbrief.com/) (public plan export) | — |
-| Procedures, ILS, airports and navaids on the ND, live flight data | your MSFS database and SimConnect via OpenAirBook Link | — |
+| Procedures, ILS, airports and navaids on the ND, live flight data | your MSFS database and SimConnect via OpenTakeoff Link | — |
 
 The OurAirports database downloads once on first launch and refreshes every 30 days. Flight history and routes stay on the phone.
 
@@ -182,7 +182,7 @@ The OurAirports database downloads once on first launch and refreshes every 30 d
 
 ### Building
 
-Kotlin, Jetpack Compose and Material 3, minSdk 26. OpenAirBook Link: C# and .NET 8 (in `bridge/`).
+Kotlin, Jetpack Compose and Material 3, minSdk 26. OpenTakeoff Link: C# and .NET 8 (in `bridge/`).
 
 Locally, `tools/build-local.ps1` builds the APK and Link and runs the tests:
 
@@ -192,6 +192,6 @@ powershell -ExecutionPolicy Bypass -File tools/build-local.ps1
 
 ### Releases
 
-Every push to `main` runs the [workflow](.github/workflows/release.yml), which builds the APK and `OpenAirBook-Link.exe` and publishes them as release `v1.0.<run number>`.
+Every push to `main` runs the [workflow](.github/workflows/release.yml), which builds the APK and `OpenTakeoff-Link.exe` and publishes them as release `v1.0.<run number>`.
 
 Without secrets the APK is signed with the debug key. To keep updates on a fixed key, add these repository secrets: `SIGNING_KEYSTORE_BASE64`, `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`.

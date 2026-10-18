@@ -184,7 +184,7 @@ private fun Cell(text: String, header: Boolean = false, width: Int, strong: Bool
 }
 
 /**
- * ILS i częstotliwości z bazy MSFS (przez OpenAirBook Link, zapisane w telefonie).
+ * ILS i częstotliwości z bazy MSFS (przez OpenTakeoff Link, zapisane w telefonie).
  * Przy połączeniu dotknięcie ILS ustawia go w NAV1; bez połączenia kopiuje częstotliwość.
  */
 @Composable
@@ -201,7 +201,7 @@ fun MsfsRadioBlock(d: AirportDetail, connected: Boolean, onRefresh: () -> Unit, 
     val ils = nav?.airport?.runways.orEmpty().filter { it.ils?.freqMhz != null }
     when {
         nav?.airport == null -> Text(
-            if (connected) loc("Pobieranie danych lotniska z bazy MSFS…", "Loading airport data from the MSFS database…") else loc("Częstotliwości ILS pochodzą z bazy MSFS 2024. Połącz się z OpenAirBook Link — dane zostaną zapisane w telefonie i będą dostępne bez symulatora.", "ILS frequencies come from the MSFS 2024 database. Connect to OpenAirBook Link — the data is saved on the phone and available without the simulator."),
+            if (connected) loc("Pobieranie danych lotniska z bazy MSFS…", "Loading airport data from the MSFS database…") else loc("Częstotliwości ILS pochodzą z bazy MSFS 2024. Połącz się z OpenTakeoff Link — dane zostaną zapisane w telefonie i będą dostępne bez symulatora.", "ILS frequencies come from the MSFS 2024 database. Connect to OpenTakeoff Link — the data is saved on the phone and available without the simulator."),
             style = MaterialTheme.typography.bodySmall, color = c.ink2,
         )
         ils.isEmpty() -> Text(loc("Baza MSFS nie ma ILS dla tego lotniska (lotniska dodatkowe bywają niekompletne).", "The MSFS database has no ILS for this airport (add-on airports can be incomplete)."), style = MaterialTheme.typography.bodySmall, color = c.ink2)

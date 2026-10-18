@@ -1,7 +1,7 @@
 <resources>
-    <string name="app_name">OpenAirBook</string>
+    <string name="app_name">OpenTakeoff</string>
     <color name="ic_bg">#16202B</color>
-    <style name="Theme.OpenAirBook" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">#000000</item>
+    <style name="Theme.OpenTakeoff" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#16202B</item>
     </style>
 </resources>

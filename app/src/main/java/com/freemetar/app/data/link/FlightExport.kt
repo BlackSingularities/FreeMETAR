@@ -9,7 +9,7 @@ object FlightExport {
     /** GPX 1.1: jeden ślad z wysokością w metrach i czasem UTC każdego punktu. */
     fun gpx(f: FlightLog): String = buildString {
         append("""<?xml version="1.0" encoding="UTF-8"?>""").append('\n')
-        append("""<gpx version="1.1" creator="OpenAirBook" xmlns="http://www.topografix.com/GPX/1/1">""").append('\n')
+        append("""<gpx version="1.1" creator="OpenTakeoff" xmlns="http://www.topografix.com/GPX/1/1">""").append('\n')
         val name = esc("${f.from ?: "?"} - ${f.to ?: "?"}" + (f.aircraft?.let { " ($it)" } ?: ""))
         append("  <trk><name>").append(name).append("</name><trkseg>\n")
         f.track.forEach { p ->

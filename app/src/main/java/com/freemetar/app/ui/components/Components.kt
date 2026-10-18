@@ -259,7 +259,7 @@ fun EmptyState(icon: ImageVector, title: String, sub: String? = null, action: (@
 
 /**
  * METAR dużym krojem kokpitowym; każda grupa jest dotykalna, a jej znaczenie
- * pojawia się pod spodem. Element, który odróżnia OpenAirBook od zwykłej listy.
+ * pojawia się pod spodem. Element, który odróżnia OpenTakeoff od zwykłej listy.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

@@ -94,7 +94,7 @@ public class ProtocolJsonTests
         });
         using var doc = JsonDocument.Parse(json);
         Assert.Equal("announce", doc.RootElement.GetProperty("type").GetString());
-        Assert.Equal("OpenAirBook Link", doc.RootElement.GetProperty("name").GetString());
+        Assert.Equal("OpenTakeoff Link", doc.RootElement.GetProperty("name").GetString());
         Assert.Equal(47810, doc.RootElement.GetProperty("port").GetInt32());
     }
 }

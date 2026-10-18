@@ -3,14 +3,14 @@ package com.freemetar.app.data.link
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-/** Modele protokołu OpenAirBook Link v1 (docs/link-protocol.md). Wszystkie pola opcjonalne — brak danych to null. */
+/** Modele protokołu OpenTakeoff Link v1 (docs/link-protocol.md). Wszystkie pola opcjonalne — brak danych to null. */
 val LinkJson = Json { ignoreUnknownKeys = true; explicitNulls = false; encodeDefaults = true; isLenient = true }
 
 @Serializable
 data class Announce(
     val v: Int = 1,
     val type: String = "",
-    val name: String = "OpenAirBook Link",
+    val name: String = "OpenTakeoff Link",
     val version: String? = null,
     val host: String? = null,
     val port: Int = 47810,
@@ -112,7 +112,7 @@ data class Incoming(
 
 @Serializable data class Limits(val maxDeflection: Double = 0.8, val axisTimeoutMs: Int = 500)
 
-@Serializable data class ClientInfo(val name: String, val app: String = "OpenAirBook", val version: String? = null)
+@Serializable data class ClientInfo(val name: String, val app: String = "OpenTakeoff", val version: String? = null)
 
 @Serializable
 data class Hello(

@@ -307,7 +307,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ---------- OpenAirBook Link (MSFS) ----------
+    // ---------- OpenTakeoff Link (MSFS) ----------
 
     val link = LinkClient(app, prefs.linkTokens)
     val linkStatus = link.status
@@ -388,7 +388,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             flightLogStore.save(_flightLogs.value)
             val added = _flightLogs.value.size - before
             _flightMessage.value = loc("Zaimportowano $added lotów (pominięto ${incoming.size - added} już zapisanych).", "Imported $added flights (skipped ${incoming.size - added} already saved).")
-        }.onFailure { _flightMessage.value = loc("To nie jest archiwum lotów OpenAirBook.", "This isn't an OpenAirBook flight archive.") }
+        }.onFailure { _flightMessage.value = loc("To nie jest archiwum lotów OpenTakeoff.", "This isn't an OpenTakeoff flight archive.") }
     }
 
     /** Stan zapisu lotu do kokpitu: nagrywa (od kiedy) albo wstrzymany po ręcznym zakończeniu. */
@@ -599,7 +599,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _editBusy.value = null
         val segment = when (kind) { "departure" -> "sid"; "arrival" -> "star"; else -> "approach" }
         val sel = ProcSelection(kind, name, runway, transition, label, legs?.let { RouteEdit.legsToPoints(it.legs, segment) }.orEmpty())
-        if (legs == null) _flightMessage.value = loc("Brak odcinków $name w pamięci — połącz się z OpenAirBook Link, aby pobrać je z MSFS.", "No legs for $name stored — connect to OpenAirBook Link to load them from MSFS.")
+        if (legs == null) _flightMessage.value = loc("Brak odcinków $name w pamięci — połącz się z OpenTakeoff Link, aby pobrać je z MSFS.", "No legs for $name stored — connect to OpenTakeoff Link to load them from MSFS.")
         editUpdate { r ->
             when (kind) {
                 "departure" -> RouteEdit.setDeparture(r, runway, sel)
@@ -619,7 +619,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val p = db.fixResolver.resolve(id, near)
             ?: nav.fixes(id, near?.lat, near?.lon).firstOrNull()?.let { RoutePoint(it.ident, it.lat, it.lon, it.type) }
         if (p == null) {
-            _flightMessage.value = loc("Nie znaleziono punktu $id", "Waypoint $id not found") + if (!nav.connected) loc(". Punkty RNAV są w bazie MSFS — połącz się z OpenAirBook Link.", ". RNAV waypoints are in the MSFS database — connect to OpenAirBook Link.") else "."
+            _flightMessage.value = loc("Nie znaleziono punktu $id", "Waypoint $id not found") + if (!nav.connected) loc(". Punkty RNAV są w bazie MSFS — połącz się z OpenTakeoff Link.", ". RNAV waypoints are in the MSFS database — connect to OpenTakeoff Link.") else "."
             return@launch
         }
         editUpdate { RouteEdit.insert(it, index, p) }

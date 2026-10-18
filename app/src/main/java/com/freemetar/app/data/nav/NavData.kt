@@ -8,7 +8,7 @@ import kotlinx.serialization.Serializable
 import java.io.File
 
 /*
- * Dane nawigacyjne z bazy MSFS 2024 przez OpenAirBook Link (wiadomości navdata_request / navdata).
+ * Dane nawigacyjne z bazy MSFS 2024 przez OpenTakeoff Link (wiadomości navdata_request / navdata).
  * Kształty zgodne z docs/link-protocol.md; telefon zapisuje je lokalnie, więc działają też bez symulatora.
  */
 

@@ -130,7 +130,7 @@ fun LogbookScreen(vm: MainViewModel, onBack: () -> Unit, onOpenFlight: (String) 
             IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, loc("Wróć", "Back"), tint = c.ink) }
             Text(loc("Dziennik lotów", "Logbook"), style = MaterialTheme.typography.headlineSmall, color = c.ink, modifier = Modifier.weight(1f))
             IconButton({ importer.launch(arrayOf("*/*")) }) { Icon(Icons.Outlined.Download, loc("Importuj loty", "Import flights"), tint = c.ink) }
-            IconButton({ exporter.launch("OpenAirBook-loty.oab") }, enabled = logs.isNotEmpty()) { Icon(Icons.Outlined.Upload, loc("Eksportuj loty", "Export flights"), tint = if (logs.isEmpty()) c.ink2 else c.ink) }
+            IconButton({ exporter.launch("OpenTakeoff-loty.oab") }, enabled = logs.isNotEmpty()) { Icon(Icons.Outlined.Upload, loc("Eksportuj loty", "Export flights"), tint = if (logs.isEmpty()) c.ink2 else c.ink) }
         }
         Rule()
         LazyColumn(Modifier.fillMaxSize().widthIn(max = 900.dp).align(Alignment.CenterHorizontally), contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 32.dp)) {
@@ -141,8 +141,8 @@ fun LogbookScreen(vm: MainViewModel, onBack: () -> Unit, onOpenFlight: (String) 
                         Spacer(Modifier.height(12.dp))
                         Text(loc("Dziennik jest pusty", "The logbook is empty"), style = MaterialTheme.typography.titleMedium, color = c.ink)
                         Text(
-                            loc("Połącz telefon z OpenAirBook Link i wystartuj. Lot zapisze się sam, z torem, wysokością i oceną lądowania. Restart lotu w symulatorze zaczyna nowy wpis. Możesz też zaimportować plik .oab z innego telefonu.",
-                                "Connect the phone to OpenAirBook Link and take off. The flight is saved automatically with its track, altitude and landing score. Restarting the flight in the simulator starts a new entry. You can also import an .oab file from another phone."),
+                            loc("Połącz telefon z OpenTakeoff Link i wystartuj. Lot zapisze się sam, z torem, wysokością i oceną lądowania. Restart lotu w symulatorze zaczyna nowy wpis. Możesz też zaimportować plik .oab z innego telefonu.",
+                                "Connect the phone to OpenTakeoff Link and take off. The flight is saved automatically with its track, altitude and landing score. Restarting the flight in the simulator starts a new entry. You can also import an .oab file from another phone."),
                             style = MaterialTheme.typography.bodyMedium, color = c.ink2, modifier = Modifier.padding(top = 6.dp),
                         )
                     }

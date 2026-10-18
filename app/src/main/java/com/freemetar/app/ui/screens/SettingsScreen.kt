@@ -175,7 +175,7 @@ fun SettingsScreen(vm: MainViewModel) {
                 uri?.let { vm.importFlightArchive(ctx, it) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton({ exporter.launch("OpenAirBook-loty.oab") }, enabled = logs.isNotEmpty()) {
+                OutlinedButton({ exporter.launch("OpenTakeoff-loty.oab") }, enabled = logs.isNotEmpty()) {
                     Icon(Icons.Outlined.Upload, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(loc("Eksportuj", "Export"))
                 }
                 OutlinedButton({ importer.launch(arrayOf("*/*")) }) {
@@ -204,7 +204,7 @@ fun SettingsScreen(vm: MainViewModel) {
         com.freemetar.app.ui.components.UpdateSection(vm)
 
         SectionCard(loc("O aplikacji", "About"), icon = Icons.Outlined.Info) {
-            Text("OpenAirBook ${BuildConfig.VERSION_NAME}", color = Fm.c.ink, style = MaterialTheme.typography.titleMedium)
+            Text("OpenTakeoff ${BuildConfig.VERSION_NAME}", color = Fm.c.ink, style = MaterialTheme.typography.titleMedium)
             val uri = androidx.compose.ui.platform.LocalUriHandler.current
             Row(
                 Modifier.padding(vertical = 6.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(50))

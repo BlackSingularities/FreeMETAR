@@ -77,7 +77,7 @@ import com.freemetar.app.ui.screens.HomeScreen
 import com.freemetar.app.ui.screens.SettingsScreen
 import com.freemetar.app.ui.screens.ToolsScreen
 import com.freemetar.app.ui.theme.Fm
-import com.freemetar.app.ui.theme.OpenAirBookTheme
+import com.freemetar.app.ui.theme.OpenTakeoffTheme
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector, val selectedIcon: ImageVector)
 
@@ -116,7 +116,7 @@ class MainActivity : ComponentActivity() {
             val lang = com.freemetar.app.domain.Lang.resolve(settings.language)
             com.freemetar.app.domain.Lang.current = lang
             androidx.compose.runtime.CompositionLocalProvider(com.freemetar.app.ui.theme.LocalLang provides lang) {
-            OpenAirBookTheme(settings.themeMode) {
+            OpenTakeoffTheme(settings.themeMode) {
                 val night = Fm.c.isNight
                 // Ikony paska stanu muszą pasować do motywu wybranego w aplikacji, nie do systemu
                 // Pełny ekran: pasek stanu schowany, wysuwa się na chwilę przeciągnięciem od góry.
@@ -190,7 +190,7 @@ class MainActivity : ComponentActivity() {
                                 else {
                                     Spacer(Modifier.statusBarsPadding().size(16.dp))
                                     // Logo prowadzi na pulpit (ekran główny) z każdego miejsca
-                                    Icon(Icons.Filled.LocalAirport, loc("OpenAirBook — pulpit", "OpenAirBook — dashboard"), tint = c.ink,
+                                    Icon(androidx.compose.ui.res.painterResource(R.drawable.opentakeoff_mark), loc("OpenTakeoff — pulpit", "OpenTakeoff — dashboard"), tint = androidx.compose.ui.graphics.Color.Unspecified,
                                         modifier = Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape).clickable { nav.goTab("home") }.padding(6.dp))
                                     Spacer(Modifier.size(24.dp))
                                 }

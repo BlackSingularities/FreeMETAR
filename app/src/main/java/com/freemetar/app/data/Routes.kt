@@ -115,7 +115,7 @@ data class SavedRoute(
 
 /** Format pliku eksportu: rozpoznawalny po polu „app”. */
 @Serializable
-data class RouteExport(val app: String = "OpenAirBook", val version: Int = 1, val exportedAt: Long = System.currentTimeMillis(), val routes: List<SavedRoute>)
+data class RouteExport(val app: String = "OpenTakeoff", val version: Int = 1, val exportedAt: Long = System.currentTimeMillis(), val routes: List<SavedRoute>)
 
 object RouteJson {
     val json = Json { ignoreUnknownKeys = true; prettyPrint = true; encodeDefaults = true; isLenient = true }
@@ -157,7 +157,7 @@ object RouteImport {
     private val reLevel = Regex("""^[NKM]\d{3,4}F(\d{3})$""") // N0450F350 — prędkość i poziom
     private val reSidStar = Regex("""^[A-Z]{3,5}\d[A-Z]$""")    // np. SOXER2G — procedury pomijamy
 
-    /** Rozpoznaje dowolny obsługiwany format: eksport OpenAirBook, plan SimBrief (JSON) albo tekst trasy. */
+    /** Rozpoznaje dowolny obsługiwany format: eksport OpenTakeoff, plan SimBrief (JSON) albo tekst trasy. */
     fun parseAny(text: String, resolver: FixResolver): List<SavedRoute> {
         val t = text.trim()
         if (t.startsWith("{")) {
