@@ -247,7 +247,7 @@ public sealed class MsfsSource : IFlightSource
 
     /// <summary>
     /// Rozglądanie się. Najpierw zapis SimVar CAMERA GAMEPLAY PITCH YAW; odczyt zwrotny w kolejnych klatkach mówi,
-    /// czy kamera za nim idzie. Jeśli po 6 żądaniach z wyraźnym kątem nie idzie (albo zapis się nie udaje),
+    /// czy kamera za nim idzie. Jeśli po 3 żądaniach z wyraźnym kątem nie idzie (albo zapis się nie udaje),
     /// przełączamy się na zdarzenia widoku: PAN_VIEW (kierunek 0–359°, środek = PAN_RESET_COCKPIT) i AXIS_PAN_HEADING / AXIS_PAN_PITCH.
     /// </summary>
     private async Task<CommandResult> LookAsync(SimConnectClient client, bool pitchAxis, long valueDeg, CancellationToken ct)
@@ -279,7 +279,7 @@ public sealed class MsfsSource : IFlightSource
                 _lookMisses = 99;
                 Log?.Invoke($"Kamera: zapis CAMERA GAMEPLAY PITCH YAW nie powiódł się ({e.Message})");
             }
-            if (_lookMisses < 6) return CommandResult.Success;
+            if (_lookMisses < 3) return CommandResult.Success;
             _lookByEvents = true;
             Log?.Invoke("Kamera: MSFS nie przyjmuje zapisu SimVar — rozglądanie przez zdarzenia widoku (PAN_VIEW / AXIS_PAN_*)");
         }

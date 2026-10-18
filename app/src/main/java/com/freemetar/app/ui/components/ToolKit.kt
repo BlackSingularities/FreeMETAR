@@ -32,10 +32,11 @@ fun SectionCard(
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     trailing: @Composable RowScope.() -> Unit = {},
+    dense: Boolean = false,   // mniejsze marginesy (np. ekran ustawień)
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Panel(modifier) {
-        Column(Modifier.padding(16.dp)) {
+        Column(Modifier.padding(if (dense) 12.dp else 16.dp)) {
             if (title != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (icon != null) {
@@ -45,7 +46,7 @@ fun SectionCard(
                     Text(title, style = MaterialTheme.typography.titleMedium, color = Fm.c.ink, modifier = Modifier.weight(1f))
                     trailing()
                 }
-                Spacer(Modifier.size(12.dp))
+                Spacer(Modifier.size(if (dense) 6.dp else 12.dp))
             }
             content()
         }

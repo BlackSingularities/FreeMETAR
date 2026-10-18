@@ -74,153 +74,146 @@ fun SettingsScreen(vm: MainViewModel) {
     val db by vm.dbState.collectAsStateWithLifecycle()
     Column(
         Modifier.fillMaxSize().wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 760.dp)
-            .statusBarsPadding().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(loc("Ustawienia", "Settings"), style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 8.dp))
+        Text(loc("Ustawienia", "Settings"), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 4.dp))
 
-        SectionCard(loc("Jednostki", "Units"), icon = Icons.Outlined.Straighten) {
-            Text(loc("Ciśnienie", "Pressure"), color = Fm.c.ink)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(s.pressureUnit == PressureUnit.HPA, { vm.setPressure(PressureUnit.HPA) }, { Text("hPa") }, leadingIcon = { Icon(Icons.Outlined.Compress, null, Modifier.size(16.dp)) })
-                FilterChip(s.pressureUnit == PressureUnit.INHG, { vm.setPressure(PressureUnit.INHG) }, { Text("inHg") }, leadingIcon = { Icon(Icons.Outlined.Compress, null, Modifier.size(16.dp)) })
+        SectionCard(loc("Ogólne", "General"), icon = Icons.Outlined.Straighten, dense = true) {
+            ChipRow(loc("Ciśnienie", "Pressure")) {
+                FilterChip(s.pressureUnit == PressureUnit.HPA, { vm.setPressure(PressureUnit.HPA) }, { Text("hPa") })
+                FilterChip(s.pressureUnit == PressureUnit.INHG, { vm.setPressure(PressureUnit.INHG) }, { Text("inHg") })
             }
-            Spacer(Modifier.size(8.dp))
-            Text(loc("Wysokość", "Altitude"), color = Fm.c.ink)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(s.altUnit == AltUnit.FT, { vm.setAlt(AltUnit.FT) }, { Text(loc("stopy", "feet")) }, leadingIcon = { Icon(Icons.Outlined.Height, null, Modifier.size(16.dp)) })
-                FilterChip(s.altUnit == AltUnit.M, { vm.setAlt(AltUnit.M) }, { Text(loc("metry", "metres")) }, leadingIcon = { Icon(Icons.Outlined.Height, null, Modifier.size(16.dp)) })
+            ChipRow(loc("Wysokość", "Altitude")) {
+                FilterChip(s.altUnit == AltUnit.FT, { vm.setAlt(AltUnit.FT) }, { Text(loc("stopy", "feet")) })
+                FilterChip(s.altUnit == AltUnit.M, { vm.setAlt(AltUnit.M) }, { Text(loc("metry", "metres")) })
             }
-        }
-
-        SectionCard(loc("Język", "Language"), icon = Icons.Outlined.Translate) {
-            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("SYSTEM" to loc("Jak system", "System default"), "PL" to "Polski", "EN" to "English").forEach { (code, label) ->
+            ChipRow(loc("Język", "Language")) {
+                listOf("SYSTEM" to loc("System", "System"), "PL" to "Polski", "EN" to "English").forEach { (code, label) ->
                     FilterChip(s.language == code, { vm.setLanguage(code) }, { Text(label) })
                 }
             }
         }
 
-        SectionCard(loc("Wyświetlanie", "Display"), icon = Icons.Outlined.Tune) {
-            Text(loc("Motyw", "Theme"), color = Fm.c.ink, style = MaterialTheme.typography.titleSmall)
-            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)) {
+        SectionCard(loc("Wyświetlanie", "Display"), icon = Icons.Outlined.Tune, dense = true) {
+            ChipRow(loc("Motyw", "Theme")) {
                 listOf(
                     com.freemetar.app.data.ThemeMode.SYSTEM to "AMOLED",
                     com.freemetar.app.data.ThemeMode.NIGHT to loc("Grafit", "Graphite"),
-                    com.freemetar.app.data.ThemeMode.DAY to loc("Jasny ekran", "Bright screen"),
+                    com.freemetar.app.data.ThemeMode.DAY to loc("Jasny", "Bright"),
                 ).forEach { (mode, label) ->
-                    FilterChip(s.themeMode == mode, { vm.setTheme(mode) }, { Text(label) },
-                        leadingIcon = { Icon(when (mode) { com.freemetar.app.data.ThemeMode.DAY -> Icons.Outlined.LightMode; com.freemetar.app.data.ThemeMode.NIGHT -> Icons.Outlined.DarkMode; else -> Icons.Outlined.Smartphone }, null, Modifier.size(16.dp)) })
+                    FilterChip(s.themeMode == mode, { vm.setTheme(mode) }, { Text(label) })
                 }
             }
             ToggleRow(Icons.Outlined.Fullscreen, loc("Ukryj pasek stanu", "Hide the status bar"),
-                loc("Aplikacja zajmuje cały ekran; pasek wysuniesz przeciągnięciem od góry.", "The app uses the whole screen; swipe down from the top to show the bar."),
+                loc("Pasek wysuniesz przeciągnięciem od góry", "Swipe down from the top to show it"),
                 s.hideStatusBar) { vm.setHideStatusBar(it) }
-            ToggleRow(Icons.Outlined.Autorenew, loc("Automatyczne odświeżanie", "Auto refresh"), loc("Co 5 minut, gdy aplikacja jest otwarta", "Every 5 minutes while the app is open"), s.autoRefresh) { vm.setAutoRefresh(it) }
+            ToggleRow(Icons.Outlined.Autorenew, loc("Automatyczne odświeżanie", "Auto refresh"),
+                loc("Co 5 minut, gdy aplikacja jest otwarta", "Every 5 minutes while the app is open"), s.autoRefresh) { vm.setAutoRefresh(it) }
         }
 
-        SectionCard("SimBrief", icon = Icons.Outlined.CloudDownload) {
+        SectionCard("SimBrief", icon = Icons.Outlined.CloudDownload, dense = true) {
             var user by androidx.compose.runtime.saveable.rememberSaveable(s.simbriefUser) { androidx.compose.runtime.mutableStateOf(s.simbriefUser) }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 androidx.compose.material3.OutlinedTextField(user, { user = it.trim() }, Modifier.weight(1f), singleLine = true,
                     label = { Text(loc("Użytkownik lub Pilot ID", "Username or Pilot ID")) }, shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
                 OutlinedButton({ vm.setSimbriefUser(user) }, enabled = user != s.simbriefUser) { Text(loc("Zapisz", "Save")) }
             }
-            Text(
-                if (s.simbriefUser.isBlank()) loc("Zapisz konto raz — na ekranie Lot wystarczy potem jeden przycisk, żeby pobrać ostatni plan.", "Save your account once — then one button on the Flight screen downloads your latest plan.")
-                else loc("Zapisane konto: ${s.simbriefUser}.", "Saved account: ${s.simbriefUser}."),
-                color = Fm.c.ink2, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp),
-            )
         }
 
-        SectionCard(loc("Sterowanie samolotem", "Flying the aircraft"), icon = Icons.Outlined.ScreenRotation) {
-            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("TILT" to loc("Żyroskop", "Gyro"), "TOUCH" to loc("Drążek palcem", "Thumb stick"), "GAMEPAD" to loc("Kontroler", "Controller")).forEach { (code, label) ->
+        SectionCard(loc("Sterowanie samolotem", "Flying the aircraft"), icon = Icons.Outlined.ScreenRotation, dense = true) {
+            ChipRow(loc("Tryb", "Mode")) {
+                listOf("TILT" to loc("Żyroskop", "Gyro"), "TOUCH" to loc("Drążek", "Stick"), "GAMEPAD" to loc("Kontroler", "Controller")).forEach { (code, label) ->
                     FilterChip(s.controlMode == code, { vm.setControlMode(code) }, { Text(label) })
                 }
             }
             ToggleRow(Icons.Outlined.TouchApp, loc("Pływający przycisk sterowania", "Floating control button"),
-                loc("Widoczny na każdej zakładce, gdy symulator jest połączony. Przytrzymaj go, żeby sterować.", "Shown on every tab while the simulator is connected. Hold it to fly."),
+                loc("Na każdej zakładce; przytrzymaj, żeby sterować", "On every tab; hold it to fly"),
                 s.floatingControl) { vm.setFloatingControl(it) }
-            if (s.floatingControl) androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(start = 32.dp)) {
+            if (s.floatingControl) ChipRow(loc("Wariant", "Style")) {
                 FilterChip(s.floatingStyle == "SIMPLE", { vm.setFloatingStyle("SIMPLE") }, { Text(loc("Prosty", "Simple")) })
                 FilterChip(s.floatingStyle == "TRIM", { vm.setFloatingStyle("TRIM") }, { Text(loc("Z trymem", "With trim")) })
             }
             if (s.floatingControl && s.floatingStyle == "TRIM") Text(
-                loc("Żyroskop: trzymając przycisk, przeciągnij palec w dół, żeby trymować nos w górę, albo w górę, żeby trymować nos w dół. Drążek palcem: trym ma osobne przyciski obok.",
-                    "Gyro: while holding the button, drag your finger down to trim nose up, or up to trim nose down. Thumb stick: trim has its own buttons next to it."),
-                color = Fm.c.ink2, fontSize = 12.sp, modifier = Modifier.padding(start = 32.dp, top = 4.dp),
+                loc("Żyroskop: palec w dół = nos w górę, w górę = nos w dół. Drążek: osobne przyciski trymu.",
+                    "Gyro: drag down = nose up, drag up = nose down. Stick: separate trim buttons."),
+                color = Fm.c.ink2, fontSize = 12.sp,
             )
         }
 
-        SectionCard(loc("Zapis lotów", "Flight recording"), icon = Icons.Outlined.History) {
-            Text(loc("Częstotliwość zapisu pozycji, wysokości, prędkości i prędkości pionowej", "How often position, altitude, speed and vertical speed are saved"), color = Fm.c.ink)
-            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
-                listOf(250 to loc("4× na s", "4×/s"), 500 to loc("2× na s", "2×/s"), 1000 to loc("1× na s", "1×/s"), 2000 to loc("co 2 s", "every 2 s"), 5000 to loc("co 5 s", "every 5 s")).forEach { (ms, label) ->
+        SectionCard(loc("Zapis lotów", "Flight recording"), icon = Icons.Outlined.History, dense = true) {
+            ChipRow(loc("Próbki", "Rate")) {
+                listOf(250 to "4/s", 500 to "2/s", 1000 to "1/s", 2000 to "2 s", 5000 to "5 s").forEach { (ms, label) ->
                     FilterChip(s.recordIntervalMs == ms, { vm.setRecordInterval(ms) }, { Text(label) })
                 }
             }
             val logs by vm.flightLogs.collectAsStateWithLifecycle()
             val ctx = androidx.compose.ui.platform.LocalContext.current
             val kb = remember(logs) { vm.flightArchiveBytes() / 1024 }
-            Text(
-                loc("Zapisane loty: ${logs.size}, archiwum $kb KB. Tor jest zapisywany jako różnice między punktami i spakowany, więc nawet zapis 4× na sekundę zajmuje mało miejsca. Eksport tworzy jeden plik .oab do kopii zapasowej lub przeniesienia na inny telefon.",
-                    "Saved flights: ${logs.size}, archive $kb KB. The track is stored as differences between points and compressed, so even 4×/s takes little space. Export makes one .oab file for backup or moving to another phone."),
-                color = Fm.c.ink2, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
-            )
             val exporter = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/gzip")) { uri ->
                 uri?.let { vm.exportFlightArchive(ctx, it) }
             }
             val importer = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
                 uri?.let { vm.importFlightArchive(ctx, it) }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(loc("${logs.size} lotów · $kb KB", "${logs.size} flights · $kb KB"), color = Fm.c.ink2, fontSize = 13.sp, modifier = Modifier.weight(1f))
                 OutlinedButton({ exporter.launch("OpenTakeoff-loty.oab") }, enabled = logs.isNotEmpty()) {
-                    Icon(Icons.Outlined.Upload, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(loc("Eksportuj", "Export"))
+                    Icon(Icons.Outlined.Upload, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(loc("Eksport", "Export"))
                 }
                 OutlinedButton({ importer.launch(arrayOf("*/*")) }) {
-                    Icon(Icons.Outlined.Download, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(loc("Importuj", "Import"))
+                    Icon(Icons.Outlined.Download, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(loc("Import", "Import"))
                 }
             }
         }
 
-        SectionCard(loc("Baza lotnisk", "Airport database"), icon = Icons.Outlined.Storage) {
+        SectionCard(loc("Baza lotnisk", "Airport database"), icon = Icons.Outlined.Storage, dense = true) {
             val txt = when (val d = db) {
-                is DbState.Ready -> loc("${d.count} lotnisk · aktualizacja ", "${d.count} airports · updated ") + (d.updated?.let { DateFormat.getDateInstance().format(Date(it)) } ?: "—")
+                is DbState.Ready -> loc("${d.count} lotnisk · ", "${d.count} airports · ") +
+                    (d.updated?.let { DateFormat.getDateInstance().format(Date(it)) } ?: "—") + loc(" · sama odświeża się co 30 dni", " · refreshes every 30 days")
                 is DbState.Loading -> d.message
                 is DbState.Error -> loc("Błąd: ${d.message}", "Error: ${d.message}")
                 DbState.Idle -> "—"
             }
-            Text(txt, color = Fm.c.ink2, fontSize = 13.sp)
-            Spacer(Modifier.size(8.dp))
-            OutlinedButton({ vm.loadDb(force = true) }, enabled = db !is DbState.Loading) {
-                Icon(Icons.Outlined.Download, null, Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(loc("Pobierz ponownie", "Download again"))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(txt, color = Fm.c.ink2, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                OutlinedButton({ vm.loadDb(force = true) }, enabled = db !is DbState.Loading) {
+                    Icon(Icons.Outlined.Download, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(loc("Pobierz", "Download"))
+                }
             }
-            Text(loc("Baza odświeża się sama co 30 dni.", "The database refreshes itself every 30 days."), color = Fm.c.ink2, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
         }
 
         com.freemetar.app.ui.components.UpdateSection(vm)
 
-        SectionCard(loc("O aplikacji", "About"), icon = Icons.Outlined.Info) {
-            Text("OpenTakeoff ${BuildConfig.VERSION_NAME}", color = Fm.c.ink, style = MaterialTheme.typography.titleMedium)
+        SectionCard(loc("O aplikacji", "About"), icon = Icons.Outlined.Info, dense = true) {
             val uri = androidx.compose.ui.platform.LocalUriHandler.current
-            Row(
-                Modifier.padding(vertical = 6.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
-                    .background(Fm.c.ink).clickable { uri.openUri(AUTHOR_URL) }.padding(horizontal = 14.dp, vertical = 7.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(loc("Pomysł i wykonanie: ", "Idea and development: "), color = Fm.c.paper, fontSize = 13.sp)
-                Text(AUTHOR_SITE, color = Fm.c.paper, fontSize = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("OpenTakeoff ${BuildConfig.VERSION_NAME}", color = Fm.c.ink, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                Row(
+                    Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
+                        .background(Fm.c.ink).clickable { uri.openUri(AUTHOR_URL) }.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(AUTHOR_SITE, color = Fm.c.paper, fontSize = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                }
             }
         }
     }
 }
 
+/** Etykieta po lewej, opcje obok — jedna linia zamiast dwóch. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun ChipRow(label: String, chips: @Composable () -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, color = Fm.c.ink, fontSize = 14.sp, modifier = Modifier.width(84.dp))
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) { chips() }
+    }
+}
+
 @Composable
 private fun ToggleRow(icon: ImageVector, title: String, sub: String, value: Boolean, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = Fm.c.ink2, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
