@@ -147,6 +147,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _update = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val update = _update.asStateFlow()
 
+    // Callouts
+    private val callouts = com.freemetar.app.data.Callouts(app)
+    private val _calloutsEnabled = MutableStateFlow(true)
+    val calloutsEnabled = _calloutsEnabled.asStateFlow()
+    private val _enabledCallouts = MutableStateFlow(com.freemetar.app.data.CalloutsList.ALL.map { it.first }.toSet())
+    val enabledCallouts = _enabledCallouts.asStateFlow()
+    private val _calloutsLanguage = MutableStateFlow("en")
+    val calloutsLanguage = _calloutsLanguage.asStateFlow()
+    private val _calloutsSpeechRate = MutableStateFlow(1.0f)
+    val calloutsSpeechRate = _calloutsSpeechRate.asStateFlow()
+
+    // Checklists
+    private val checklistsManager = com.freemetar.app.data.ChecklistsManager(app)
+    private val _currentChecklists = MutableStateFlow<com.freemetar.app.data.AircraftChecklists?>(null)
+    val currentChecklists = _currentChecklists.asStateFlow()
+
     /** Dialog o nowej wersji pokazujemy raz na uruchomienie. */
     private val _updatePromptDismissed = MutableStateFlow(false)
     val updatePromptDismissed = _updatePromptDismissed.asStateFlow()
@@ -859,4 +875,39 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setTheme(m: com.freemetar.app.data.ThemeMode) = viewModelScope.launch { prefs.setTheme(m) }
     fun setAutoRefresh(v: Boolean) = viewModelScope.launch { prefs.setAutoRefresh(v) }
     fun setWelcomeShown() = viewModelScope.launch { prefs.setWelcomeShown(true) }
+
+    // Callouts functions
+    fun setCalloutsEnabled(enabled: Boolean) {
+        _calloutsEnabled.value = enabled
+        callouts.setEnabled(enabled)
+    }
+
+    fun toggleCallout(id: String, enabled: Boolean) {
+        val current = _enabledCallouts.value.toMutableSet()
+        if (enabled) current.add(id) else current.remove(id)
+        _enabledCallouts.value = current
+        callouts.setCalloutEnabled(id, enabled)
+    }
+
+    fun setCalloutsLanguage(lang: String) {
+        _calloutsLanguage.value = lang
+        val locale = if (lang == "pl") java.util.Locale("pl") else java.util.Locale.US
+        callouts.setLanguage(locale)
+    }
+
+    fun setCalloutsSpeechRate(rate: Float) {
+        _calloutsSpeechRate.value = rate
+        callouts.setSpeechRate(rate)
+    }
+
+    // Checklists functions
+    fun loadChecklistsForAircraft(aircraftTitle: String?) = viewModelScope.launch {
+        val checklists = checklistsManager.getChecklists(aircraftTitle)
+        _currentChecklists.value = checklists
+    }
+
+    // Update callouts with flight state
+    fun updateCallouts(state: com.freemetar.app.data.link.FlightState) {
+        callouts.update(state)
+    }
 }

@@ -309,6 +309,25 @@ class MainActivity : ComponentActivity() {
                                 }
                                 composable("tools") { ToolsScreen(vm) }
                                 composable("settings") { SettingsScreen(vm) }
+                                composable("settings/callouts") {
+                                    com.freemetar.app.ui.screens.CalloutsSettingsScreen(
+                                        enabled = vm.calloutsEnabled.collectAsState().value,
+                                        enabledCallouts = vm.enabledCallouts.collectAsState().value,
+                                        language = vm.calloutsLanguage.collectAsState().value,
+                                        speechRate = vm.calloutsSpeechRate.collectAsState().value,
+                                        onEnabledChange = { vm.setCalloutsEnabled(it) },
+                                        onCalloutToggle = { id, enabled -> vm.toggleCallout(id, enabled) },
+                                        onLanguageChange = { vm.setCalloutsLanguage(it) },
+                                        onSpeechRateChange = { vm.setCalloutsSpeechRate(it) },
+                                        onBack = { nav.popBackStack() }
+                                    )
+                                }
+                                composable("checklists") {
+                                    com.freemetar.app.ui.screens.ChecklistsScreen(
+                                        aircraftChecklists = vm.currentChecklists.collectAsState().value,
+                                        onBack = { nav.goTab("flight") }
+                                    )
+                                }
                             }
                             floating()
                             }
