@@ -41,6 +41,8 @@ import com.freemetar.app.data.link.FlightRecorder
 import com.freemetar.app.data.link.LinkClient
 import com.freemetar.app.data.link.LinkStatus
 import com.freemetar.app.data.link.TrackPoint
+import com.freemetar.app.data.sync.DriveSync
+import com.freemetar.app.data.sync.SyncViewModel
 import android.net.Uri
 import com.freemetar.app.data.AloftCell
 import com.freemetar.app.data.RouteImport
@@ -120,6 +122,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val prefs = Prefs(app)
 
     val settings: StateFlow<Settings> = prefs.settings.stateIn(viewModelScope, SharingStarted.Eagerly, Settings())
+
+    // Google Drive sync
+    private val driveSync = DriveSync(app)
+    private val flightLogStore = FlightLogStore(app)
+    val syncViewModel = SyncViewModel(driveSync, flightLogStore)
 
     private val _db = MutableStateFlow<DbState>(DbState.Idle)
     val dbState = _db.asStateFlow()
@@ -331,7 +338,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         },
     )
     private var announcedLanding: com.freemetar.app.domain.LandingReport? = null
-    private val flightLogStore = FlightLogStore(app)
     private val _flightLogs = MutableStateFlow<List<FlightLog>>(emptyList())
     val flightLogs = _flightLogs.asStateFlow()
     private val _track = MutableStateFlow<List<TrackPoint>>(emptyList())
@@ -852,4 +858,5 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setRecordInterval(ms: Int) = viewModelScope.launch { prefs.setRecordInterval(ms) }
     fun setTheme(m: com.freemetar.app.data.ThemeMode) = viewModelScope.launch { prefs.setTheme(m) }
     fun setAutoRefresh(v: Boolean) = viewModelScope.launch { prefs.setAutoRefresh(v) }
+    fun setWelcomeShown() = viewModelScope.launch { prefs.setWelcomeShown(true) }
 }

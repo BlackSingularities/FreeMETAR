@@ -92,9 +92,12 @@ object FlightArchive {
 }
 
 /** Historia lotów w pliku flights.oab (gzip, dane aplikacji — przetrwa aktualizację). */
-class FlightLogStore(context: Context) {
+class FlightLogStore(private val context: Context) {
     private val file = File(context.filesDir, "flights.oab")
     private val legacy = File(context.filesDir, "flights.json")
+
+    /** Opcjonalna synchronizacja z Google Drive - ustawiana z zewnątrz */
+    var driveSync: ((List<FlightLog>) -> Unit)? = null
 
     suspend fun load(): List<FlightLog> = withContext(Dispatchers.IO) {
         val src = if (file.exists()) file else legacy
@@ -107,6 +110,9 @@ class FlightLogStore(context: Context) {
         if (!tmp.renameTo(file)) { file.delete(); tmp.renameTo(file) }
         // Po pierwszym zapisie w nowym formacie stary plik nie jest już potrzebny
         if (legacy.exists()) legacy.delete()
+
+        // Synchronizacja z Drive po każdym zapisie
+        driveSync?.invoke(list)
     }
 
     private val draft = File(context.filesDir, "flight-in-progress.oab")

@@ -40,8 +40,11 @@ import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.ScreenRotation
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Upload
+import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.runtime.remember
 import androidx.compose.material3.Icon
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -167,6 +170,83 @@ fun SettingsScreen(vm: MainViewModel) {
                 }
                 OutlinedButton({ importer.launch(arrayOf("*/*")) }) {
                     Icon(Icons.Outlined.Download, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(loc("Import", "Import"))
+                }
+            }
+        }
+
+        // Google Drive sync section
+        SectionCard("Google Drive", icon = Icons.Outlined.Cloud, dense = true) {
+            val syncVm = vm.syncViewModel
+            val isSignedIn by syncVm.isSignedIn.collectAsStateWithLifecycle()
+            val syncState by syncVm.syncState.collectAsStateWithLifecycle()
+            val ctx = androidx.compose.ui.platform.LocalContext.current
+
+            if (!isSignedIn) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        loc("Synchronizuj dziennik lotów z Google Drive. Dane będą przechowywane w chmurze i automatycznie synchronizowane po każdym locie.",
+                            "Sync flight log with Google Drive. Data will be stored in the cloud and automatically synced after every flight."),
+                        color = Fm.c.ink2, fontSize = 13.sp
+                    )
+                    OutlinedButton({
+                        val signInIntent = syncVm.driveSync.getSignInClient().signInIntent
+                        (ctx as? androidx.activity.ComponentActivity)?.startActivityForResult(signInIntent, 9001)
+                    }) {
+                        Text(loc("Zaloguj do Google", "Sign in to Google"))
+                    }
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.Outlined.Cloud, null, tint = Fm.c.accent, modifier = Modifier.size(20.dp))
+                        Text(
+                            loc("Połączono z Google Drive", "Connected to Google Drive"),
+                            color = Fm.c.accent, fontSize = 14.sp, modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Text(
+                        loc("Synchronizacja automatyczna: po każdym zapisie i usunięciu lotu",
+                            "Auto sync: after every flight save and delete"),
+                        color = Fm.c.ink2, fontSize = 12.sp
+                    )
+
+                    when (val state = syncState) {
+                        is com.freemetar.app.data.sync.SyncViewModel.SyncState.Syncing -> {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                Text(loc("Synchronizacja...", "Syncing..."), color = Fm.c.ink2, fontSize = 13.sp)
+                            }
+                        }
+                        is com.freemetar.app.data.sync.SyncViewModel.SyncState.Success -> {
+                            Text(state.message, color = Fm.c.accent, fontSize = 13.sp)
+                        }
+                        is com.freemetar.app.data.sync.SyncViewModel.SyncState.Error -> {
+                            Text(state.message, color = androidx.compose.ui.graphics.Color.Red, fontSize = 13.sp)
+                        }
+                        else -> {}
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton({ syncVm.syncFromCloud() }) {
+                            Icon(Icons.Outlined.Download, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(loc("Pobierz", "Download"))
+                        }
+                        OutlinedButton({ syncVm.syncToCloud() }) {
+                            Icon(Icons.Outlined.Upload, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(loc("Wyślij", "Upload"))
+                        }
+                        OutlinedButton({ syncVm.restoreFromBackup() }) {
+                            Icon(Icons.Outlined.Restore, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(loc("Backup", "Backup"))
+                        }
+                    }
+
+                    OutlinedButton({ syncVm.signOut() }) {
+                        Text(loc("Wyloguj", "Sign out"))
+                    }
                 }
             }
         }

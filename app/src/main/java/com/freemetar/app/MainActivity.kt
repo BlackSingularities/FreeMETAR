@@ -97,12 +97,23 @@ private fun NavHostController.goTab(route: String) = navigate(route) {
 }
 
 class MainActivity : ComponentActivity() {
+    private lateinit var viewModel: MainViewModel
+
     // Kontroler (Bluetooth/USB): osie i przyciski trafiają do Gamepad; panel sterowania decyduje, czy je wysłać
     override fun onGenericMotionEvent(event: android.view.MotionEvent): Boolean =
         com.freemetar.app.data.input.Gamepad.onMotion(event) || super.onGenericMotionEvent(event)
 
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean =
         com.freemetar.app.data.input.Gamepad.onKey(event) || super.dispatchKeyEvent(event)
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        // Google Sign-In result
+        if (requestCode == 9001) {
+            val task = com.google.android.gms.auth.api.signin.GoogleSignIn.getSignedInAccountFromIntent(data)
+            viewModel.syncViewModel.handleSignInResult(task)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -111,6 +122,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val vm: MainViewModel = viewModel()
+            viewModel = vm
             val settings by vm.settings.collectAsStateWithLifecycle()
             // Język: ustawienie albo system; Lang.current dla logiki, LocalLang dla przebudowy interfejsu
             val lang = com.freemetar.app.domain.Lang.resolve(settings.language)
@@ -220,6 +232,18 @@ class MainActivity : ComponentActivity() {
                             onDispose { rootView.keepScreenOn = false }
                         }
                         Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.TopCenter) {
+                            // Ekran powitalny przy pierwszym uruchomieniu
+                            if (!settings.welcomeShown) {
+                                WelcomeScreen(
+                                    onGetStarted = { vm.setWelcomeShown() },
+                                    onSignInToDrive = {
+                                        val signInIntent = vm.syncViewModel.driveSync.getSignInClient().signInIntent
+                                        startActivityForResult(signInIntent, 9001)
+                                        vm.setWelcomeShown()
+                                    },
+                                    onSkip = { vm.setWelcomeShown() }
+                                )
+                            } else {
                             // Pływające stery nad wszystkimi zakładkami (rysowane po NavHost, więc na wierzchu)
                             val floating: @androidx.compose.runtime.Composable () -> Unit = {
                                 // Na ekranie Lot kokpit ma własny przycisk — tu tylko na pozostałych zakładkach
@@ -284,6 +308,7 @@ class MainActivity : ComponentActivity() {
                                 composable("settings") { SettingsScreen(vm) }
                             }
                             floating()
+                            }
                         }
                     }
                 }

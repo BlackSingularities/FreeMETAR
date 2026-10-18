@@ -41,6 +41,8 @@ data class Settings(
     val leversLeft: Boolean = false,
     /** Odstęp między punktami zapisu lotu (ms). */
     val recordIntervalMs: Int = 1000,
+    /** Czy ekran powitalny został już pokazany. */
+    val welcomeShown: Boolean = false,
 )
 
 class Prefs(private val context: Context) {
@@ -62,6 +64,7 @@ class Prefs(private val context: Context) {
     private val FLOAT_STYLE = stringPreferencesKey("floating_style")
     private val HIDE_STATUS = booleanPreferencesKey("hide_status_bar")
     private val LEVERS_LEFT = booleanPreferencesKey("levers_left")
+    private val WELCOME_SHOWN = booleanPreferencesKey("welcome_shown")
 
     private fun list(v: String?) = v?.split(",")?.filter { it.isNotBlank() }
 
@@ -83,6 +86,7 @@ class Prefs(private val context: Context) {
             hideStatusBar = p[HIDE_STATUS] ?: false,
             leversLeft = p[LEVERS_LEFT] ?: false,
             recordIntervalMs = p[RECORD_MS] ?: 1000,
+            welcomeShown = p[WELCOME_SHOWN] ?: false,
         )
     }
 
@@ -140,4 +144,5 @@ class Prefs(private val context: Context) {
     suspend fun setLanguage(v: String) = context.dataStore.edit { it[LANGUAGE] = v }
     suspend fun setAircraftProfile(name: String?) = context.dataStore.edit { if (name == null) it.remove(PROFILE) else it[PROFILE] = name }
     suspend fun setActiveRoute(id: String?) = context.dataStore.edit { if (id == null) it.remove(ROUTE) else it[ROUTE] = id }
+    suspend fun setWelcomeShown(shown: Boolean) = context.dataStore.edit { it[WELCOME_SHOWN] = shown }
 }
