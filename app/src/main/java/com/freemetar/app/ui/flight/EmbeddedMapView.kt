@@ -14,7 +14,10 @@ import com.freemetar.app.data.link.FlightState
 import com.freemetar.app.data.Routes
 import com.freemetar.app.data.nav.AirportNav
 import com.freemetar.app.data.nav.NavDataStore
+import com.freemetar.app.data.WeatherRadar
+import com.freemetar.app.data.WeatherRadarData
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.maplibre.android.camera.CameraPosition
@@ -54,6 +57,7 @@ fun EmbeddedMapView(
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
     var style by remember { mutableStateOf<Style?>(null) }
     var nearestAirport by remember { mutableStateOf<String?>(null) }
+    var radarData by remember { mutableStateOf<WeatherRadarData?>(null) }
     val scope = rememberCoroutineScope()
     val navDataStore = remember { NavDataStore(context) }
 
@@ -126,6 +130,41 @@ fun EmbeddedMapView(
             }
         } else {
             IlsRenderer.removeLayers(st)
+        }
+    }
+
+    // Aktualizuj weather radar gdy włączony
+    LaunchedEffect(showWeather, state.position.lat, state.position.lon, style) {
+        val st = style ?: return@LaunchedEffect
+        val lat = state.position.lat ?: return@LaunchedEffect
+        val lon = state.position.lon ?: return@LaunchedEffect
+
+        if (showWeather) {
+            // Pobierz dane radaru
+            scope.launch {
+                val data = withContext(Dispatchers.IO) {
+                    WeatherRadar.fetchPrecipitation(lat, lon, rangeNm)
+                }
+                radarData = data
+                withContext(Dispatchers.Main) {
+                    WeatherRadarRenderer.addLayer(st, data)
+                }
+            }
+
+            // Refresh co 5 minut
+            while (showWeather) {
+                delay(5 * 60 * 1000)
+                val data = withContext(Dispatchers.IO) {
+                    WeatherRadar.fetchPrecipitation(lat, lon, rangeNm)
+                }
+                radarData = data
+                withContext(Dispatchers.Main) {
+                    WeatherRadarRenderer.updateLayer(st, data)
+                }
+            }
+        } else {
+            WeatherRadarRenderer.removeLayer(st)
+            radarData = null
         }
     }
 
