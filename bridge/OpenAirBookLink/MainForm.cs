@@ -116,6 +116,7 @@ public sealed class MainForm : Form
         host.Log += m =>
         {
             var line = $"{DateTime.Now:HH:mm:ss}  {m}";
+            AppendLogFile(line);
             if (IsHandleCreated) BeginInvokeSafe(() => AddLine(line));
             else _pendingLog.Enqueue(line); // zdarzenia z host.Start() przed pokazaniem okna
         };
@@ -225,6 +226,26 @@ public sealed class MainForm : Form
     }
 
     private void AddLog(string message) => AddLine($"{DateTime.Now:HH:mm:ss}  {message}");
+
+    // Dziennik także w pliku (%APPDATA%\OpenAirBook Link\link.log) — do diagnozy bez zrzutów ekranu; ponad 1 MB zaczyna od nowa
+    private static readonly string LogFile = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OpenAirBook Link", "link.log");
+    private static readonly object LogFileLock = new();
+
+    private static void AppendLogFile(string line)
+    {
+        try
+        {
+            lock (LogFileLock)
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(LogFile)!);
+                if (File.Exists(LogFile) && new FileInfo(LogFile).Length > 1_000_000) File.Delete(LogFile);
+                File.AppendAllText(LogFile, $"{DateTime.Now:yyyy-MM-dd} {line}{Environment.NewLine}");
+            }
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+    }
 
     private void AddLine(string line)
     {

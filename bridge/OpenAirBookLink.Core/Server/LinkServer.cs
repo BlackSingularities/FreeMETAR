@@ -312,15 +312,16 @@ public sealed class LinkServer : IDisposable
 
     private async Task HandleCommandAsync(Session session, IncomingMessage msg, CancellationToken ct)
     {
-        if (!session.TakeCommandToken())
+        var name = msg.GetString("name");
+        JsonElement? value = msg.Root.TryGetProperty("value", out var v) ? v : null;
+        var validation = CommandAllowlist.Validate(name, value);
+        // Kąty rozglądania to wartości bezwzględne wysyłane strumieniem (jak osie) — poza limitem komend na sekundę
+        var cameraLook = validation.Ok && validation.Command!.Spec.Target is CommandTarget.CameraPitch or CommandTarget.CameraYaw;
+        if (!cameraLook && !session.TakeCommandToken())
         {
             await SendError(session, msg.Id, ErrorCodes.RateLimited, $"Maksymalnie {MaxCommandsPerSecond} komend na sekundę");
             return;
         }
-
-        var name = msg.GetString("name");
-        JsonElement? value = msg.Root.TryGetProperty("value", out var v) ? v : null;
-        var validation = CommandAllowlist.Validate(name, value);
         if (!validation.Ok)
         {
             Log?.Invoke($"{session.Name}: odrzucono {name ?? "(brak nazwy)"} — {validation.ErrorMessage}");

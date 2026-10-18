@@ -292,6 +292,9 @@ public sealed class MsfsSource : IFlightSource
     /// </summary>
     private async Task<CommandResult> SetCameraAsync(SimConnectClient client, int target, CancellationToken ct)
     {
+        int raw;
+        lock (_lock) raw = _last is { } d ? (int)d.CameraState : -1;
+        Log?.Invoke($"Kamera: zmiana na {target} (MSFS zgłasza {raw}, rozglądanie {(_lookActive ? "aktywne" : "nie")})");
         if (_lookActive || CurrentCameraState() == target) await RestoreCameraAsync(client, target, ct);
         else await WriteCameraAsync(client, target, ct);
         return CommandResult.Success;
