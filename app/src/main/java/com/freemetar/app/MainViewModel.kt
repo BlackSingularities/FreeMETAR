@@ -867,6 +867,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setAircraftProfile(p: com.freemetar.app.domain.AircraftProfile?) = viewModelScope.launch { prefs.setAircraftProfile(p?.name) }
     fun setControlMode(m: String) = viewModelScope.launch { prefs.setControlMode(m) }
     fun setFloatingControl(v: Boolean) = viewModelScope.launch { prefs.setFloatingControl(v) }
+    fun setPinJumpBar(v: Boolean) = viewModelScope.launch { prefs.setPinJumpBar(v) }
     fun setSimbriefUser(v: String) = viewModelScope.launch { prefs.setSimbriefUser(v) }
     fun setHideStatusBar(v: Boolean) = viewModelScope.launch { prefs.setHideStatusBar(v) }
     fun setLeversLeft(v: Boolean) = viewModelScope.launch { prefs.setLeversLeft(v) }

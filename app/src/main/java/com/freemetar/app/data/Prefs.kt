@@ -33,6 +33,8 @@ data class Settings(
     val controlMode: String = "TILT",
     /** Pływający przycisk sterowania nad wszystkimi zakładkami. */
     val floatingControl: Boolean = false,
+    /** Pasek rozdziałów briefingu zawsze widoczny (inaczej pokazuje się tylko podczas przewijania). */
+    val pinJumpBar: Boolean = false,
     /** SIMPLE — sam przycisk sterowania; TRIM — dodatkowo przyciski trymu wysokości. */
     val floatingStyle: String = "SIMPLE",
     /** Pasek stanu ukryty — aplikacja zajmuje jego miejsce (wysuwa się przeciągnięciem od góry). */
@@ -60,6 +62,7 @@ class Prefs(private val context: Context) {
     private val LINK_LAST = stringPreferencesKey("link_last_ip")
     private val CONTROL = stringPreferencesKey("control_mode")
     private val FLOATING = booleanPreferencesKey("floating_control")
+    private val PIN_JUMPBAR = booleanPreferencesKey("pin_jump_bar")
     private val RECORD_MS = intPreferencesKey("record_interval_ms")
     private val FLOAT_STYLE = stringPreferencesKey("floating_style")
     private val HIDE_STATUS = booleanPreferencesKey("hide_status_bar")
@@ -82,6 +85,7 @@ class Prefs(private val context: Context) {
             language = p[LANGUAGE] ?: "SYSTEM",
             controlMode = p[CONTROL] ?: "TILT",
             floatingControl = p[FLOATING] ?: false,
+            pinJumpBar = p[PIN_JUMPBAR] ?: false,
             floatingStyle = p[FLOAT_STYLE] ?: "SIMPLE",
             hideStatusBar = p[HIDE_STATUS] ?: false,
             leversLeft = p[LEVERS_LEFT] ?: false,
@@ -137,6 +141,7 @@ class Prefs(private val context: Context) {
 
     suspend fun setControlMode(v: String) = context.dataStore.edit { it[CONTROL] = v }
     suspend fun setFloatingControl(v: Boolean) = context.dataStore.edit { it[FLOATING] = v }
+    suspend fun setPinJumpBar(v: Boolean) = context.dataStore.edit { it[PIN_JUMPBAR] = v }
     suspend fun setHideStatusBar(v: Boolean) = context.dataStore.edit { it[HIDE_STATUS] = v }
     suspend fun setLeversLeft(v: Boolean) = context.dataStore.edit { it[LEVERS_LEFT] = v }
     suspend fun setFloatingStyle(v: String) = context.dataStore.edit { it[FLOAT_STYLE] = v }

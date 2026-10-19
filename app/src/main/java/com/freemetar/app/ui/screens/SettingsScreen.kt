@@ -34,6 +34,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Straighten
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.ViewDay
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Fullscreen
 import androidx.compose.material.icons.outlined.CloudDownload
@@ -113,6 +114,9 @@ fun SettingsScreen(vm: MainViewModel) {
                 s.hideStatusBar) { vm.setHideStatusBar(it) }
             ToggleRow(Icons.Outlined.Autorenew, loc("Automatyczne odświeżanie", "Auto refresh"),
                 loc("Co 5 minut, gdy aplikacja jest otwarta", "Every 5 minutes while the app is open"), s.autoRefresh) { vm.setAutoRefresh(it) }
+            ToggleRow(Icons.Outlined.ViewDay, loc("Stały pasek rozdziałów", "Always show section bar"),
+                loc("W briefingu lotniska; wyłączony pokazuje się tylko podczas przewijania", "In the airport briefing; when off it appears only while scrolling"),
+                s.pinJumpBar) { vm.setPinJumpBar(it) }
         }
 
         SectionCard("SimBrief", icon = Icons.Outlined.CloudDownload, dense = true) {

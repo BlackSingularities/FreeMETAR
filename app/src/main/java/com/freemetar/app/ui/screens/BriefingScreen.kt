@@ -66,6 +66,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -175,7 +176,8 @@ fun BriefingScreen(vm: MainViewModel, onBack: () -> Unit, onOpen: (String) -> Un
             val list = rememberLazyListState()
             // Karty FAA tylko dla lotnisk USA; kolejność listy = kolejność paska skoków
             val parts = Part.entries.filter { it != Part.CHARTS || com.freemetar.app.data.charts.FaaCharts.isUsIcao(detail.ident) }
-            JumpBar(list, parts)
+            if (settings.pinJumpBar) JumpBar(list, parts)
+            Box(Modifier.fillMaxSize()) {
             LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(bottom = 24.dp)) {
                 parts.forEach { p ->
                     item(key = p) {
@@ -192,6 +194,23 @@ fun BriefingScreen(vm: MainViewModel, onBack: () -> Unit, onOpen: (String) -> Un
                         }
                     }
                 }
+            }
+            // Bez przypięcia pasek leży nad treścią i pokazuje się tylko podczas przewijania (plus chwilę po nim)
+            if (!settings.pinJumpBar) {
+                var shown by remember { mutableStateOf(false) }
+                LaunchedEffect(list.isScrollInProgress) {
+                    if (list.isScrollInProgress) shown = true
+                    else { kotlinx.coroutines.delay(1500); shown = false }
+                }
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = shown,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { -it },
+                    exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { -it },
+                ) {
+                    Box(Modifier.fillMaxWidth().background(c.paper.copy(alpha = 0.94f))) { JumpBar(list, parts) }
+                }
+            }
             }
         }
     }
