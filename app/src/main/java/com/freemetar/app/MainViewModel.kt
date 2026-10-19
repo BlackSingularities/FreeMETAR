@@ -122,6 +122,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val prefs = Prefs(app)
 
     val settings: StateFlow<Settings> = prefs.settings.stateIn(viewModelScope, SharingStarted.Eagerly, Settings())
+    /** Ustawienia wczytane z dysku — do tego czasu [settings] ma wartości domyślne (np. welcomeShown = false). */
+    val settingsLoaded: StateFlow<Boolean> = prefs.settings.map { true }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     // Google Drive sync
     private val driveSync = DriveSync(app)

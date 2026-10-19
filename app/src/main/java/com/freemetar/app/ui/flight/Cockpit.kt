@@ -163,9 +163,17 @@ fun CockpitView(
                         FlyDeck(link, s, route, effective, nearby, screenH - 40.dp - 14.dp, Modifier.weight(1f), panel, leversLeft)
                         PanelRail(tab, onTab)
                     }
+                } else if (tab != null) {
+                    // Telefon pionowo z otwartym panelem: wyświetlacze (z ND) u góry, panel pod nimi, pasek na dole
+                    FlyDeck(link, s, route, effective, nearby, screenH * 0.48f, leversLeft = leversLeft)
+                    Column(Modifier.fillMaxWidth().weight(1f).padding(top = 6.dp).verticalScroll(rememberScrollState())) {
+                        panelFor(tab, true)
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    PanelBar(tab, onTab)
                 } else {
                     // Miejsce na wyświetlacze: wysokość ekranu minus nagłówek, pasek paneli i marginesy
-                    FlyDeck(link, s, route, effective, nearby, screenH - 40.dp - 56.dp - 16.dp, panel = panel, leversLeft = leversLeft)
+                    FlyDeck(link, s, route, effective, nearby, screenH - 40.dp - 56.dp - 16.dp, leversLeft = leversLeft)
                     PanelBar(tab, onTab)
                 }
             }

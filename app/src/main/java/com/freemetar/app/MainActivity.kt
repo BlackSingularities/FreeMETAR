@@ -156,7 +156,8 @@ class MainActivity : ComponentActivity() {
                 val route = entry?.destination?.route
                 val activeTab = when {
                     route?.startsWith("airport") == true -> "home"
-                    route?.startsWith("plan") == true || route?.startsWith("flightlog") == true -> "logbook"
+                    route?.startsWith("plan") == true -> "flight"
+                    route?.startsWith("flightlog") == true -> "logbook"
                     else -> route
                 }
                 val wide = isWide()
@@ -238,7 +239,9 @@ class MainActivity : ComponentActivity() {
                         }
                         Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.TopCenter) {
                             // Ekran powitalny przy pierwszym uruchomieniu
-                            if (!settings.welcomeShown) {
+                            // Dopiero po wczytaniu ustawień — inaczej ekran mignąłby przy każdym starcie i zresetował nawigację
+                            val settingsLoaded by vm.settingsLoaded.collectAsStateWithLifecycle()
+                            if (settingsLoaded && !settings.welcomeShown) {
                                 WelcomeScreen(
                                     onGetStarted = { vm.setWelcomeShown() },
                                     onSignInToDrive = {
