@@ -15,6 +15,8 @@ import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
 import com.google.api.services.drive.model.File
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 
@@ -41,6 +43,9 @@ class DriveSync(private val context: Context) {
 
     private var driveService: Drive? = null
     private var folderId: String? = null
+
+    /** Auto-sync po każdym zapisie może odpalić kilka wysyłek naraz — wykonujemy je po kolei. */
+    private val uploadLock = Mutex()
 
     /** Status synchronizacji */
     sealed class SyncStatus {
@@ -183,60 +188,47 @@ class DriveSync(private val context: Context) {
 
     /** Wyślij dane na Drive (po każdym zapisie/usunięciu) */
     suspend fun uploadFlights(flights: List<FlightLog>): Result<Unit> = withContext(Dispatchers.IO) {
-        runCatching {
-            lastSyncStatus = SyncStatus.Syncing
+        uploadLock.withLock {
+            runCatching {
+                lastSyncStatus = SyncStatus.Syncing
 
-            val service = driveService ?: throw IllegalStateException("Not signed in")
-            val folder = folderId ?: throw IllegalStateException("Folder not found")
+                val service = driveService ?: throw IllegalStateException("Not signed in")
+                val folder = folderId ?: throw IllegalStateException("Folder not found")
 
-            val encoded = FlightArchive.encode(flights)
+                val existing = findFiles(service, FILE_NAME, folder)
+                val oldBackups = findFiles(service, BACKUP_NAME, folder)
 
-            // Sprawdź czy istnieje główny plik
-            val query = "name='$FILE_NAME' and '$folder' in parents and trashed=false"
-            val existing = service.files().list()
-                .setQ(query)
-                .setSpaces("drive")
-                .setFields("files(id, name)")
-                .execute()
-
-            if (existing.files.isNotEmpty()) {
-                // Przenieś obecny plik jako backup
-                val mainFileId = existing.files.first().id
-
-                // Usuń stary backup jeśli istnieje
-                val backupQuery = "name='$BACKUP_NAME' and '$folder' in parents and trashed=false"
-                val oldBackup = service.files().list()
-                    .setQ(backupQuery)
-                    .setSpaces("drive")
-                    .setFields("files(id)")
+                // Najpierw nowy plik główny — jeśli wysyłka padnie, poprzednie dane zostają nietknięte
+                val fileMetadata = File().apply {
+                    name = FILE_NAME
+                    parents = listOf(folder)
+                }
+                service.files().create(fileMetadata, ByteArrayContent("application/octet-stream", FlightArchive.encode(flights)))
+                    .setFields("id")
                     .execute()
 
-                oldBackup.files.forEach { file ->
-                    service.files().delete(file.id).execute()
+                // Dopiero teraz poprzedni plik główny staje się backupem, a starszy backup znika
+                existing.firstOrNull()?.let { prev ->
+                    oldBackups.forEach { service.files().delete(it).execute() }
+                    service.files().update(prev, File().apply { name = BACKUP_NAME }).execute()
+                    existing.drop(1).forEach { service.files().delete(it).execute() }
                 }
 
-                // Zmień nazwę głównego pliku na backup
-                val backupFile = File().apply { name = BACKUP_NAME }
-                service.files().update(mainFileId, backupFile).execute()
+                lastSyncStatus = SyncStatus.Success(System.currentTimeMillis())
+            }.onFailure { e ->
+                lastSyncStatus = SyncStatus.Error(e.message ?: "Unknown error")
             }
-
-            // Utwórz nowy główny plik
-            val fileMetadata = File().apply {
-                name = FILE_NAME
-                parents = listOf(folder)
-            }
-
-            val mediaContent = ByteArrayContent("application/octet-stream", encoded)
-
-            service.files().create(fileMetadata, mediaContent)
-                .setFields("id")
-                .execute()
-
-            lastSyncStatus = SyncStatus.Success(System.currentTimeMillis())
-        }.onFailure { e ->
-            lastSyncStatus = SyncStatus.Error(e.message ?: "Unknown error")
         }
     }
+
+    private fun findFiles(service: Drive, name: String, folder: String): List<String> =
+        service.files().list()
+            .setQ("name='$name' and '$folder' in parents and trashed=false")
+            .setSpaces("drive")
+            .setFields("files(id)")
+            .setOrderBy("modifiedTime desc")
+            .execute()
+            .files.orEmpty().map { it.id }
 
     /** Przywróć z backupu (jeśli użytkownik przypadkowo coś usunął) */
     suspend fun restoreFromBackup(): Result<List<FlightLog>> = withContext(Dispatchers.IO) {

@@ -101,9 +101,18 @@ class SyncViewModel(
                     _syncState.value = SyncState.Error("Błąd inicjalizacji: ${e.message}")
                 }
             } catch (e: ApiException) {
-                _syncState.value = SyncState.Error("Logowanie anulowane")
+                _syncState.value = SyncState.Error(signInError(e.statusCode))
             }
         }
+    }
+
+    /** Kody z GoogleSignInStatusCodes / CommonStatusCodes przełożone na zrozumiały komunikat. */
+    private fun signInError(code: Int): String = when (code) {
+        12501 -> "Logowanie anulowane"
+        7 -> "Brak połączenia z internetem"
+        10 -> "Błąd konfiguracji Google (kod 10): brak klienta OAuth dla tego podpisu aplikacji"
+        12500 -> "Logowanie nie powiodło się (kod 12500) — sprawdź ekran zgody OAuth i konto testowe"
+        else -> "Logowanie nie powiodło się (kod $code)"
     }
 
     /** Wylogowanie */
