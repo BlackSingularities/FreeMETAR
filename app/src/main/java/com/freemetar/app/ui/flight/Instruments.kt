@@ -571,6 +571,8 @@ private fun DrawScope.drawIlsIndicators(
     // Na razie placeholder - rysuj scale zawsze, wskaźniki gdy są dane
 
     val ilsDev: IlsCalculator.IlsDeviation? = null // TODO: Calculate from actual data
+    // Bez danych ILS nic nie rysujemy — puste skale zaśmiecały PFD
+    if (ilsDev == null) return
 
     val localizerY = center.y + att.height * 0.42f // Pod symbolem samolotu
     val glideslopeX = center.x + att.width * 0.38f // Po prawej stronie
