@@ -39,6 +39,11 @@ public sealed class MsfsSource : IFlightSource
     private bool _connected;
     private string? _lastError;
 
+    // Martwe połączenie: po restarcie MSFS lub zerwaniu potoku biblioteka nadal zgłasza IsConnected,
+    // a każde wywołanie kończy się E_FAIL. Po tylu kolejnych błędach łączymy się od nowa.
+    private const int FailLimit = 8;
+    private int _failStreak;
+
     public MsfsSource(AxisController axes)
     {
         Axes = axes;
@@ -86,7 +91,23 @@ public sealed class MsfsSource : IFlightSource
     {
         var client = _client;
         if (client is not { IsConnected: true }) return CommandResult.Fail(ErrorCodes.SimUnavailable, "Brak połączenia z MSFS");
+        try
+        {
+            var result = await ExecuteOnAsync(client, command, ct);
+            Interlocked.Exchange(ref _failStreak, 0);
+            return result;
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            SimCallFailed();
+            throw;
+        }
+    }
 
+    private void SimCallFailed() => Interlocked.Increment(ref _failStreak);
+
+    private async Task<CommandResult> ExecuteOnAsync(SimConnectClient client, ValidatedCommand command, CancellationToken ct)
+    {
         if (command.Spec.Target is CommandTarget.CameraPitch or CommandTarget.CameraYaw)
             return await LookAsync(client, command.Spec.Target == CommandTarget.CameraPitch, command.Value, ct);
 
@@ -113,9 +134,12 @@ public sealed class MsfsSource : IFlightSource
             try
             {
                 await ConnectAsync(ct);
-                while (!ct.IsCancellationRequested && _client is { IsConnected: true })
+                while (!ct.IsCancellationRequested && _client is { IsConnected: true } && Volatile.Read(ref _failStreak) < FailLimit)
                     await Task.Delay(1000, ct);
-                if (!ct.IsCancellationRequested) Log?.Invoke("MSFS rozłączony");
+                if (!ct.IsCancellationRequested)
+                    Log?.Invoke(Volatile.Read(ref _failStreak) >= FailLimit
+                        ? "MSFS nie przyjmuje komend (martwe połączenie SimConnect) — łączę ponownie"
+                        : "MSFS rozłączony");
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -143,6 +167,9 @@ public sealed class MsfsSource : IFlightSource
 
     private async Task ConnectAsync(CancellationToken ct)
     {
+        Interlocked.Exchange(ref _failStreak, 0);
+        // Wyniki z poprzedniego (np. martwego) połączenia nie obowiązują
+        _look6DofFailed = false; _lookActive = false;
         var client = new SimConnectClient("OpenTakeoff Link");
         _client = client;
         await client.ConnectAsync(cancellationToken: ct);
@@ -221,9 +248,11 @@ public sealed class MsfsSource : IFlightSource
                 await TransmitAsync(client, "AXIS_AILERONS_SET", ToAxis(output.Aileron * AileronSign), ct);
                 await TransmitAsync(client, "AXIS_ELEVATOR_SET", ToAxis(output.Elevator * ElevatorSign), ct);
                 await TransmitAsync(client, "AXIS_RUDDER_SET", ToAxis(output.Rudder * RudderSign), ct);
+                Interlocked.Exchange(ref _failStreak, 0);
             }
             catch (Exception e) when (e is not OperationCanceledException)
             {
+                SimCallFailed();
                 Log?.Invoke($"Osie: {e.Message}");
             }
         }
@@ -324,6 +353,7 @@ public sealed class MsfsSource : IFlightSource
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
+            SimCallFailed();
             Log?.Invoke($"Kamera: zapis CAMERA STATE nie powiódł się ({e.Message})");
             return;
         }
