@@ -28,7 +28,7 @@ class Callouts(private val context: Context) {
 
     private var tts: TextToSpeech? = null
     private var ttsReady = false
-    private val _isEnabled = MutableStateFlow(true)
+    private val _isEnabled = MutableStateFlow(false)
     val isEnabled: StateFlow<Boolean> = _isEnabled
 
     // Ostatni stan - do detekcji zmian
@@ -49,16 +49,16 @@ class Callouts(private val context: Context) {
         "Retard", "Minimums",
         "Autopilot", "Autothrottle"
     )
+    private var locale: Locale = Locale.US
+    private var speechRate = 1.0f
 
-    init {
-        initializeTts()
-    }
-
+    /** Silnik mowy startuje dopiero po włączeniu zapowiedzi — wyłączone nie kosztują nic. */
     private fun initializeTts() {
+        if (tts != null) return
         tts = TextToSpeech(context) { status ->
             if (status == TextToSpeech.SUCCESS) {
-                tts?.language = Locale.US // Domyślnie angielski
-                tts?.setSpeechRate(1.0f)
+                tts?.language = locale
+                tts?.setSpeechRate(speechRate)
                 tts?.setPitch(1.0f)
                 ttsReady = true
 
@@ -176,6 +176,15 @@ class Callouts(private val context: Context) {
      */
     fun setEnabled(enabled: Boolean) {
         _isEnabled.value = enabled
+        if (enabled) initializeTts() else tts?.stop()
+    }
+
+    /** Ustawienia zapisane w [Prefs] — wywoływane przy każdej ich zmianie. */
+    fun configure(enabled: Boolean, callouts: Set<String>, language: String, rate: Float) {
+        enabledCallouts.clear(); enabledCallouts.addAll(callouts)
+        setLanguage(if (language == "pl") Locale("pl", "PL") else Locale.US)
+        setSpeechRate(rate)
+        setEnabled(enabled)
     }
 
     /**
@@ -193,6 +202,7 @@ class Callouts(private val context: Context) {
      * Zmień język TTS.
      */
     fun setLanguage(locale: Locale) {
+        this.locale = locale
         tts?.language = locale
     }
 
@@ -200,6 +210,7 @@ class Callouts(private val context: Context) {
      * Zmień prędkość mowy.
      */
     fun setSpeechRate(rate: Float) {
+        speechRate = rate
         tts?.setSpeechRate(rate)
     }
 
@@ -210,6 +221,7 @@ class Callouts(private val context: Context) {
         tts?.stop()
         tts?.shutdown()
         tts = null
+        ttsReady = false
     }
 }
 

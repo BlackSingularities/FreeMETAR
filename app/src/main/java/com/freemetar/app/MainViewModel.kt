@@ -149,16 +149,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _update = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val update = _update.asStateFlow()
 
-    // Callouts
+    // Zapowiedzi głosowe: ustawienia w Prefs, zasilane stanem z symulatora (startLinkWatchers)
     private val callouts = com.freemetar.app.data.Callouts(app)
-    private val _calloutsEnabled = MutableStateFlow(true)
-    val calloutsEnabled = _calloutsEnabled.asStateFlow()
-    private val _enabledCallouts = MutableStateFlow(com.freemetar.app.data.CalloutsList.ALL.map { it.first }.toSet())
-    val enabledCallouts = _enabledCallouts.asStateFlow()
-    private val _calloutsLanguage = MutableStateFlow("en")
-    val calloutsLanguage = _calloutsLanguage.asStateFlow()
-    private val _calloutsSpeechRate = MutableStateFlow(1.0f)
-    val calloutsSpeechRate = _calloutsSpeechRate.asStateFlow()
+    val calloutsEnabled = settings.map { it.calloutsEnabled }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    val enabledCallouts = settings.map { it.enabledCallouts }.stateIn(viewModelScope, SharingStarted.Eagerly, Settings().enabledCallouts)
+    val calloutsLanguage = settings.map { it.calloutsLanguage }.stateIn(viewModelScope, SharingStarted.Eagerly, "en")
+    val calloutsSpeechRate = settings.map { it.calloutsSpeechRate }.stateIn(viewModelScope, SharingStarted.Eagerly, 1.0f)
 
     // Checklists
     private val checklistsManager = com.freemetar.app.data.ChecklistsManager(app)
@@ -510,8 +506,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
         viewModelScope.launch {
+            settings.map { listOf(it.calloutsEnabled, it.enabledCallouts, it.calloutsLanguage, it.calloutsSpeechRate) }.distinctUntilChanged().collect {
+                val st = settings.value
+                callouts.configure(st.calloutsEnabled, st.enabledCallouts, st.calloutsLanguage, st.calloutsSpeechRate)
+            }
+        }
+        viewModelScope.launch {
             link.state.collect { st ->
                 if (st != null) {
+                    callouts.update(st)
                     saveFlight(recorder.onState(st))
                     if (recorder.recording != _recordingInfo.value.recording || recorder.holdUntilGround != _recordingInfo.value.held) publishRecording()
                     // Kopia toru tylko po dojściu nowego punktu, nie przy każdym stanie z Link
@@ -558,6 +561,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     override fun onCleared() {
+        callouts.shutdown()
         saveFlight(recorder.finish())
         link.disconnect()
         link.stopDiscovery()
@@ -880,37 +884,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setWelcomeShown() = viewModelScope.launch { prefs.setWelcomeShown(true) }
 
     // Callouts functions
-    fun setCalloutsEnabled(enabled: Boolean) {
-        _calloutsEnabled.value = enabled
-        callouts.setEnabled(enabled)
-    }
-
-    fun toggleCallout(id: String, enabled: Boolean) {
-        val current = _enabledCallouts.value.toMutableSet()
-        if (enabled) current.add(id) else current.remove(id)
-        _enabledCallouts.value = current
-        callouts.setCalloutEnabled(id, enabled)
-    }
-
-    fun setCalloutsLanguage(lang: String) {
-        _calloutsLanguage.value = lang
-        val locale = if (lang == "pl") java.util.Locale("pl") else java.util.Locale.US
-        callouts.setLanguage(locale)
-    }
-
-    fun setCalloutsSpeechRate(rate: Float) {
-        _calloutsSpeechRate.value = rate
-        callouts.setSpeechRate(rate)
-    }
+    fun setCalloutsEnabled(enabled: Boolean) = viewModelScope.launch { prefs.setCalloutsEnabled(enabled) }
+    fun toggleCallout(id: String, enabled: Boolean) = viewModelScope.launch { prefs.setCallout(id, enabled) }
+    fun setCalloutsLanguage(lang: String) = viewModelScope.launch { prefs.setCalloutsLanguage(lang) }
+    fun setCalloutsSpeechRate(rate: Float) = viewModelScope.launch { prefs.setCalloutsSpeechRate(rate) }
 
     // Checklists functions
+    val checklistAircraft: List<Pair<String, String>> get() = checklistsManager.available
+
+    /** Samolot z symulatora; bez połączenia zostaje ostatni wybrany ręcznie. */
     fun loadChecklistsForAircraft(aircraftTitle: String?) = viewModelScope.launch {
-        val checklists = checklistsManager.getChecklists(aircraftTitle)
-        _currentChecklists.value = checklists
+        if (aircraftTitle == null && _currentChecklists.value != null) return@launch
+        _currentChecklists.value = checklistsManager.getChecklists(aircraftTitle)
     }
 
-    // Update callouts with flight state
-    fun updateCallouts(state: com.freemetar.app.data.link.FlightState) {
-        callouts.update(state)
+    fun pickChecklists(filename: String) = viewModelScope.launch {
+        _currentChecklists.value = checklistsManager.load(filename)
     }
 }

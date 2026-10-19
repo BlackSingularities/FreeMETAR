@@ -36,7 +36,10 @@ import com.freemetar.app.ui.theme.Mono
 @Composable
 fun ChecklistsScreen(
     aircraftChecklists: AircraftChecklists?,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    /** Pliki do ręcznego wyboru: nazwa pliku → nazwa samolotu. */
+    available: List<Pair<String, String>> = emptyList(),
+    onPick: (String) -> Unit = {},
 ) {
     var selectedChecklistId by remember { mutableStateOf<String?>(null) }
     var checkedItems by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -87,12 +90,13 @@ fun ChecklistsScreen(
                     )
                     Text(
                         loc(
-                            "Checklisty nie są dostępne dla tego samolotu",
-                            "Checklists are not available for this aircraft"
+                            "Nie rozpoznano samolotu. Wybierz checklisty ręcznie:",
+                            "Aircraft not recognised. Pick checklists manually:"
                         ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    AircraftPicker(available, null, onPick)
                 }
             }
         } else if (selectedChecklist == null) {
@@ -100,6 +104,8 @@ fun ChecklistsScreen(
             ChecklistsListView(
                 aircraftChecklists = aircraftChecklists,
                 onSelectChecklist = { id -> selectedChecklistId = id },
+                available = available,
+                onPick = { f -> checkedItems = emptySet(); onPick(f) },
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
@@ -129,7 +135,9 @@ fun ChecklistsScreen(
 private fun ChecklistsListView(
     aircraftChecklists: AircraftChecklists,
     onSelectChecklist: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    available: List<Pair<String, String>> = emptyList(),
+    onPick: (String) -> Unit = {},
 ) {
     Column(
         modifier
@@ -152,6 +160,7 @@ private fun ChecklistsListView(
                 )
             }
         }
+        AircraftPicker(available, aircraftChecklists.aircraft, onPick)
 
         // Lista checklistów
         Text(
@@ -322,5 +331,17 @@ private fun ChecklistItemRow(
             tint = if (checked) Color(0xFF00FF00) else c.ink2,
             modifier = Modifier.size(32.dp)
         )
+    }
+}
+
+/** Ręczny wybór samolotu (checklisty z assets). */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AircraftPicker(available: List<Pair<String, String>>, current: String?, onPick: (String) -> Unit) {
+    if (available.isEmpty()) return
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        available.forEach { (file, name) ->
+            FilterChip(selected = name == current, onClick = { onPick(file) }, label = { Text(name) })
+        }
     }
 }

@@ -3,6 +3,7 @@ package com.freemetar.app.data
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -45,6 +46,13 @@ data class Settings(
     val recordIntervalMs: Int = 1000,
     /** Czy ekran powitalny został już pokazany. */
     val welcomeShown: Boolean = false,
+    /** Zapowiedzi głosowe (TTS) w locie — domyślnie wyłączone. */
+    val calloutsEnabled: Boolean = false,
+    /** Włączone zapowiedzi (identyfikatory z [CalloutsList]). */
+    val enabledCallouts: Set<String> = CalloutsList.ALL.map { it.first }.toSet(),
+    /** "en" / "pl" */
+    val calloutsLanguage: String = "en",
+    val calloutsSpeechRate: Float = 1.0f,
 )
 
 class Prefs(private val context: Context) {
@@ -68,6 +76,10 @@ class Prefs(private val context: Context) {
     private val HIDE_STATUS = booleanPreferencesKey("hide_status_bar")
     private val LEVERS_LEFT = booleanPreferencesKey("levers_left")
     private val WELCOME_SHOWN = booleanPreferencesKey("welcome_shown")
+    private val CALLOUTS_ON = booleanPreferencesKey("callouts_enabled")
+    private val CALLOUTS_LIST = stringPreferencesKey("callouts_list")
+    private val CALLOUTS_LANG = stringPreferencesKey("callouts_language")
+    private val CALLOUTS_RATE = floatPreferencesKey("callouts_rate")
 
     private fun list(v: String?) = v?.split(",")?.filter { it.isNotBlank() }
 
@@ -91,6 +103,11 @@ class Prefs(private val context: Context) {
             leversLeft = p[LEVERS_LEFT] ?: false,
             recordIntervalMs = p[RECORD_MS] ?: 1000,
             welcomeShown = p[WELCOME_SHOWN] ?: false,
+            calloutsEnabled = p[CALLOUTS_ON] ?: false,
+            // Pusty zapis = wszystkie wyłączone; brak klucza = domyślna lista
+            enabledCallouts = p[CALLOUTS_LIST]?.split(",")?.filter { it.isNotBlank() }?.toSet() ?: Settings().enabledCallouts,
+            calloutsLanguage = p[CALLOUTS_LANG] ?: "en",
+            calloutsSpeechRate = p[CALLOUTS_RATE] ?: 1.0f,
         )
     }
 
@@ -150,4 +167,11 @@ class Prefs(private val context: Context) {
     suspend fun setAircraftProfile(name: String?) = context.dataStore.edit { if (name == null) it.remove(PROFILE) else it[PROFILE] = name }
     suspend fun setActiveRoute(id: String?) = context.dataStore.edit { if (id == null) it.remove(ROUTE) else it[ROUTE] = id }
     suspend fun setWelcomeShown(shown: Boolean) = context.dataStore.edit { it[WELCOME_SHOWN] = shown }
+    suspend fun setCalloutsEnabled(v: Boolean) = context.dataStore.edit { it[CALLOUTS_ON] = v }
+    suspend fun setCallout(id: String, on: Boolean) = context.dataStore.edit { p ->
+        val cur = p[CALLOUTS_LIST]?.split(",")?.filter { it.isNotBlank() }?.toSet() ?: Settings().enabledCallouts
+        p[CALLOUTS_LIST] = (if (on) cur + id else cur - id).joinToString(",")
+    }
+    suspend fun setCalloutsLanguage(v: String) = context.dataStore.edit { it[CALLOUTS_LANG] = v }
+    suspend fun setCalloutsSpeechRate(v: Float) = context.dataStore.edit { it[CALLOUTS_RATE] = v }
 }

@@ -94,6 +94,7 @@ fun CockpitView(
     controlMode: String = "TILT", onControlMode: (String) -> Unit = {}, floating: Boolean = false, onFloating: (Boolean) -> Unit = {},
     nearby: List<com.freemetar.app.data.nav.FixResult> = emptyList(), floatingTrim: Boolean = false, leversLeft: Boolean = false,
     onShowPlan: () -> Unit = {},
+    onShowChecklists: () -> Unit = {},
     recording: com.freemetar.app.MainViewModel.RecordingInfo = com.freemetar.app.MainViewModel.RecordingInfo(),
     onStopRecording: () -> Unit = {}, onResumeRecording: () -> Unit = {},
 ) {
@@ -138,7 +139,7 @@ fun CockpitView(
             }
             // Wszystko na jednym ekranie: otwarty panel zastępuje ND, PFD i dźwignie zostają
             Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 4.dp)) {
-                CockpitHeader(link, s, effective, onShowPlan, controlMode, recording, onStopRecording, onResumeRecording)
+                CockpitHeader(link, s, effective, onShowPlan, onShowChecklists, controlMode, recording, onStopRecording, onResumeRecording)
                 if (wide) {
                     val sideW = (screenW * 0.34f).coerceIn(340.dp, 480.dp)
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -186,7 +187,7 @@ fun CockpitView(
 /** Nagłówek: stan i nazwa samolotu, profil panelu, kamera MSFS jako trzy małe ikony. */
 @Composable
 private fun CockpitHeader(
-    link: LinkClient, s: FlightState, p: AircraftProfile, onShowPlan: () -> Unit, controlMode: String,
+    link: LinkClient, s: FlightState, p: AircraftProfile, onShowPlan: () -> Unit, onShowChecklists: () -> Unit, controlMode: String,
     rec: com.freemetar.app.MainViewModel.RecordingInfo, onStop: () -> Unit, onResume: () -> Unit,
 ) {
     val c = Fm.c
@@ -204,6 +205,11 @@ private fun CockpitHeader(
         RecordChip(rec, onClick = { if (rec.recording) askStop = true else if (rec.held) onResume() })
         Spacer(Modifier.width(6.dp))
         CameraSwitch(link, s, controlMode = controlMode)
+        Spacer(Modifier.width(6.dp))
+        Text("CHK", fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = c.ink,
+            modifier = Modifier.clip(RoundedCornerShape(50)).border(1.dp, c.rule, RoundedCornerShape(50))
+                .clickable(role = Role.Button, onClickLabel = tr("Checklisty", "Checklists"), onClick = onShowChecklists)
+                .padding(horizontal = 10.dp, vertical = 7.dp))
         Spacer(Modifier.width(6.dp))
         // Plan lotu, połączenie i dziennik — zamiast osobnego przełącznika nad kokpitem
         Text(tr("PLAN", "PLAN"), fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = c.ink,

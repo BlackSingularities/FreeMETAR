@@ -299,6 +299,7 @@ class MainActivity : ComponentActivity() {
                                         onOpenFlight = { id -> nav.navigate("flightlog/$id") },
                                         onOpenLogbook = { nav.goTab("logbook") },
                                         onOpenSettings = { nav.goTab("settings") },
+                                        onOpenChecklists = { nav.navigate("checklists") },
                                     )
                                 }
                                 composable("logbook") {
@@ -313,7 +314,7 @@ class MainActivity : ComponentActivity() {
                                     FlightDetailScreen(vm, backStack.arguments?.getString("id").orEmpty(), onBack = { nav.popBackStack() }, onShowMap = { nav.goTab("map") })
                                 }
                                 composable("tools") { ToolsScreen(vm) }
-                                composable("settings") { SettingsScreen(vm) }
+                                composable("settings") { SettingsScreen(vm, onOpenCallouts = { nav.navigate("settings/callouts") }) }
                                 composable("settings/callouts") {
                                     com.freemetar.app.ui.screens.CalloutsSettingsScreen(
                                         enabled = vm.calloutsEnabled.collectAsState().value,
@@ -328,9 +329,14 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                                 composable("checklists") {
+                                    // Checklisty dla samolotu z symulatora (tytuł z MSFS/X-Plane)
+                                    val title = liveState?.aircraft?.title
+                                    LaunchedEffect(title) { vm.loadChecklistsForAircraft(title) }
                                     com.freemetar.app.ui.screens.ChecklistsScreen(
                                         aircraftChecklists = vm.currentChecklists.collectAsState().value,
-                                        onBack = { nav.goTab("flight") }
+                                        onBack = { nav.popBackStack() },
+                                        available = vm.checklistAircraft,
+                                        onPick = { vm.pickChecklists(it) },
                                     )
                                 }
                             }

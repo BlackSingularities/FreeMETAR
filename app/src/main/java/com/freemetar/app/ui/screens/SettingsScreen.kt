@@ -11,6 +11,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.outlined.Translate
+import androidx.compose.material.icons.outlined.RecordVoiceOver
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -73,7 +75,7 @@ import java.util.Date
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-fun SettingsScreen(vm: MainViewModel) {
+fun SettingsScreen(vm: MainViewModel, onOpenCallouts: () -> Unit = {}) {
     val s by vm.settings.collectAsStateWithLifecycle()
     val db by vm.dbState.collectAsStateWithLifecycle()
     Column(
@@ -150,6 +152,18 @@ fun SettingsScreen(vm: MainViewModel) {
                     "Gyro: drag down = nose up, drag up = nose down. Stick: separate trim buttons."),
                 color = Fm.c.ink2, fontSize = 12.sp,
             )
+        }
+
+        SectionCard(loc("Zapowiedzi głosowe", "Voice callouts"), icon = Icons.Outlined.RecordVoiceOver, dense = true) {
+            Row(Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp)).clickable(onClick = onOpenCallouts).padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(if (s.calloutsEnabled) loc("Włączone", "On") else loc("Wyłączone", "Off"), color = Fm.c.ink)
+                    Text(loc("Wysokości przy lądowaniu, V1 i Rotate, autopilot — czytane przez syntezator mowy",
+                        "Landing altitudes, V1 and Rotate, autopilot — read by text-to-speech"), color = Fm.c.ink2, fontSize = 12.sp)
+                }
+                Icon(Icons.Outlined.ChevronRight, null, tint = Fm.c.ink2)
+            }
         }
 
         SectionCard(loc("Zapis lotów", "Flight recording"), icon = Icons.Outlined.History, dense = true) {

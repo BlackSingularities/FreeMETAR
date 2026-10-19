@@ -30,6 +30,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Air
+import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.Computer
 import androidx.compose.material.icons.outlined.Delete
@@ -90,7 +91,7 @@ import java.util.Date
 /** Sekcja Lot: aktywny plan z pogodą na trasie, import (SimBrief, tekst, plik), zapisane trasy, symulator. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> Unit, onEditPlan: (String) -> Unit, onOpenFlight: (String) -> Unit, onOpenLogbook: () -> Unit = {}, onOpenSettings: () -> Unit = {}) {
+fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> Unit, onEditPlan: (String) -> Unit, onOpenFlight: (String) -> Unit, onOpenLogbook: () -> Unit = {}, onOpenSettings: () -> Unit = {}, onOpenChecklists: () -> Unit = {}) {
     val c = Fm.c
     val settings by vm.settings.collectAsStateWithLifecycle()
     val routes by vm.routes.collectAsStateWithLifecycle()
@@ -118,6 +119,7 @@ fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> U
                     settings.controlMode, { vm.setControlMode(it) }, settings.floatingControl, { vm.setFloatingControl(it) },
                     vm.nearbyNav.collectAsStateWithLifecycle().value, floatingTrim = settings.floatingStyle == "TRIM", leversLeft = settings.leversLeft,
                     onShowPlan = { cockpit = false },
+                    onShowChecklists = onOpenChecklists,
                     recording = vm.recordingInfo.collectAsStateWithLifecycle().value,
                     onStopRecording = { vm.stopRecording() }, onResumeRecording = { vm.resumeRecording() })
             }
@@ -194,6 +196,13 @@ fun FlightScreen(vm: MainViewModel, onOpen: (String) -> Unit, onShowMap: () -> U
                         confirmButton = { TextButton({ vm.deleteRoute(r.id); toDelete = null }) { Text(loc("Usuń", "Delete"), color = c.danger) } },
                         dismissButton = { TextButton({ toDelete = null }) { Text(loc("Anuluj", "Cancel")) } },
                     )
+                }
+            }
+
+            Section(loc("Checklisty", "Checklists"), Icons.Outlined.Checklist) {
+                OutlinedButton(onOpenChecklists, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Outlined.Checklist, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
+                    Text(state?.aircraft?.title?.let { loc("Checklisty: $it", "Checklists: $it") } ?: loc("Otwórz checklisty", "Open checklists"))
                 }
             }
 

@@ -14,6 +14,20 @@ class ChecklistsManager(private val context: Context) {
     private val json = Json { ignoreUnknownKeys = true }
     private val checklistsCache = mutableMapOf<String, AircraftChecklists>()
 
+    /** Pliki checklistów w assets/checklists z nazwą samolotu do ręcznego wyboru. */
+    val available = listOf(
+        "airbus-a320.json" to "Airbus A320",
+        "boeing-737-800.json" to "Boeing 737-800",
+        "cessna-172.json" to "Cessna 172",
+    )
+
+    /** Checklisty z konkretnego pliku — ręczny wybór, gdy symulator nie podaje samolotu. */
+    suspend fun load(filename: String): AircraftChecklists? = withContext(Dispatchers.IO) {
+        runCatching {
+            context.assets.open("checklists/$filename").bufferedReader().use { json.decodeFromString<AircraftChecklists>(it.readText()) }
+        }.getOrNull()
+    }
+
     /**
      * Załaduj checklisty dla samolotu z MSFS.
      *
@@ -27,11 +41,7 @@ class ChecklistsManager(private val context: Context) {
         checklistsCache[aircraftTitle]?.let { return@withContext it }
 
         // Lista dostępnych checklistów
-        val availableChecklists = listOf(
-            "airbus-a320.json",
-            "boeing-737-800.json",
-            "cessna-172.json"
-        )
+        val availableChecklists = available.map { it.first }
 
         // Znajdź matching checklist
         for (filename in availableChecklists) {
