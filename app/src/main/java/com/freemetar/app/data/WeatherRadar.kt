@@ -94,10 +94,7 @@ object WeatherRadar {
                 val lon = data.centerLon - radiusDeg + j * step
 
                 // Prosta interpolacja - w centrum najwięcej opadów, na brzegach mniej
-                val distFromCenter = kotlin.math.sqrt(
-                    kotlin.math.pow((lat - data.centerLat) * 60, 2.0) +
-                    kotlin.math.pow((lon - data.centerLon) * 60, 2.0)
-                )
+                val distFromCenter = kotlin.math.hypot((lat - data.centerLat) * 60, (lon - data.centerLon) * 60)
                 val factor = (1.0 - (distFromCenter / data.radiusNm)).coerceIn(0.0, 1.0)
                 val intensity = data.precipitationMmH * factor
 
@@ -121,10 +118,10 @@ object WeatherRadar {
      */
     fun intensityToColor(mmH: Double): Int {
         return when {
-            mmH < 1.0 -> 0x8000FF00 // Zielony, alpha 0.5
-            mmH < 5.0 -> 0x80FFFF00 // Żółty
-            mmH < 10.0 -> 0x80FF8800 // Pomarańczowy
-            else -> 0x80FF0000       // Czerwony
+            mmH < 1.0 -> 0x8000FF00.toInt() // Zielony, alpha 0.5
+            mmH < 5.0 -> 0x80FFFF00.toInt() // Żółty
+            mmH < 10.0 -> 0x80FF8800.toInt() // Pomarańczowy
+            else -> 0x80FF0000.toInt() // Czerwony
         }
     }
 }

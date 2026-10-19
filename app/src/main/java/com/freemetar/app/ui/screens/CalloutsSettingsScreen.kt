@@ -16,6 +16,7 @@ import com.freemetar.app.domain.loc
 /**
  * Ekran ustawień Callouts - konfiguracja zapowiedzi głosowych.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalloutsSettingsScreen(
     enabled: Boolean,

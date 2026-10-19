@@ -32,6 +32,7 @@ import com.freemetar.app.ui.theme.Mono
 /**
  * Ekran interaktywnych checklistów.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChecklistsScreen(
     aircraftChecklists: AircraftChecklists?,
@@ -225,7 +226,7 @@ private fun ChecklistDetailView(
         Column(
             Modifier
                 .fillMaxWidth()
-                .background(c.surface)
+                .background(c.card)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -291,7 +292,7 @@ private fun ChecklistItemRow(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(if (checked) Color(0xFF1B3A1B) else c.surface)
+            .background(if (checked) Color(0xFF1B3A1B) else c.card)
             .border(
                 1.dp,
                 if (checked) Color(0xFF00FF00) else c.rule,

@@ -67,7 +67,7 @@ private fun rememberSpeedTrend(ias: Double): Double {
     return holder[2]
 }
 
-private fun DrawScope.label(m: TextMeasurer, text: String, center: Offset, color: Color, size: TextUnit, bold: Boolean = false) {
+internal fun DrawScope.label(m: TextMeasurer, text: String, center: Offset, color: Color, size: TextUnit, bold: Boolean = false) {
     val l = m.measure(text, TextStyle(color = color, fontSize = size, fontFamily = Mono, fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal))
     drawText(l, topLeft = Offset(center.x - l.size.width / 2f, center.y - l.size.height / 2f))
 }

@@ -101,7 +101,7 @@ fun LogbookStatistics(logs: List<FlightLog>) {
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .background(c.surface, RoundedCornerShape(12.dp))
+                    .background(c.card, RoundedCornerShape(12.dp))
                     .padding(16.dp)
             ) {
                 Text(
@@ -123,7 +123,7 @@ fun LogbookStatistics(logs: List<FlightLog>) {
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .background(c.surface, RoundedCornerShape(12.dp))
+                    .background(c.card, RoundedCornerShape(12.dp))
                     .padding(16.dp)
             ) {
                 Text(
@@ -162,7 +162,7 @@ private fun StatCard(
     val c = Fm.c
     Column(
         modifier
-            .background(c.surface, RoundedCornerShape(12.dp))
+            .background(c.card, RoundedCornerShape(12.dp))
             .padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

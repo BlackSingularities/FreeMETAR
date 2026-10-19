@@ -100,7 +100,7 @@ fun EnginePanel(link: LinkClient, s: FlightState, profile: AircraftProfile) {
 
 /** Wyświetlacz silników: okrągły wskaźnik na silnik, pod nim EGT i przepływ, na dole paliwo. */
 @Composable
-private fun Eicas(s: FlightState, profile: AircraftProfile) {
+internal fun Eicas(s: FlightState, profile: AircraftProfile) {
     val m = rememberTextMeasurer()
     val engines = s.engines.ifEmpty { return }
     val piston = profile == AircraftProfile.PISTON

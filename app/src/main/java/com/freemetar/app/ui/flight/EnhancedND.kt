@@ -11,6 +11,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,7 +54,7 @@ enum class NdMode {
 @Composable
 fun EnhancedNavDisplay(
     state: FlightState,
-    route: List<com.freemetar.app.data.Routes.RoutePoint>,
+    route: List<com.freemetar.app.data.RoutePoint>,
     rangeNm: Int,
     nav: List<com.freemetar.app.data.nav.FixResult> = emptyList(),
     modifier: Modifier = Modifier,
@@ -202,7 +204,7 @@ private fun EfisButton(
 @Composable
 private fun PlanView(
     state: FlightState,
-    route: List<com.freemetar.app.data.Routes.RoutePoint>,
+    route: List<com.freemetar.app.data.RoutePoint>,
     rangeNm: Int,
     nav: List<com.freemetar.app.data.nav.FixResult>,
     layers: Set<String>,
@@ -236,7 +238,7 @@ private fun PlanView(
 @Composable
 private fun MapView3D(
     state: FlightState,
-    route: List<com.freemetar.app.data.Routes.RoutePoint>,
+    route: List<com.freemetar.app.data.RoutePoint>,
     rangeNm: Int,
     showWeather: Boolean,
     modifier: Modifier = Modifier

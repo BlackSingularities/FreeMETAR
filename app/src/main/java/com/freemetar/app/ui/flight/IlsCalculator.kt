@@ -48,7 +48,7 @@ object IlsCalculator {
 
         val thresholdLat = runway.thresholdLat ?: return null
         val thresholdLon = runway.thresholdLon ?: return null
-        val thresholdElevFt = runway.elevFt ?: airportNav.elevFt ?: 0.0
+        val thresholdElevFt = runway.elevFt ?: airportNav.airport?.elevFt ?: 0.0
         val locCourse = ils.locCourseDeg ?: return null
         val gsAngle = ils.gsAngleDeg ?: 3.0
 
@@ -94,7 +94,7 @@ object IlsCalculator {
         altFt: Double,
         airportNav: AirportNav
     ): NavRunway? {
-        return airportNav.runways
+        return airportNav.airport?.runways.orEmpty()
             .filter { it.ils != null }
             .filter {
                 val thresholdLat = it.thresholdLat ?: return@filter false

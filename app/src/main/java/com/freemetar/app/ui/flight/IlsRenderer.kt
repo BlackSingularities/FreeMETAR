@@ -37,11 +37,11 @@ object IlsRenderer {
         if (airportNav == null) return
 
         // Zbierz pasy z ILS
-        val ilsRunways = airportNav.runways.filter { it.ils != null }
+        val ilsRunways = airportNav.airport?.runways.orEmpty().filter { it.ils != null }
         if (ilsRunways.isEmpty()) return
 
         val features = ilsRunways.flatMap { rwy ->
-            createIlsFeatures(rwy, airportNav.elevFt ?: 0.0)
+            createIlsFeatures(rwy, airportNav.airport?.elevFt ?: 0.0)
         }
 
         // Źródło danych

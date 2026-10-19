@@ -78,6 +78,8 @@ import com.freemetar.app.ui.screens.MapScreen
 import com.freemetar.app.ui.screens.HomeScreen
 import com.freemetar.app.ui.screens.SettingsScreen
 import com.freemetar.app.ui.screens.ToolsScreen
+import com.freemetar.app.ui.screens.WelcomeScreen
+import androidx.compose.runtime.collectAsState
 import com.freemetar.app.ui.theme.Fm
 import com.freemetar.app.ui.theme.OpenTakeoffTheme
 

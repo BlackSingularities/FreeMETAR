@@ -11,7 +11,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.freemetar.app.data.link.FlightState
-import com.freemetar.app.data.Routes
+import com.freemetar.app.data.RoutePoint
 import com.freemetar.app.data.nav.AirportNav
 import com.freemetar.app.data.nav.NavDataStore
 import com.freemetar.app.data.WeatherRadar
@@ -45,7 +45,7 @@ import org.maplibre.geojson.Point
 @Composable
 fun EmbeddedMapView(
     state: FlightState,
-    route: List<Routes.RoutePoint>,
+    route: List<RoutePoint>,
     rangeNm: Int,
     showWeather: Boolean,
     modifier: Modifier = Modifier
@@ -190,9 +190,8 @@ fun EmbeddedMapView(
 }
 
 private fun createMapView(context: Context): MapView {
-    return MapView(context).apply {
-        setStyleUrl("https://tiles.openfreemap.org/styles/dark")
-    }
+    // Styl ustawia setupMap() po otrzymaniu MapLibreMap.
+    return MapView(context)
 }
 
 private fun setupMap(
@@ -246,22 +245,3 @@ private fun add3DBuildings(style: Style) {
     )
 }
 
-/**
- * Placeholder - do zastąpienia pełną implementacją w EnhancedND.kt.
- */
-@Composable
-fun MapView3D(
-    state: FlightState,
-    route: List<Routes.RoutePoint>,
-    rangeNm: Int,
-    showWeather: Boolean,
-    modifier: Modifier = Modifier
-) {
-    EmbeddedMapView(
-        state = state,
-        route = route,
-        rangeNm = rangeNm,
-        showWeather = showWeather,
-        modifier = modifier
-    )
-}

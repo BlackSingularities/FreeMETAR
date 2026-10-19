@@ -14,6 +14,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.freemetar.app.data.link.FlightState
@@ -254,7 +255,7 @@ private fun EicasDoorView(state: FlightState) {
         // Pokazuj podwozie (już mamy dane)
         val gearDown = state.controls.gearDown
         val gearPct = state.controls.gearPct
-        val gearColor = if (gearDown == true && gearPct >= 99) Color.Green else Color(0xFFFFB020)
+        val gearColor = if (gearDown == true && (gearPct ?: 0.0) >= 99) Color.Green else Color(0xFFFFB020)
 
         drawText(
             m.measure("GEAR", androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 12.sp, fontFamily = Mono)),
@@ -268,7 +269,7 @@ private fun EicasDoorView(state: FlightState) {
             topLeft = Offset(30f, center.y - 20)
         )
         drawText(
-            m.measure("${gearPct.roundToInt()}%", androidx.compose.ui.text.TextStyle(color = gearColor, fontSize = 10.sp, fontFamily = Mono)),
+            m.measure("${gearPct?.roundToInt() ?: "—"}%", androidx.compose.ui.text.TextStyle(color = gearColor, fontSize = 10.sp, fontFamily = Mono)),
             topLeft = Offset(30f, center.y)
         )
     }

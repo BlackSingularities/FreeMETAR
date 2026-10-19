@@ -109,9 +109,8 @@ object LogbookImporter {
             to = stk.arrival,
             aircraft = stk.aircraft,
             distanceNm = stk.distance?.toInt() ?: 0,
-            durationMin = ((stk.arrivalTime ?: 0) - (stk.departureTime ?: 0)) / 60000,
             maxAltFt = stk.maxAltitude?.toInt() ?: 0,
-            track = stk.track?.map { TrackPoint(it.lat, it.lon, it.alt.toInt(), it.timestamp) } ?: emptyList(),
+            track = stk.track?.map { TrackPoint(t = it.timestamp, lat = it.lat, lon = it.lon, altFt = it.alt.toInt(), gsKt = 0) } ?: emptyList(),
             landing = null // SimToolkit nie ma landing score
         )
     }
@@ -123,12 +122,12 @@ object LogbookImporter {
         return FlightLog(
             id = volanta.id ?: java.util.UUID.randomUUID().toString(),
             start = volanta.departureTime ?: System.currentTimeMillis(),
-            end = volanta.arrivalTime ?: System.currentTimeMillis(),
+            end = volanta.arrivalTime
+                ?: ((volanta.departureTime ?: System.currentTimeMillis()) + (volanta.duration ?: 0) * 60_000L),
             from = volanta.origin,
             to = volanta.destination,
             aircraft = volanta.aircraft,
             distanceNm = volanta.distance?.toInt() ?: 0,
-            durationMin = volanta.duration ?: 0,
             maxAltFt = volanta.maxAltitude ?: 0,
             track = emptyList(), // Volanta zwykle nie ma pełnego tracka
             landing = null
@@ -141,15 +140,15 @@ object LogbookImporter {
     private fun convertCsv(header: List<String>, values: List<String>): FlightLog {
         val map = header.zip(values).toMap()
 
+        val start = map["date"]?.toLongOrNull() ?: System.currentTimeMillis()
         return FlightLog(
             id = java.util.UUID.randomUUID().toString(),
-            start = map["date"]?.toLongOrNull() ?: System.currentTimeMillis(),
-            end = map["date"]?.toLongOrNull() ?: System.currentTimeMillis(),
+            start = start,
+            end = start + (map["duration"]?.toLongOrNull() ?: 0L) * 60_000L,
             from = map["from"] ?: map["departure"] ?: "",
             to = map["to"] ?: map["arrival"] ?: "",
             aircraft = map["aircraft"] ?: "",
             distanceNm = map["distance"]?.toIntOrNull() ?: 0,
-            durationMin = map["duration"]?.toIntOrNull() ?: 0,
             maxAltFt = map["altitude"]?.toIntOrNull() ?: 0,
             track = emptyList(),
             landing = null

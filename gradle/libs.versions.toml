@@ -13,7 +13,7 @@ coreKtx = "1.15.0"
 junit = "4.13.2"
 maplibre = "11.8.0"
 googleAuth = "21.2.0"
-googleDrive = "v3-rev20240916-2.0.0"
+googleDrive = "v3-rev20240914-2.0.0"
 googleApiClient = "2.7.0"
 
 [libraries]

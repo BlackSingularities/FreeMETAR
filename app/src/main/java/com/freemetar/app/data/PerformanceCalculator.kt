@@ -141,7 +141,7 @@ object PerformanceCalculator {
         distanceNm: Double,
         cruiseAltFt: Double,
         aircraftType: String = "B737"
-    ): FuelPlan {
+    ): FuelEstimate {
         // Uproszczone fuel flow (kg/h lub lbs/h)
         val cruiseFuelFlow = when {
             aircraftType.contains("737") -> 2400.0 // kg/h
@@ -168,7 +168,7 @@ object PerformanceCalculator {
 
         val totalFuel = tripFuel + reserveFuel + alternateFuel + contingencyFuel
 
-        return FuelPlan(
+        return FuelEstimate(
             tripFuel = tripFuel.roundToInt(),
             reserveFuel = reserveFuel.roundToInt(),
             alternateFuel = alternateFuel.roundToInt(),
@@ -218,7 +218,7 @@ data class RunwayAnalysis(
     val sufficient: Boolean
 )
 
-data class FuelPlan(
+data class FuelEstimate(
     val tripFuel: Int,
     val reserveFuel: Int,
     val alternateFuel: Int,

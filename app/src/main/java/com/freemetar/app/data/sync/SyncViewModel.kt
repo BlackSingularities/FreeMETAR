@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
  * ViewModel do zarządzania synchronizacją z Google Drive.
  */
 class SyncViewModel(
-    private val driveSync: DriveSync,
+    val driveSync: DriveSync,
     private val flightStore: FlightLogStore
 ) : ViewModel() {
 
