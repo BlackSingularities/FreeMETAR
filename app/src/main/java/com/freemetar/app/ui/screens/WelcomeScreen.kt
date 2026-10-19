@@ -135,7 +135,7 @@ fun WelcomeScreen(
                 )
             )
 
-            FeatureItem(
+            if (com.freemetar.app.BuildConfig.DRIVE_SYNC) FeatureItem(
                 icon = Icons.Outlined.Cloud,
                 title = loc("Synchronizacja z Google Drive", "Google Drive sync"),
                 description = loc(
@@ -146,47 +146,61 @@ fun WelcomeScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // Przycisk główny - Google Drive
-            Button(
-                onClick = onSignInToDrive,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Fm.c.accent,
-                    contentColor = Fm.c.paper
-                )
-            ) {
-                Icon(Icons.Outlined.Cloud, null, Modifier.size(24.dp))
-                Spacer(Modifier.size(12.dp))
-                Text(
-                    loc("Zaloguj do Google Drive", "Sign in to Google Drive"),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
+            if (com.freemetar.app.BuildConfig.DRIVE_SYNC) {
+                // Przycisk główny - Google Drive
+                Button(
+                    onClick = onSignInToDrive,
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Fm.c.accent,
+                        contentColor = Fm.c.paper
+                    )
+                ) {
+                    Icon(Icons.Outlined.Cloud, null, Modifier.size(24.dp))
+                    Spacer(Modifier.size(12.dp))
+                    Text(
+                        loc("Zaloguj do Google Drive", "Sign in to Google Drive"),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
 
-            // Przycisk drugorzędny - bez Drive
-            OutlinedButton(
-                onClick = onGetStarted,
-                modifier = Modifier.fillMaxWidth().height(48.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text(
-                    loc("Rozpocznij bez synchronizacji", "Continue without sync"),
-                    fontSize = 15.sp
-                )
-            }
+                // Przycisk drugorzędny - bez Drive
+                OutlinedButton(
+                    onClick = onGetStarted,
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        loc("Rozpocznij bez synchronizacji", "Continue without sync"),
+                        fontSize = 15.sp
+                    )
+                }
 
-            // Tekst pomocniczy
-            Text(
-                loc(
-                    "Możesz włączyć synchronizację później w Ustawieniach",
-                    "You can enable sync later in Settings"
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = Fm.c.ink2,
-                textAlign = TextAlign.Center
-            )
+                // Tekst pomocniczy
+                Text(
+                    loc(
+                        "Możesz włączyć synchronizację później w Ustawieniach",
+                        "You can enable sync later in Settings"
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Fm.c.ink2,
+                    textAlign = TextAlign.Center
+                )
+            } else {
+                Button(
+                    onClick = onGetStarted,
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Fm.c.accent,
+                        contentColor = Fm.c.paper
+                    )
+                ) {
+                    Text(loc("Rozpocznij", "Get started"), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
         }
     }
 }

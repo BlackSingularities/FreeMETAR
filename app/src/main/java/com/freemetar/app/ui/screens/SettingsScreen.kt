@@ -175,7 +175,7 @@ fun SettingsScreen(vm: MainViewModel) {
         }
 
         // Google Drive sync section
-        SectionCard("Google Drive", icon = Icons.Outlined.Cloud, dense = true) {
+        if (com.freemetar.app.BuildConfig.DRIVE_SYNC) SectionCard("Google Drive", icon = Icons.Outlined.Cloud, dense = true) {
             val syncVm = vm.syncViewModel
             val isSignedIn by syncVm.isSignedIn.collectAsStateWithLifecycle()
             val syncState by syncVm.syncState.collectAsStateWithLifecycle()

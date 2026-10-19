@@ -35,8 +35,10 @@ class SyncViewModel(
     }
 
     init {
-        checkSignInStatus()
-        setupAutoSync()
+        if (com.freemetar.app.BuildConfig.DRIVE_SYNC) {
+            checkSignInStatus()
+            setupAutoSync()
+        }
     }
 
     /** Sprawdź czy użytkownik jest zalogowany */
