@@ -252,7 +252,7 @@ private fun Header(onLogo: () -> Unit) {
         Image(
             painter = painterResource(R.drawable.opentakeoff_mark),
             contentDescription = loc("OpenTakeoff — pulpit", "OpenTakeoff — dashboard"),
-            modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp))
+            modifier = Modifier.size(48.dp)
                 .clickable(onClickLabel = loc("Pulpit", "Dashboard"), onClick = onLogo),
         )
         Spacer(Modifier.width(10.dp))

@@ -75,7 +75,7 @@ fun WelcomeScreen(
             Image(
                 painter = painterResource(R.drawable.opentakeoff_mark),
                 contentDescription = null,
-                modifier = Modifier.size(80.dp).clip(CircleShape)
+                modifier = Modifier.size(80.dp)
             )
 
             // Tytuł
