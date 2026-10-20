@@ -96,7 +96,7 @@ powershell -ExecutionPolicy Bypass -File tools/build-local.ps1
 
 ### Wydania
 
-Każdy push na `main` uruchamia [workflow](.github/workflows/release.yml), który buduje APK i `OpenTakeoff-Link.exe` i publikuje je w wydaniu `v1.0.<numer przebiegu>`.
+Każdy push na `main` uruchamia [workflow](.github/workflows/release.yml), który buduje APK i `OpenTakeoff-Link.exe` i publikuje je w wydaniu `v1.10.<numer przebiegu>`.
 
 Bez sekretów APK jest podpisane kluczem debug. Żeby aktualizacje instalowały się na stałym kluczu, dodaj sekrety repozytorium: `SIGNING_KEYSTORE_BASE64`, `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`.
 
@@ -192,6 +192,6 @@ powershell -ExecutionPolicy Bypass -File tools/build-local.ps1
 
 ### Releases
 
-Every push to `main` runs the [workflow](.github/workflows/release.yml), which builds the APK and `OpenTakeoff-Link.exe` and publishes them as release `v1.0.<run number>`.
+Every push to `main` runs the [workflow](.github/workflows/release.yml), which builds the APK and `OpenTakeoff-Link.exe` and publishes them as release `v1.10.<run number>`.
 
 Without secrets the APK is signed with the debug key. To keep updates on a fixed key, add these repository secrets: `SIGNING_KEYSTORE_BASE64`, `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`.

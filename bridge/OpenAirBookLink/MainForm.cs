@@ -26,10 +26,25 @@ public sealed class MainForm : Form
     private bool _exiting;
     private bool _trayHintShown;
 
-    public MainForm(LinkHost host, bool startMinimized)
+    // Samoaktualizacja: pasek nad oknem widoczny tylko, gdy jest nowa wersja
+    private readonly string[] _args;
+    private readonly FlowLayoutPanel _updateBar = new()
+    {
+        Dock = DockStyle.Top, AutoSize = true, Visible = false, WrapContents = false,
+        BackColor = Color.FromArgb(0xE3, 0xEE, 0xFB), Padding = new Padding(8, 6, 8, 6), Margin = new Padding(0, 0, 0, 10),
+    };
+    private readonly Label _updateText = new() { AutoSize = true, MaximumSize = new Size(440, 0), Margin = new Padding(0, 7, 12, 0) };
+    private readonly Button _updateButton = new() { AutoSize = true };
+    private readonly System.Windows.Forms.Timer _updateTimer = new() { Interval = 10_000 };
+    private LinkUpdate? _update;
+    private string? _downloaded;
+    private bool _updateBusy;
+
+    public MainForm(LinkHost host, bool startMinimized, string[] args)
     {
         _host = host;
         _startMinimized = startMinimized;
+        _args = args;
 
         Text = $"OpenTakeoff Link {host.Version}";
         Icon = CreateIcon();
@@ -38,12 +53,20 @@ public sealed class MainForm : Form
         Size = new Size(680, 760);
         StartPosition = FormStartPosition.CenterScreen;
 
-        var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Padding = new Padding(12) };
+        var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 5, Padding = new Padding(12) };
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 40));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 60));
         Controls.Add(root);
+
+        // Aktualizacja
+        _updateText.ForeColor = Accent;
+        _updateButton.Click += (_, _) => OnUpdateButton();
+        _updateBar.Controls.Add(_updateText);
+        _updateBar.Controls.Add(_updateButton);
+        root.Controls.Add(_updateBar);
 
         // Symulator
         var simBox = Group("Symulator");
@@ -108,6 +131,8 @@ public sealed class MainForm : Form
         var menu = new ContextMenuStrip();
         menu.Items.Add("Pokaż okno", null, (_, _) => ShowFromTray());
         menu.Items.Add(_traySim);
+        if (Updater.ExePath is not null)
+            menu.Items.Add("Sprawdź aktualizacje", null, (_, _) => _ = CheckForUpdateAsync(manual: true));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Zakończ", null, (_, _) => ExitApp());
         _tray = new NotifyIcon { Icon = Icon, Text = "OpenTakeoff Link", Visible = true, ContextMenuStrip = menu };
@@ -125,14 +150,113 @@ public sealed class MainForm : Form
         host.Pairing.CodeChanged += () => BeginInvokeSafe(UpdateCode);
         _simMode.CheckedChanged += (_, _) => { _traySim.Checked = _simMode.Checked; UpdateStatus(); };
 
-        _refresh.Tick += (_, _) => { UpdateStatus(); UpdateClients(); };
+        _refresh.Tick += (_, _) => { UpdateStatus(); UpdateClients(); ApplyUpdateIfIdle(); };
         _refresh.Start();
+
+        // Pierwsze sprawdzenie 10 s po starcie, potem co 6 godzin. Buildy spoza CI (dotnet run) pomijamy.
+        if (Updater.ExePath is not null)
+        {
+            _updateTimer.Tick += (_, _) => { _updateTimer.Interval = 6 * 3600 * 1000; _ = CheckForUpdateAsync(manual: false); };
+            _updateTimer.Start();
+        }
 
         UpdateCode();
         UpdateStatus();
         UpdateClients();
         _ips.Text = IpText();
-        AddLog($"OpenTakeoff Link {host.Version} uruchomiony");
+        AddLog($"OpenTakeoff Link {host.Version} uruchomiony" + (args.Contains(Updater.UpdatedArg) ? " (po aktualizacji)" : ""));
+    }
+
+    private async Task CheckForUpdateAsync(bool manual)
+    {
+        if (_updateBusy || _downloaded is not null) return;
+        _updateBusy = true;
+        try
+        {
+            var update = await Updater.CheckAsync();
+            if (update is null)
+            {
+                if (manual) _tray.ShowBalloonTip(3000, "OpenTakeoff Link", $"Masz najnowszą wersję ({_host.Version}).", ToolTipIcon.Info);
+                return;
+            }
+            _update = update;
+            AddLog($"Dostępna nowa wersja {update.Version}");
+
+            // Exe w folderze bez prawa zapisu (np. Program Files) — tylko odsyłamy na stronę wydania.
+            if (!Updater.CanWriteNextToExe())
+            {
+                ShowUpdateBar($"Dostępna wersja {update.Version}. Brak prawa zapisu w folderze programu — pobierz ją ręcznie.", "Otwórz stronę wydania");
+                return;
+            }
+
+            ShowUpdateBar($"Pobieranie wersji {update.Version}…", null);
+            var progress = new Progress<double>(p => _updateText.Text = $"Pobieranie wersji {update.Version}… {p:P0}");
+            _downloaded = await Updater.DownloadAsync(update, progress);
+            AddLog($"Pobrano wersję {update.Version}");
+            if (!ApplyUpdateIfIdle())
+            {
+                ShowUpdateBar($"Wersja {update.Version} gotowa — zainstaluje się sama po rozłączeniu telefonów.", "Zainstaluj teraz");
+                _tray.ShowBalloonTip(4000, "OpenTakeoff Link — aktualizacja",
+                    $"Wersja {update.Version} zainstaluje się po rozłączeniu telefonów.", ToolTipIcon.Info);
+            }
+        }
+        catch (Exception e) // wynik zadania nikt nie odbiera — każdy błąd musi trafić do dziennika
+        {
+            AddLog($"Aktualizacja nieudana: {e.Message}");
+            if (manual) _tray.ShowBalloonTip(3000, "OpenTakeoff Link", $"Nie udało się sprawdzić aktualizacji: {e.Message}", ToolTipIcon.Warning);
+            if (_update is not null && _downloaded is null) ShowUpdateBar($"Nie udało się pobrać wersji {_update.Version}.", "Spróbuj ponownie");
+        }
+        finally
+        {
+            _updateBusy = false;
+        }
+    }
+
+    private void OnUpdateButton()
+    {
+        if (_update is null) return;
+        if (_downloaded is not null) ApplyUpdate();
+        else if (!Updater.CanWriteNextToExe())
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(_update.PageUrl) { UseShellExecute = true });
+        else _ = CheckForUpdateAsync(manual: true);
+    }
+
+    // Nie przerywamy lotu: nowa wersja wchodzi sama dopiero, gdy żaden telefon nie jest połączony.
+    private bool ApplyUpdateIfIdle()
+    {
+        if (_downloaded is null || _exiting || _host.Server.Clients.Count > 0) return false;
+        ApplyUpdate();
+        return true;
+    }
+
+    private void ApplyUpdate()
+    {
+        if (_downloaded is null || _update is null) return;
+        var downloaded = _downloaded;
+        _downloaded = null;
+        // Nowa instancja startuje w tym samym stanie okna (widoczne albo w zasobniku).
+        var args = _args.Where(a => a != "--minimized").ToList();
+        if (!Visible) args.Add("--minimized");
+        try
+        {
+            AddLog($"Instalowanie wersji {_update.Version} i ponowne uruchomienie");
+            Updater.ApplyAndRestart(downloaded, args);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+        {
+            AddLog($"Nie udało się podmienić pliku programu: {e.Message}");
+            ShowUpdateBar($"Nie udało się zainstalować wersji {_update.Version}: {e.Message}", "Spróbuj ponownie");
+            return;
+        }
+        ExitApp();
+    }
+
+    private void ShowUpdateBar(string text, string? button)
+    {
+        _updateText.Text = text;
+        _updateButton.Text = button ?? "";
+        _updateButton.Visible = button is not null;
+        _updateBar.Visible = true;
     }
 
     protected override void SetVisibleCore(bool value)
@@ -225,7 +349,12 @@ public sealed class MainForm : Form
         BeginInvoke(() => { while (_pendingLog.TryDequeue(out var line)) AddLine(line); });
     }
 
-    private void AddLog(string message) => AddLine($"{DateTime.Now:HH:mm:ss}  {message}");
+    private void AddLog(string message)
+    {
+        var line = $"{DateTime.Now:HH:mm:ss}  {message}";
+        AppendLogFile(line);
+        AddLine(line);
+    }
 
     // Dziennik także w pliku (%APPDATA%\OpenAirBook Link\link.log) — do diagnozy bez zrzutów ekranu; ponad 1 MB zaczyna od nowa
     private static readonly string LogFile = Path.Combine(
@@ -307,6 +436,7 @@ public sealed class MainForm : Form
         {
             _tray.Dispose();
             _refresh.Dispose();
+            _updateTimer.Dispose();
         }
         base.Dispose(disposing);
     }

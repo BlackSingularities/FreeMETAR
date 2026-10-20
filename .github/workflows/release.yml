@@ -9,6 +9,10 @@ on:
 permissions:
   contents: write
 
+# Wersja wydania: <VERSION_PREFIX>.<numer przebiegu>; ostatni człon to versionCode APK
+env:
+  VERSION_PREFIX: "1.10"
+
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
@@ -55,7 +59,7 @@ jobs:
 
       - name: Nazwij APK
         run: |
-          VERSION="1.0.${GITHUB_RUN_NUMBER}"
+          VERSION="${VERSION_PREFIX}.${GITHUB_RUN_NUMBER}"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           cp app/build/outputs/apk/release/app-release.apk "OpenTakeoff-$VERSION.apk"
 
@@ -87,7 +91,7 @@ jobs:
       - name: Publikuj OpenTakeoff-Link.exe
         shell: bash
         run: |
-          VERSION="1.0.${GITHUB_RUN_NUMBER}"
+          VERSION="${VERSION_PREFIX}.${GITHUB_RUN_NUMBER}"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           dotnet publish bridge/OpenAirBookLink/OpenAirBookLink.csproj -c Release -o publish -p:Version=$VERSION
           cp publish/OpenTakeoff-Link.exe OpenTakeoff-Link.exe

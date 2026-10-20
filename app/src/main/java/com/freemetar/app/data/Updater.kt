@@ -30,7 +30,7 @@ data class UpdateInfo(
 )
 
 /**
- * Aktualizacje z GitHub Releases. Tag ma postać v1.0.<N>, gdzie N = versionCode
+ * Aktualizacje z GitHub Releases. Tag ma postać v1.<x>.<N>, gdzie N = versionCode
  * (numer przebiegu workflow), więc porównujemy liczby, nie napisy.
  */
 object Updater {

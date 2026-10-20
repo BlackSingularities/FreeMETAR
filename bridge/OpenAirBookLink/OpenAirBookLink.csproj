@@ -10,7 +10,7 @@
     <AssemblyName>OpenTakeoff-Link</AssemblyName>
     <Product>OpenTakeoff Link</Product>
     <Description>Most MSFS 2024 (SimConnect) ↔ aplikacja OpenTakeoff w sieci lokalnej</Description>
-    <Version>1.1.0</Version>
+    <Version>1.10.0</Version>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ApplicationVisualStyles>true</ApplicationVisualStyles>
 

@@ -18,7 +18,7 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = buildNumber
-        versionName = "1.0.$buildNumber"
+        versionName = "1.10.$buildNumber"
         // Google Drive: włączyć dopiero po założeniu klienta OAuth (Android, SHA-1 klucza) w Google Cloud
         buildConfigField("boolean", "DRIVE_SYNC", "false")
     }

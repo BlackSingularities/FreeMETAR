@@ -14,6 +14,13 @@ autopilotem, radiami, transponderem, podwoziem, klapami, światłami i lotem (pr
 4. Zamknięcie okna chowa program do zasobnika obok zegara. Całkowicie zamkniesz go z menu ikony
    (**Zakończ**).
 
+Aktualizacje są automatyczne: program 10 s po starcie (i potem co 6 godzin) sprawdza najnowsze
+wydanie, pobiera nowy `OpenTakeoff-Link.exe` i podmienia nim plik, z którego go uruchomiono — skrót
+na pulpicie dalej działa. Podmiana następuje dopiero, gdy żaden telefon nie jest połączony, więc
+nie przerwie lotu; wcześniej można ją wymusić przyciskiem **Zainstaluj teraz** w oknie. Ręcznie:
+menu ikony → **Sprawdź aktualizacje**. Jeśli plik leży w folderze bez prawa zapisu (np. Program
+Files), program tylko podsuwa stronę wydania.
+
 Opcje uruchomienia (np. w skrócie na pulpicie): `--minimized` (start w zasobniku),
 `--simulate` / `--no-simulate` (wymuszenie trybu symulacji).
 
