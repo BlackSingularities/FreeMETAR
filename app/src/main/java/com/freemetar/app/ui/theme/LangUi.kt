@@ -16,3 +16,4 @@ fun tr(pl: String, en: String): String = if (LocalLang.current == AppLang.PL) pl
 /** Podpis autora — w ustawieniach, na ekranie startowym i w README. */
 const val AUTHOR_SITE = "redzikowski.com"
 const val AUTHOR_URL = "https://redzikowski.com"
+const val COFFEE_URL = "https://buycoffee.to/adamredzikowski"

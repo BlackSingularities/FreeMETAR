@@ -1,6 +1,6 @@
 # OpenTakeoff
 
-**Pomysł i wykonanie: [redzikowski.com](https://redzikowski.com)**
+**Projekt i wykonanie: [redzikowski.com](https://redzikowski.com)**
 
 [Polski](#polski) · [English](#english)
 
@@ -195,3 +195,7 @@ powershell -ExecutionPolicy Bypass -File tools/build-local.ps1
 Every push to `main` runs the [workflow](.github/workflows/release.yml), which builds the APK and `OpenTakeoff-Link.exe` and publishes them as release `v1.10.<run number>`.
 
 Without secrets the APK is signed with the debug key. To keep updates on a fixed key, add these repository secrets: `SIGNING_KEYSTORE_BASE64`, `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`.
+
+---
+
+<a href="https://buycoffee.to/adamredzikowski" target="_blank"><img src="https://buycoffee.to/static/img/share/share-button-dark--pl.png" style="width: 351px; height: 92px" width="351" height="92" alt="Postaw kawę dla adamredzikowski na buycoffee.to"></a>

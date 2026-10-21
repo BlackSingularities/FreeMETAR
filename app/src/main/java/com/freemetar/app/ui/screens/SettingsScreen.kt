@@ -299,6 +299,14 @@ fun SettingsScreen(vm: MainViewModel, onOpenCallouts: () -> Unit = {}) {
                     Text(AUTHOR_SITE, color = Fm.c.paper, fontSize = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                 }
             }
+            Text(loc("Projekt i wykonanie: ", "Design and development: ") + AUTHOR_SITE, color = Fm.c.ink2, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
+            Row(
+                Modifier.padding(top = 8.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
+                    .background(Fm.c.ink).clickable { uri.openUri(com.freemetar.app.ui.theme.COFFEE_URL) }.padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("☕  " + loc("Postaw kawę", "Buy me a coffee"), color = Fm.c.paper, fontSize = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+            }
         }
     }
 }
