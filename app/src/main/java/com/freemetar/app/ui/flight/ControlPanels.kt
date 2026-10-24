@@ -300,7 +300,11 @@ fun SystemsPanel(link: LinkClient, s: FlightState, profile: AircraftProfile) {
             // Chowanie podwozia na ziemi wymaga potwierdzenia
             if (gearDown && s.aircraft.onGround == true) confirmGear = true else cmd("GEAR_TOGGLE")
         }
-        if (profile != AircraftProfile.GLIDER) ModeKey(loc("HAMULEC", "BRAKE"), ctl.parkingBrake == true, Modifier.weight(1f)) { cmd("PARKING_BRAKES") }
+    }
+    // Hamulec postojowy (mały klawisz) i obok oś hamulców kół; szybowiec bez hamulca postojowego
+    if (profile != AircraftProfile.GLIDER) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 6.dp)) {
+        ModeKey(if (ctl.parkingBrake == true) "PARK ●" else "PARK", ctl.parkingBrake == true, Modifier.width(92.dp)) { cmd("PARKING_BRAKES") }
+        WheelBrakeAxis(link, s, Modifier.weight(1f))
     }
     Spacer(Modifier.size(8.dp))
     val flaps = ctl.flapsIndex
@@ -316,12 +320,11 @@ fun SystemsPanel(link: LinkClient, s: FlightState, profile: AircraftProfile) {
     }
     Spacer(Modifier.size(8.dp))
     // Spoilery tylko w samolotach, które je mają; w szybowcu to hamulce aerodynamiczne (bez uzbrajania)
-    val spoilerPct = (ctl.spoilersPct ?: 0.0).roundToInt()
-    if (profile == AircraftProfile.GLIDER) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        ModeKey(loc("HAMULCE AERO ${spoilerPct}%", "AIRBRAKES ${spoilerPct}%"), spoilerPct > 1, Modifier.weight(1f)) { cmd("SPOILERS_TOGGLE") }
-    } else if (profile.hasSpoilers) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        ModeKey(loc("SPOILERY UZBR.", "SPOILERS ARM"), ctl.spoilersArmed == true, Modifier.weight(1f)) { cmd("SPOILERS_ARM_TOGGLE") }
-        ModeKey(loc("SPOILERY ${spoilerPct}%", "SPOILERS ${spoilerPct}%"), spoilerPct > 1, Modifier.weight(1f)) { cmd("SPOILERS_TOGGLE") }
+    // Uzbrojenie (mały klawisz) i obok oś hamulca aerodynamicznego
+    if (profile == AircraftProfile.GLIDER) SpeedBrakeAxis(link, s, label = loc("Hamulce aerodynamiczne", "Airbrakes"))
+    else if (profile.hasSpoilers) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        ModeKey("ARM", ctl.spoilersArmed == true, Modifier.width(92.dp)) { cmd("SPOILERS_ARM_TOGGLE") }
+        SpeedBrakeAxis(link, s, Modifier.weight(1f))
     }
     Spacer(Modifier.size(8.dp))
     if (profile.hasTrim) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {

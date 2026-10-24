@@ -1,3 +1,16 @@
+## 2.2.0 — Boeing 737 cockpit panels, cockpit-style FCU and MCP, brakes in Systems
+
+- 737: MCP (A/T ARM and F/D switches, IAS/MACH, HEADING, ALTITUDE, VERT SPEED wheel, N1, SPEED, LVL CHG, HDG SEL, LNAV,
+  VOR LOC, APP, ALT HLD, V/S, CMD A, DISENGAGE); VHF/NAV radio panel; ATC panel with per-digit setting and STBY / ALT RPTG OFF / XPNDR;
+  overhead lights, gear with three lights, flaps UP–40, stab trim; EICAS with N1/EGT/N2 dials, FF and fuel quantity.
+- A320 FCU redrawn like the real panel: dark plate, black display strip with orange digits, and each knob shaped like its
+  counterpart (SPD, HDG with the triangle, ALT with the 100/1000 step selector, V/S); tablets get one row as in the cockpit,
+  phones two tiers (SPD/HDG, then ALT/V/S).
+- 737 MCP redrawn the same way: windows with IAS/MACH, HDG/TRK and V/S/FPA captions, distinct IAS, HEADING (bank-angle ring)
+  and ALTITUDE knobs, a vertical V/S wheel rolled with a finger, A/P ENGAGE and DISENGAGE; one row on wide tablets, three tiers on phones.
+- Speed brake and wheel brake axes moved from Controls to Systems in every profile: arm key next to the speed brake axis,
+  small parking brake key next to the wheel brake axis.
+
 ## 2.1.0 — One profile per display set, A320 cockpit panels
 
 - Nine aircraft profiles, one per display set (A320, 737, 787, ATR 72, E190, G1000, C172, R44, glider); each has its own

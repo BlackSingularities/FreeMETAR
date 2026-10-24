@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -42,13 +43,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -76,23 +80,35 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 // ---------------- Wybór panelu wg profilu ----------------
-// A320 ma własne widoki w stylu kabiny Airbusa; pozostałe profile — panele ogólne dopasowane do profilu.
+// A320 i 737 mają własne widoki w stylu kabiny producenta; pozostałe profile — panele ogólne dopasowane do profilu.
 
 @Composable
-fun AutopilotFor(link: LinkClient, s: FlightState, p: AircraftProfile, compact: Boolean = false) =
-    if (p == AircraftProfile.A320) AirbusFcu(link, s, compact) else AutopilotPanelV2(link, s, p, compact)
+fun AutopilotFor(link: LinkClient, s: FlightState, p: AircraftProfile, compact: Boolean = false) = when (p) {
+    AircraftProfile.A320 -> AirbusFcu(link, s, compact)
+    AircraftProfile.B737 -> BoeingMcp(link, s, compact)
+    else -> AutopilotPanelV2(link, s, p, compact)
+}
 
 @Composable
-fun RadioFor(link: LinkClient, s: FlightState, p: AircraftProfile) =
-    if (p == AircraftProfile.A320) { AirbusRmp(link, s); Spacer(Modifier.height(10.dp)); AirbusAtc(link, s) } else RadioPanel(link, s, p)
+fun RadioFor(link: LinkClient, s: FlightState, p: AircraftProfile) = when (p) {
+    AircraftProfile.A320 -> { AirbusRmp(link, s); Spacer(Modifier.height(10.dp)); AirbusAtc(link, s) }
+    AircraftProfile.B737 -> { BoeingRadioPanel(link, s); Spacer(Modifier.height(10.dp)); BoeingAtc(link, s) }
+    else -> RadioPanel(link, s, p)
+}
 
 @Composable
-fun SystemsFor(link: LinkClient, s: FlightState, p: AircraftProfile) =
-    if (p == AircraftProfile.A320) AirbusSystems(link, s) else SystemsPanel(link, s, p)
+fun SystemsFor(link: LinkClient, s: FlightState, p: AircraftProfile) = when (p) {
+    AircraftProfile.A320 -> AirbusSystems(link, s)
+    AircraftProfile.B737 -> BoeingSystems(link, s)
+    else -> SystemsPanel(link, s, p)
+}
 
 @Composable
-fun EnginesFor(link: LinkClient, s: FlightState, p: AircraftProfile) =
-    if (p == AircraftProfile.A320) AirbusEngines(link, s) else EnginePanel(link, s, p)
+fun EnginesFor(link: LinkClient, s: FlightState, p: AircraftProfile) = when (p) {
+    AircraftProfile.A320 -> AirbusEngines(link, s)
+    AircraftProfile.B737 -> BoeingEngines(link, s)
+    else -> EnginePanel(link, s, p)
+}
 
 // ---------------- Wygląd paneli Airbusa ----------------
 
@@ -149,75 +165,119 @@ private fun PushPull(label: String, desc: String, modifier: Modifier = Modifier,
 
 // ---------------- FCU ----------------
 
+/** Ciemnoszara płyta FCU (jak w MSFS A320neo) i miedziany pierścień u podstawy pokręteł. */
+private val FCU_PLATE = Color(0xFF3B4246)
+private val FCU_COLLAR = Color(0xFF8C5A30)
+
+/** Kształt pokrętła FCU — każde w A320 wygląda inaczej. */
+private enum class FcuKnob { SPD, HDG, ALT, VS }
+
 /**
- * Panel FCU A320: okienka SPD, HDG, ALT i V/S z pokrętłami. Obrót pokrętła zmienia wartość; PUSH i PULL
- * działają jak w Airbusie tam, gdzie MSFS ma odpowiednik (HDG: PULL — kurs wybrany, PUSH — NAV;
- * ALT: PULL — OP CLB/DES, PUSH — utrzymanie; V/S: PULL — V/S, PUSH — wyrównanie lotu). Pod spodem LOC, AP1, A/THR, APPR i FD.
+ * Panel FCU A320 w układzie z kabiny: czarny pas wyświetlacza z pomarańczowymi cyframi (SPD, HDG, ALT, V/S),
+ * pod nim pokrętła — każde w swoim kształcie — z PUSH/PULL tam, gdzie MSFS ma odpowiednik
+ * (HDG: PULL — kurs wybrany, PUSH — NAV; ALT: PULL — OP CLB/DES, PUSH — utrzymanie; V/S: PULL — V/S, PUSH — wyrównanie),
+ * klawisze AP1, FD i A/THR na środku, LOC pod pokrętłami SPD/HDG, APPR pod ALT/V/S.
+ * Tablet: wszystko w jednym rzędzie jak na prawdziwym panelu. Telefon: dwa piętra (SPD/HDG, potem ALT/V/S).
+ * Pominięte (bez odpowiednika w Link): AP2, EXPED, SPD/MACH, HDG-TRK, METRIC ALT.
  */
 @Composable
 fun AirbusFcu(link: LinkClient, s: FlightState, compact: Boolean = false) {
     val ap = s.autopilot
     val m = ap.modes
     var enter by remember { mutableStateOf<String?>(null) }
+    // Krok pokrętła ALT: 100 albo 1000 ft (przełącznik przy pokrętle, jak na FCU)
+    var altStep by rememberSaveable { mutableStateOf(100) }
     fun cmd(n: String, v: Number? = null) { link.command(n, v?.toDouble()) }
     fun live() = link.state.value?.autopilot
     val skin = airbusSkin()
-    val knob = if (compact) 64.dp else 80.dp
 
-    AirbusPlate("FCU") {
-        BoxWithConstraints(Modifier.fillMaxWidth()) {
-            val cols = if (maxWidth >= 520.dp) 4 else 2
-            val sections: List<@Composable (Modifier) -> Unit> = listOf(
-                { mod ->
-                    FcuSection("SPD", ap.spdKt?.let { "${it.roundToInt()}" } ?: "---", knob, mod,
-                        onStep = { d -> cmd("AP_SPD_VAR_SET", ControlMath.speed(live()?.spdKt, d)) },
-                        onBig = { d -> cmd("AP_SPD_VAR_SET", ControlMath.speed(live()?.spdKt, d * 10)) },
-                        onWindow = { enter = "SPD" }, onPush = { enter = "SPD" },
-                        pull = loc("Prędkość wybrana", "Selected speed") to { cmd("AP_PANEL_SPEED_HOLD") }, push = null)
-                },
-                { mod ->
-                    FcuSection("HDG", ap.hdgDeg?.let { "%03d".format(it.roundToInt() % 360) } ?: "---", knob, mod,
-                        onStep = { d -> cmd("HEADING_BUG_SET", ControlMath.heading(live()?.hdgDeg, d)) },
-                        onBig = { d -> cmd("HEADING_BUG_SET", ControlMath.heading(live()?.hdgDeg, d * 10)) },
-                        onWindow = { enter = "HDG" }, onPush = { cmd("AP_NAV1_HOLD") },
-                        pull = loc("Kurs wybrany", "Selected heading") to { cmd("AP_HDG_HOLD") },
-                        push = loc("Nawigacja (NAV)", "Navigation (NAV)") to { cmd("AP_NAV1_HOLD") })
-                },
-                { mod ->
-                    FcuSection("ALT", ap.altFt?.let { "%05d".format(it.roundToInt()) } ?: "-----", knob, mod,
-                        onStep = { d -> cmd("AP_ALT_VAR_SET_ENGLISH", ControlMath.altitude(live()?.altFt, d * 100)) },
-                        onBig = { d -> cmd("AP_ALT_VAR_SET_ENGLISH", ControlMath.altitude(live()?.altFt, d * 1000)) },
-                        onWindow = { enter = "ALT" }, onPush = { cmd("AP_ALT_HOLD") },
-                        pull = loc("Wznoszenie / zniżanie (OP CLB/DES)", "Open climb / descent") to { cmd("FLIGHT_LEVEL_CHANGE") },
-                        push = loc("Utrzymanie wysokości", "Altitude hold") to { cmd("AP_ALT_HOLD") })
-                },
-                { mod ->
-                    FcuSection("V/S", ap.vsFpm?.let { "%+05d".format(it.roundToInt()) } ?: "-----", knob, mod,
-                        onStep = { d -> cmd("AP_VS_VAR_SET_ENGLISH", ControlMath.verticalSpeed(live()?.vsFpm, d * 100)) },
-                        onBig = { d -> cmd("AP_VS_VAR_SET_ENGLISH", ControlMath.verticalSpeed(live()?.vsFpm, d * 500)) },
-                        onWindow = { enter = "VS" }, onPush = { cmd("AP_VS_VAR_SET_ENGLISH", 0); if (!m.vs) cmd("AP_VS_HOLD") },
-                        pull = loc("Prędkość pionowa", "Vertical speed") to { cmd("AP_VS_HOLD") },
-                        push = loc("Wyrównanie lotu (V/S 0)", "Level off (V/S 0)") to { cmd("AP_VS_VAR_SET_ENGLISH", 0); if (!m.vs) cmd("AP_VS_HOLD") })
-                },
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                sections.chunked(cols).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { row.forEach { it(Modifier.weight(1f)) } }
-                }
+    val spdV = ap.spdKt?.let { "${it.roundToInt()}" } ?: "---"
+    val hdgV = ap.hdgDeg?.let { "%03d".format(it.roundToInt() % 360) } ?: "---"
+    val altV = ap.altFt?.let { "%05d".format(it.roundToInt()) } ?: "-----"
+    val vsV = ap.vsFpm?.let { "%+05d".format(it.roundToInt()) } ?: "-----"
+    val levelOff = { cmd("AP_VS_VAR_SET_ENGLISH", 0); if (!m.vs) cmd("AP_VS_HOLD") }
+
+    val spdKnob: @Composable (Dp, Modifier) -> Unit = { kn, mod ->
+        FcuKnobColumn(FcuKnob.SPD, "SPD", spdV, kn, mod,
+            { d -> cmd("AP_SPD_VAR_SET", ControlMath.speed(live()?.spdKt, d)) }, { d -> cmd("AP_SPD_VAR_SET", ControlMath.speed(live()?.spdKt, d * 10)) },
+            onTap = { enter = "SPD" }, push = null, pull = { cmd("AP_PANEL_SPEED_HOLD") })
+    }
+    val hdgKnob: @Composable (Dp, Modifier) -> Unit = { kn, mod ->
+        FcuKnobColumn(FcuKnob.HDG, "HDG", hdgV, kn, mod,
+            { d -> cmd("HEADING_BUG_SET", ControlMath.heading(live()?.hdgDeg, d)) }, { d -> cmd("HEADING_BUG_SET", ControlMath.heading(live()?.hdgDeg, d * 10)) },
+            onTap = { cmd("AP_NAV1_HOLD") }, push = { cmd("AP_NAV1_HOLD") }, pull = { cmd("AP_HDG_HOLD") })
+    }
+    val altKnob: @Composable (Dp, Modifier) -> Unit = { kn, mod ->
+        FcuKnobColumn(FcuKnob.ALT, "ALT", altV, kn, mod,
+            { d -> cmd("AP_ALT_VAR_SET_ENGLISH", ControlMath.altitude(live()?.altFt, d * altStep)) }, { d -> cmd("AP_ALT_VAR_SET_ENGLISH", ControlMath.altitude(live()?.altFt, d * 1000)) },
+            onTap = { cmd("AP_ALT_HOLD") }, push = { cmd("AP_ALT_HOLD") }, pull = { cmd("FLIGHT_LEVEL_CHANGE") },
+            top = { AltStepSelector(altStep) { altStep = it } })
+    }
+    val vsKnob: @Composable (Dp, Modifier) -> Unit = { kn, mod ->
+        FcuKnobColumn(FcuKnob.VS, "V/S", vsV, kn, mod,
+            { d -> cmd("AP_VS_VAR_SET_ENGLISH", ControlMath.verticalSpeed(live()?.vsFpm, d * 100)) }, { d -> cmd("AP_VS_VAR_SET_ENGLISH", ControlMath.verticalSpeed(live()?.vsFpm, d * 500)) },
+            onTap = levelOff, push = levelOff, pull = { cmd("AP_VS_HOLD") })
+    }
+    val apKeys: @Composable (Modifier) -> Unit = { mod ->
+        Column(mod, verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                AfdsKey("AP1", ap.master, Modifier.weight(1f), skin) { cmd("AP_MASTER") }
+                AfdsKey("FD", ap.fd, Modifier.weight(1f), skin) { cmd("TOGGLE_FLIGHT_DIRECTOR") }
             }
-        }
-        Spacer(Modifier.height(12.dp))
-        // Klawisze FCU z zielonymi lampkami nad napisem; FD jest na panelu EFIS obok
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            AfdsKey("LOC", m.loc, Modifier.weight(1f), skin) { cmd("AP_LOC_HOLD") }
-            AfdsKey("AP1", ap.master, Modifier.weight(1f), skin) { cmd("AP_MASTER") }
-            AfdsKey("A/THR", ap.athr, Modifier.weight(1f), skin) { cmd("AUTO_THROTTLE_ARM") }
-            AfdsKey("APPR", m.apr, Modifier.weight(1f), skin) { cmd("AP_APR_HOLD") }
-            AfdsKey("FD", ap.fd, Modifier.weight(1f), skin) { cmd("TOGGLE_FLIGHT_DIRECTOR") }
+            AfdsKey("A/THR", ap.athr, Modifier.fillMaxWidth(0.62f), skin) { cmd("AUTO_THROTTLE_ARM") }
         }
     }
-    if (!compact) Text(loc("Kręć pokrętłem: pierścień — duży krok, środek — mały. Dotknięcie środka = PUSH. Dotknij okienka, aby wpisać wartość.",
-        "Turn a knob: outer ring for big steps, centre for small ones. Tapping the centre = PUSH. Tap a window to type a value."),
+    val locKey: @Composable (Modifier) -> Unit = { mod -> Box(mod, contentAlignment = Alignment.Center) { AfdsKey("LOC", m.loc, Modifier.width(80.dp), skin) { cmd("AP_LOC_HOLD") } } }
+    val apprKey: @Composable (Modifier) -> Unit = { mod -> Box(mod, contentAlignment = Alignment.Center) { AfdsKey("APPR", m.apr, Modifier.width(80.dp), skin) { cmd("AP_APR_HOLD") } } }
+
+    BoxWithConstraints(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(FCU_PLATE).border(1.dp, Color(0xFF1E2225), RoundedCornerShape(10.dp)).padding(10.dp),
+    ) {
+        if (maxWidth >= 520.dp) {
+            // Tablet: jeden pas wyświetlacza i jeden rząd pokręteł, jak na prawdziwym FCU
+            val kn = (maxWidth / 7.5f).coerceIn(60.dp, 96.dp)
+            Column {
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp)).background(AB_WINDOW).padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.Bottom) {
+                    FcuReadout("SPD", spdV, Modifier.weight(1f)) { enter = "SPD" }
+                    FcuReadout("HDG    LAT", hdgV, Modifier.weight(1.1f)) { enter = "HDG" }
+                    Text("HDG\nV/S", fontFamily = Mono, fontSize = 9.sp, lineHeight = 10.sp, color = AB_ORANGE, modifier = Modifier.padding(end = 10.dp))
+                    Box(Modifier.width(1.dp).height(40.dp).background(Color(0xFF3A3F44)))
+                    FcuReadout("ALT ─── LVL/CH", altV, Modifier.weight(1.4f).padding(start = 10.dp)) { enter = "ALT" }
+                    FcuReadout("── V/S", vsV, Modifier.weight(1.1f)) { enter = "VS" }
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                    spdKnob(kn, Modifier.weight(1f))
+                    hdgKnob(kn, Modifier.weight(1f))
+                    apKeys(Modifier.weight(1.2f).padding(horizontal = 6.dp, vertical = 14.dp))
+                    altKnob(kn, Modifier.weight(1f))
+                    vsKnob(kn, Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth()) { locKey(Modifier.weight(2f)); Spacer(Modifier.weight(1.2f)); apprKey(Modifier.weight(2f)) }
+            }
+        } else {
+            // Telefon: dwa piętra — SPD/HDG z LOC, klawisze AP, potem ALT/V/S z APPR; pasy wyświetlacza nad pokrętłami
+            val kn = if (compact) 64.dp else ((maxWidth - 40.dp) / 3.2f).coerceIn(68.dp, 96.dp)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp)).background(AB_WINDOW).padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.Bottom) {
+                    FcuReadout("SPD", spdV, Modifier.weight(1f)) { enter = "SPD" }
+                    FcuReadout("HDG    LAT", hdgV, Modifier.weight(1f)) { enter = "HDG" }
+                }
+                Row(Modifier.fillMaxWidth()) { spdKnob(kn, Modifier.weight(1f)); hdgKnob(kn, Modifier.weight(1f)) }
+                locKey(Modifier.fillMaxWidth())
+                apKeys(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp))
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp)).background(AB_WINDOW).padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.Bottom) {
+                    FcuReadout("ALT ── LVL/CH", altV, Modifier.weight(1.2f)) { enter = "ALT" }
+                    FcuReadout("── V/S", vsV, Modifier.weight(1f)) { enter = "VS" }
+                }
+                Row(Modifier.fillMaxWidth()) { altKnob(kn, Modifier.weight(1f)); vsKnob(kn, Modifier.weight(1f)) }
+                apprKey(Modifier.fillMaxWidth())
+            }
+        }
+    }
+    if (!compact) Text(loc("Kręć pokrętłem palcem: brzeg — duży krok, środek — mały. Dotknięcie = PUSH. Dotknij cyfr, aby wpisać wartość.",
+        "Turn a knob with your finger: the edge for big steps, the centre for small ones. A tap = PUSH. Tap the digits to type a value."),
         style = MaterialTheme.typography.labelSmall, color = Fm.c.ink2, modifier = Modifier.padding(top = 8.dp))
 
     when (enter) {
@@ -228,22 +288,171 @@ fun AirbusFcu(link: LinkClient, s: FlightState, compact: Boolean = false) {
     }
 }
 
+/** Odczyt na pasie FCU: mały pomarańczowy opis nad dużymi cyframi; dotknięcie — wpisanie wartości. */
 @Composable
-private fun FcuSection(
-    label: String, value: String, knob: Dp, modifier: Modifier,
-    onStep: (Int) -> Unit, onBig: (Int) -> Unit, onWindow: () -> Unit, onPush: () -> Unit,
-    pull: Pair<String, () -> Unit>?, push: Pair<String, () -> Unit>?,
+private fun FcuReadout(label: String, value: String, modifier: Modifier, onClick: () -> Unit) {
+    Column(modifier.clickable(onClickLabel = loc("Wpisz wartość", "Type a value"), onClick = onClick).semantics { contentDescription = "${label.filter { it.isLetter() || it == '/' }} $value" }) {
+        Text(label, fontFamily = Mono, fontSize = 9.sp, color = AB_ORANGE, maxLines = 1, softWrap = false)
+        Text(value, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 24.sp, color = AB_ORANGE, maxLines = 1, softWrap = false)
+    }
+}
+
+/** Przełącznik kroku ALT 100 / 1000 ft — mała dźwigienka nad pokrętłem, jak na FCU. */
+@Composable
+private fun AltStepSelector(step: Int, onStep: (Int) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+        listOf(100, 1000).forEach { v ->
+            Text("$v", fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 10.sp,
+                color = if (step == v) Color.Black else AB_LEGEND,
+                modifier = Modifier.clip(RoundedCornerShape(3.dp)).background(if (step == v) AB_LEGEND else Color(0x33000000))
+                    .semantics { contentDescription = loc("Krok ALT $v ft", "ALT step $v ft") + if (step == v) loc(", wybrany", ", selected") else ""; role = Role.RadioButton }
+                    .clickable { onStep(v) }.padding(horizontal = 5.dp, vertical = 2.dp))
+        }
+    }
+}
+
+/** Kolumna pokrętła: (opcjonalnie coś nad nim), pokrętło w kształcie z FCU, pod nim PUSH / PULL. */
+@Composable
+private fun FcuKnobColumn(
+    kind: FcuKnob, label: String, value: String, size: Dp, modifier: Modifier,
+    onStep: (Int) -> Unit, onBig: (Int) -> Unit, onTap: () -> Unit,
+    push: (() -> Unit)?, pull: (() -> Unit)?, top: (@Composable () -> Unit)? = null,
 ) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = AB_LEGEND)
-        SegWindow(value, AB_ORANGE, Modifier.fillMaxWidth().padding(top = 3.dp), desc = "$label $value", onClick = onWindow)
-        Spacer(Modifier.height(8.dp))
-        DualKnob(knob, loc("Pokrętło $label: $value", "$label knob: $value"), skin = airbusSkin(), onStep = onStep, onBigStep = onBig, onPush = onPush)
-        Spacer(Modifier.height(8.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (push != null) PushPull("PUSH", "$label PUSH: ${push.first}", Modifier.weight(1f), push.second)
-            if (pull != null) PushPull("PULL", "$label PULL: ${pull.first}", Modifier.weight(1f), pull.second)
+        Box(Modifier.height(20.dp), contentAlignment = Alignment.Center) { top?.invoke() }
+        AirbusKnob(kind, size, loc("Pokrętło $label: $value", "$label knob: $value"), onStep, onBig, onTap)
+        Spacer(Modifier.height(6.dp))
+        // Na wąskiej kolumnie (tablet, pięć kolumn) klawisze się zwężają, na szerokiej mają do 56 dp
+        Row(Modifier.widthIn(max = 116.dp).padding(horizontal = 2.dp), horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)) {
+            if (push != null) PushPull("PUSH", "$label PUSH", Modifier.weight(1f), push)
+            if (pull != null) PushPull("PULL", "$label PULL", Modifier.weight(1f), pull)
         }
+    }
+}
+
+/**
+ * Pokrętło FCU obracane palcem wokół środka (zgodnie z ruchem wskazówek = w górę); brzeg — duży krok, środek — mały,
+ * dotknięcie bez obrotu = PUSH. Wygląd zależy od pokrętła, jak w A320:
+ * SPD — gładki walec z drobnym karbowaniem i kropką, HDG — z wypukłym trójkątem-wskaźnikiem,
+ * ALT — wyższy, z żebrowanym chwytem i kreską, V/S — z rowkiem i strzałkami UP/DN.
+ */
+@Composable
+private fun AirbusKnob(kind: FcuKnob, size: Dp, desc: String, onStep: (Int) -> Unit, onBig: (Int) -> Unit, onTap: () -> Unit) {
+    RotaryKnob(size, desc, onStep, onBig, onTap) { angle, grip ->
+        val c = center
+        val r = this.size.minDimension / 2f
+        // Miedziany pierścień u podstawy i ciemna tuleja
+        drawCircle(FCU_COLLAR, r, c, style = Stroke(r * 0.07f))
+        drawCircle(Color(0xFF1C2023), r * 0.92f, c)
+        // Korpus: jasnoszary, cieniowany jak walec oświetlony z góry
+        val body = when (kind) { FcuKnob.ALT -> r * 0.8f; FcuKnob.VS -> r * 0.84f; else -> r * 0.78f }
+        drawCircle(androidx.compose.ui.graphics.Brush.radialGradient(listOf(Color(0xFFE9ECEE), Color(0xFFA9AFB4), Color(0xFF6E757B)),
+            Offset(c.x - body * 0.35f, c.y - body * 0.45f), body * 1.6f), body, c)
+        drawCircle(if (grip != 0) AB_LAMP else Color(0x55000000), body, c, style = Stroke(if (grip != 0) 3f else 1.5f))
+        androidx.compose.ui.graphics.drawscope.rotate(angle, c) {
+            when (kind) {
+                FcuKnob.SPD -> {
+                    // Drobne karbowanie na obwodzie i kropka-znacznik
+                    for (i in 0 until 48) androidx.compose.ui.graphics.drawscope.rotate(i * 7.5f, c) {
+                        drawLine(Color(0x55000000), Offset(c.x, c.y - body * 0.98f), Offset(c.x, c.y - body * 0.86f), 1.5f)
+                    }
+                    drawCircle(Color(0xFF3A3F44), body * 0.09f, Offset(c.x, c.y - body * 0.6f))
+                }
+                FcuKnob.HDG -> {
+                    // Wypukły trójkąt na czapce (jak strzałka kursu)
+                    val tri = Path().apply {
+                        moveTo(c.x, c.y - body * 0.7f); lineTo(c.x + body * 0.42f, c.y + body * 0.42f); lineTo(c.x - body * 0.42f, c.y + body * 0.42f); close()
+                    }
+                    drawPath(tri, androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xFFF4F6F7), Color(0xFF9EA5AA)), c.y - body * 0.7f, c.y + body * 0.42f))
+                    drawPath(tri, Color(0x66000000), style = Stroke(2f))
+                }
+                FcuKnob.ALT -> {
+                    // Żebrowany chwyt (12 żeber) i biała kreska położenia
+                    for (i in 0 until 12) androidx.compose.ui.graphics.drawscope.rotate(i * 30f, c) {
+                        drawLine(Color(0x66000000), Offset(c.x, c.y - body * 0.98f), Offset(c.x, c.y - body * 0.62f), 3f)
+                    }
+                    drawCircle(Color(0xFFCDD2D6), body * 0.55f, c)
+                    drawLine(Color(0xFF2A2F33), Offset(c.x, c.y - body * 0.52f), Offset(c.x, c.y - body * 0.1f), 4f, cap = StrokeCap.Round)
+                }
+                FcuKnob.VS -> {
+                    // Rowek przez czapkę (kółko V/S obraca się „w górę / w dół”)
+                    drawLine(Color(0x77000000), Offset(c.x - body * 0.75f, c.y), Offset(c.x + body * 0.75f, c.y), 5f, cap = StrokeCap.Round)
+                    for (i in 0 until 24) androidx.compose.ui.graphics.drawscope.rotate(i * 15f, c) {
+                        drawLine(Color(0x44000000), Offset(c.x, c.y - body * 0.98f), Offset(c.x, c.y - body * 0.88f), 2f)
+                    }
+                }
+            }
+        }
+        // Stałe oznaczenia na płycie przy V/S: strzałki UP / DN po prawej
+        if (kind == FcuKnob.VS) {
+            drawLine(AB_LEGEND, Offset(c.x + r * 0.97f, c.y - r * 0.55f), Offset(c.x + r * 0.97f, c.y - r * 0.2f), 2f)
+            drawLine(AB_LEGEND, Offset(c.x + r * 0.97f, c.y + r * 0.2f), Offset(c.x + r * 0.97f, c.y + r * 0.55f), 2f)
+        }
+    }
+}
+
+/**
+ * Pokrętło obracane palcem wokół środka (zgodnie z ruchem wskazówek = w górę): brzeg — duży krok, środek — mały,
+ * dotknięcie bez obrotu = PUSH. Wygląd rysuje [draw] (kąt obrotu w stopniach, chwyt: 0 nic, 1 środek, 2 brzeg) —
+ * wspólne dla pokręteł FCU Airbusa i MCP Boeinga.
+ */
+@Composable
+internal fun RotaryKnob(size: Dp, desc: String, onStep: (Int) -> Unit, onBig: (Int) -> Unit, onTap: () -> Unit, draw: DrawScope.(Float, Int) -> Unit) {
+    val haptic = LocalHapticFeedback.current
+    var angle by remember { mutableStateOf(0f) }
+    var grip by remember { mutableStateOf(0) }
+    val step by rememberUpdatedState(onStep)
+    val big by rememberUpdatedState(onBig)
+    val tap by rememberUpdatedState(onTap)
+    Canvas(
+        Modifier.size(size)
+            .semantics {
+                contentDescription = desc
+                role = Role.Button
+                onClick { tap(); true }
+                customActions = listOf(
+                    androidx.compose.ui.semantics.CustomAccessibilityAction(loc("W górę", "Increase")) { step(1); true },
+                    androidx.compose.ui.semantics.CustomAccessibilityAction(loc("W dół", "Decrease")) { step(-1); true },
+                )
+            }
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    down.consume()
+                    val ctr = Offset(this.size.width / 2f, this.size.height / 2f)
+                    val r = this.size.width / 2f
+                    val ring = (down.position - ctr).getDistance() > r * 0.62f
+                    grip = if (ring) 2 else 1
+                    val detent = if (ring) 30f else 18f
+                    var last = Math.toDegrees(kotlin.math.atan2((down.position.y - ctr.y).toDouble(), (down.position.x - ctr.x).toDouble())).toFloat()
+                    var acc = 0f
+                    var turned = false
+                    while (true) {
+                        val ev = awaitPointerEvent()
+                        val ch = ev.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!ch.pressed) break
+                        ch.consume()
+                        val p = ch.position - ctr
+                        if (kotlin.math.hypot(p.x, p.y) < r * 0.12f) continue
+                        val a = Math.toDegrees(kotlin.math.atan2(p.y.toDouble(), p.x.toDouble())).toFloat()
+                        var d = a - last
+                        if (d > 180f) d -= 360f
+                        if (d < -180f) d += 360f
+                        last = a; acc += d; angle += d
+                        while (acc >= detent || acc <= -detent) {
+                            val dir = if (acc > 0) 1 else -1
+                            acc -= dir * detent
+                            turned = true
+                            if (ring) big(dir) else step(dir)
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        }
+                    }
+                    if (!turned) { haptic.performHapticFeedback(HapticFeedbackType.LongPress); tap() }
+                    grip = 0
+                }
+            },
+    ) {
+        draw(angle, grip)
     }
 }
 
@@ -517,29 +726,30 @@ fun AirbusSystems(link: LinkClient, s: FlightState) {
     }
     Spacer(Modifier.height(10.dp))
 
-    // Hamulec aerodynamiczny: RET / ½ / FULL i uzbrojenie (ARM) przed lądowaniem
-    val sb = ctl.spoilersPct ?: 0.0
+    // Hamulec aerodynamiczny: ARM (uzbrojenie spoilerów do lądowania) i obok oś dźwigni
     AirbusPlate("SPEED BRAKE") {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            DetentKey("ARM", ctl.spoilersArmed == true, Modifier.weight(1f), loc("Uzbrojenie spoilerów", "Ground spoilers arm")) { cmd("SPOILERS_ARM_TOGGLE") }
-            DetentKey("RET", sb < 5, Modifier.weight(1f), loc("Hamulec aerodynamiczny schowany", "Speed brake retracted")) { cmd("SPOILERS_SET", 0) }
-            DetentKey("1/2", sb in 25.0..75.0, Modifier.weight(1f), loc("Hamulec aerodynamiczny w połowie", "Speed brake half")) { cmd("SPOILERS_SET", 8192) }
-            DetentKey("FULL", sb > 95, Modifier.weight(1f), loc("Hamulec aerodynamiczny pełny", "Speed brake full")) { cmd("SPOILERS_SET", 16383) }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            DetentKey("ARM", ctl.spoilersArmed == true, Modifier.width(72.dp), loc("Uzbrojenie spoilerów", "Ground spoilers arm")) { cmd("SPOILERS_ARM_TOGGLE") }
+            SpeedBrakeAxis(link, s, Modifier.weight(1f), label = "SPEED BRAKE", labelColor = AB_LEGEND)
         }
     }
     Spacer(Modifier.height(10.dp))
 
-    // Hamulec postojowy i trymer wysokości (koło trymera na pedestale)
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        AirbusPlate("PARK BRK", Modifier.weight(1f)) {
-            DetentKey(if (ctl.parkingBrake == true) "ON" else "OFF", ctl.parkingBrake == true, Modifier.fillMaxWidth(), loc("Hamulec postojowy", "Parking brake")) { cmd("PARKING_BRAKES") }
+    // Hamulec postojowy (mały klawisz) i obok oś hamulców kół (pedały)
+    AirbusPlate("PARK BRK / BRAKES") {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            DetentKey(if (ctl.parkingBrake == true) "ON" else "OFF", ctl.parkingBrake == true, Modifier.width(72.dp), loc("Hamulec postojowy", "Parking brake")) { cmd("PARKING_BRAKES") }
+            WheelBrakeAxis(link, s, Modifier.weight(1f), labelColor = AB_LEGEND)
         }
-        AirbusPlate("PITCH TRIM", Modifier.weight(1.4f)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                HoldKey("DN", loc("Trym nosem w dół", "Trim nose down"), Modifier.weight(1f)) { cmd("ELEV_TRIM_DN") }
-                SegWindow(ctl.elevatorTrimPct?.let { "%+.1f".format(it) } ?: "--", Color.White, Modifier.weight(1.2f), size = 16, desc = loc("Trym", "Trim"))
-                HoldKey("UP", loc("Trym nosem w górę", "Trim nose up"), Modifier.weight(1f)) { cmd("ELEV_TRIM_UP") }
-            }
+    }
+    Spacer(Modifier.height(10.dp))
+
+    // Trymer wysokości (koło trymera na pedestale)
+    AirbusPlate("PITCH TRIM") {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            HoldKey("DN", loc("Trym nosem w dół", "Trim nose down"), Modifier.weight(1f)) { cmd("ELEV_TRIM_DN") }
+            SegWindow(ctl.elevatorTrimPct?.let { "%+.1f".format(it) } ?: "--", Color.White, Modifier.weight(1.2f), size = 16, desc = loc("Trym", "Trim"))
+            HoldKey("UP", loc("Trym nosem w górę", "Trim nose up"), Modifier.weight(1f)) { cmd("ELEV_TRIM_UP") }
         }
     }
 

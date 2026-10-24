@@ -97,7 +97,7 @@ fun FlightControlPanel(
         StickMode.TILT -> YokePanel(link, s)
         StickMode.GAMEPAD -> GamepadPanel(link)
     }
-    BrakeAxes(link, s)
+    // Osie hamulca aerodynamicznego i hamulców kół są w zakładce Systemy
     Text(
         tr("Link ogranicza wychylenie do ±${(link.limits.maxDeflection * 100).toInt()}% i oddaje stery po 0,5 s bez sygnału.",
             "Link limits deflection to ±${(link.limits.maxDeflection * 100).toInt()}% and releases the controls after 0.5 s without input."),
