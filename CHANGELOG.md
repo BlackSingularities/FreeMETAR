@@ -1,3 +1,13 @@
+## 2.3.1 — MSFS 2024 camera fixes, narrower 737 and E190 panels
+
+- Looking around (hold a camera button) now pivots from the pilot's eye instead of placing the camera in front of the
+  aircraft, works from the cockpit view, and returns to the normal cockpit once after release instead of flipping views
+  every time the view passes through centre.
+- Camera buttons: tapping the current view does nothing; leaving the look-around camera goes straight to the chosen view,
+  VIEW_MODE is only used between cockpit and external views, and the Link waits longer for MSFS 2024 to switch.
+- 737 MCP fits in one row from 680 dp (a denser layout with narrower keys and digits), the E190 guidance panel from 520 dp,
+  so foldables and tablets get the single-row cockpit layout.
+
 ## 2.3.0 — E190 cockpit panels, map wall, Tools screen polish
 
 - E190 (Primus Epic): guidance panel (FD, NAV, APP, HDG SEL with PUSH SYNC, AP, YD, A/T, SPEED with FLCH, ALT SEL with ALT,
