@@ -214,7 +214,8 @@ fun EmbraerGuidancePanel(link: LinkClient, s: FlightState, compact: Boolean = fa
     }
 
     BoxWithConstraints(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(EJ_PLATE).border(2.dp, EJ_PLATE_EDGE, RoundedCornerShape(10.dp)).padding(10.dp)) {
-        val wide = maxWidth >= 760.dp
+        // Jeden rząd mieści się już od ok. 520 dp — fold i każdy tablet; telefon w pionie zostaje przy dwóch piętrach
+        val wide = maxWidth >= 520.dp
         val kn = if (compact) 56.dp else if (wide) (maxWidth / 12f).coerceIn(56.dp, 72.dp) else ((maxWidth - 40.dp) / 4.6f).coerceIn(56.dp, 72.dp)
         val keyW = if (wide) 58.dp else 62.dp
 

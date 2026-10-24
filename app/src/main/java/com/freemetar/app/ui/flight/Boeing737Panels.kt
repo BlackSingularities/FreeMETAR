@@ -190,10 +190,16 @@ private val MCP_KNOB_LO = Color(0xFF7D7A72)
 
 private enum class McpKnob { IAS, HDG, ALT }
 
+/** Rozmiar pokręteł i tryb ściśnięty: jeden rząd już od ok. 680 dp (fold, węższy tablet) — węższe klawisze i cyfry. */
+private data class McpSize(val knob: Dp, val dense: Boolean = false) {
+    fun key(full: Dp, dense: Dp) = if (this.dense) dense else full
+}
+
 /**
  * MCP 737 w układzie z kabiny. Tablet: jeden rząd jak na panelu — A/T ARM i F/D, IAS/MACH (N1, SPEED, LVL CHG),
  * HEADING z pierścieniem ogranicznika przechylenia (HDG SEL, obok LNAV, VOR LOC, APP), ALTITUDE (ALT HLD, V/S),
- * VERT SPEED z kółkiem przewijanym palcem w pionie, A/P ENGAGE (CMD A) i belka DISENGAGE. Telefon: te same grupy na trzech piętrach.
+ * VERT SPEED z kółkiem przewijanym palcem w pionie, A/P ENGAGE (CMD A) i belka DISENGAGE. Fold i węższy tablet: ten sam rząd,
+ * ściśnięty. Telefon: te same grupy na trzech piętrach.
  * Każde pokrętło ma swój kształt. Pominięte (bez odpowiednika w Link): COURSE, VNAV, C/O, SPD INTV, ALT INTV,
  * ogranicznik przechylenia (tylko rysunek), CMD B, CWS.
  */
@@ -211,69 +217,71 @@ fun BoeingMcp(link: LinkClient, s: FlightState, compact: Boolean = false) {
     val altV = ap.altFt?.let { "${it.roundToInt()}" } ?: "-----"
     val vsV = ap.vsFpm?.let { "%+d".format(it.roundToInt()) } ?: ""
 
-    val switches: @Composable (Modifier) -> Unit = { mod ->
-        Row(mod, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    val switches: @Composable (Boolean, Modifier) -> Unit = { stacked, mod ->
+        val both: @Composable () -> Unit = {
             ToggleSwitch("A/T ARM", ap.athr) { cmd("AUTO_THROTTLE_ARM") }
             ToggleSwitch("F/D", ap.fd) { cmd("TOGGLE_FLIGHT_DIRECTOR") }
         }
+        if (stacked) Column(mod, verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally) { both() }
+        else Row(mod, horizontalArrangement = Arrangement.spacedBy(10.dp)) { both() }
     }
-    val ias: @Composable (Dp, Modifier) -> Unit = { kn, mod ->
+    val ias: @Composable (McpSize, Modifier) -> Unit = { sz, mod ->
         Column(mod, horizontalAlignment = Alignment.CenterHorizontally) {
-            McpWindow("IAS/MACH", "IAS\nMACH", spdV) { enter = "SPD" }
+            McpWindow("IAS/MACH", "IAS\nMACH", spdV, sz.dense) { enter = "SPD" }
             Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                McpKnobView(McpKnob.IAS, kn, "IAS/MACH $spdV",
+                McpKnobView(McpKnob.IAS, sz.knob, "IAS/MACH $spdV",
                     { d -> cmd("AP_SPD_VAR_SET", ControlMath.speed(live()?.spdKt, d)) }, { d -> cmd("AP_SPD_VAR_SET", ControlMath.speed(live()?.spdKt, d * 10)) }) { enter = "SPD" }
-                AfdsKey("LVL CHG", m.flc, Modifier.width(64.dp), skin) { cmd("FLIGHT_LEVEL_CHANGE") }
+                AfdsKey("LVL CHG", m.flc, Modifier.width(sz.key(64.dp, 56.dp)), skin) { cmd("FLIGHT_LEVEL_CHANGE") }
             }
             Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                AfdsKey("N1", false, Modifier.width(56.dp), skin) { cmd("AP_N1_HOLD") }
-                AfdsKey("SPEED", false, Modifier.width(64.dp), skin) { cmd("AP_PANEL_SPEED_HOLD") }
+                AfdsKey("N1", false, Modifier.width(sz.key(56.dp, 44.dp)), skin) { cmd("AP_N1_HOLD") }
+                AfdsKey("SPEED", false, Modifier.width(sz.key(64.dp, 52.dp)), skin) { cmd("AP_PANEL_SPEED_HOLD") }
             }
         }
     }
-    val hdg: @Composable (Dp, Modifier) -> Unit = { kn, mod ->
+    val hdg: @Composable (McpSize, Modifier) -> Unit = { sz, mod ->
         Row(mod, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                McpWindow("HEADING", "HDG\nTRK", hdgV) { enter = "HDG" }
+                McpWindow("HEADING", "HDG\nTRK", hdgV, sz.dense) { enter = "HDG" }
                 Box(Modifier.padding(top = 8.dp)) {
-                    McpKnobView(McpKnob.HDG, kn, "HEADING $hdgV",
+                    McpKnobView(McpKnob.HDG, sz.knob, "HEADING $hdgV",
                         { d -> cmd("HEADING_BUG_SET", ControlMath.heading(live()?.hdgDeg, d)) }, { d -> cmd("HEADING_BUG_SET", ControlMath.heading(live()?.hdgDeg, d * 10)) }) { enter = "HDG" }
                 }
-                AfdsKey("HDG SEL", m.hdg, Modifier.width(72.dp).padding(top = 8.dp), skin) { cmd("AP_HDG_HOLD") }
+                AfdsKey("HDG SEL", m.hdg, Modifier.width(sz.key(72.dp, 58.dp)).padding(top = 8.dp), skin) { cmd("AP_HDG_HOLD") }
             }
             // Kolumna trybów nawigacji, jak na prawo od okienka HEADING
-            Column(Modifier.width(72.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.width(sz.key(72.dp, 58.dp)), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 AfdsKey("LNAV", m.nav, Modifier.fillMaxWidth(), skin) { cmd("AP_NAV1_HOLD") }
                 AfdsKey("VOR LOC", m.loc, Modifier.fillMaxWidth(), skin) { cmd("AP_LOC_HOLD") }
                 AfdsKey("APP", m.apr, Modifier.fillMaxWidth(), skin) { cmd("AP_APR_HOLD") }
             }
         }
     }
-    val alt: @Composable (Dp, Modifier) -> Unit = { kn, mod ->
+    val alt: @Composable (McpSize, Modifier) -> Unit = { sz, mod ->
         Column(mod, horizontalAlignment = Alignment.CenterHorizontally) {
-            McpWindow("ALTITUDE", null, altV) { enter = "ALT" }
+            McpWindow("ALTITUDE", null, altV, sz.dense) { enter = "ALT" }
             Box(Modifier.padding(top = 8.dp)) {
-                McpKnobView(McpKnob.ALT, kn, "ALTITUDE $altV",
+                McpKnobView(McpKnob.ALT, sz.knob, "ALTITUDE $altV",
                     { d -> cmd("AP_ALT_VAR_SET_ENGLISH", ControlMath.altitude(live()?.altFt, d * 100)) }, { d -> cmd("AP_ALT_VAR_SET_ENGLISH", ControlMath.altitude(live()?.altFt, d * 1000)) }) { enter = "ALT" }
             }
             Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                AfdsKey("ALT HLD", m.alt, Modifier.width(68.dp), skin) { cmd("AP_ALT_HOLD") }
-                AfdsKey("V/S", m.vs, Modifier.width(56.dp), skin) { cmd("AP_VS_HOLD") }
+                AfdsKey("ALT HLD", m.alt, Modifier.width(sz.key(68.dp, 56.dp)), skin) { cmd("AP_ALT_HOLD") }
+                AfdsKey("V/S", m.vs, Modifier.width(sz.key(56.dp, 44.dp)), skin) { cmd("AP_VS_HOLD") }
             }
         }
     }
-    val vs: @Composable (Dp, Modifier) -> Unit = { kn, mod ->
+    val vs: @Composable (McpSize, Modifier) -> Unit = { sz, mod ->
         Column(mod, horizontalAlignment = Alignment.CenterHorizontally) {
-            McpWindow("VERT SPEED", "V/S\nFPA", vsV) { enter = "VS" }
-            VsWheel(kn * 1.25f, Modifier.padding(top = 8.dp)) { d -> cmd("AP_VS_VAR_SET_ENGLISH", ControlMath.verticalSpeed(live()?.vsFpm, d)) }
+            McpWindow("VERT SPEED", "V/S\nFPA", vsV, sz.dense) { enter = "VS" }
+            VsWheel(sz.knob * 1.25f, Modifier.padding(top = 8.dp)) { d -> cmd("AP_VS_VAR_SET_ENGLISH", ControlMath.verticalSpeed(live()?.vsFpm, d)) }
         }
     }
-    val engage: @Composable (Modifier) -> Unit = { mod ->
+    val engage: @Composable (Boolean, Modifier) -> Unit = { dense, mod ->
         Column(mod, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("A/P ENGAGE", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = B_LEGEND)
-            AfdsKey("CMD", ap.master, Modifier.width(64.dp), skin) { cmd("AP_MASTER") }
+            AfdsKey("CMD", ap.master, Modifier.width(if (dense) 54.dp else 64.dp), skin) { cmd("AP_MASTER") }
             Box(
-                Modifier.size(width = 96.dp, height = 34.dp).clip(RoundedCornerShape(3.dp)).background(Color(0xFFE6E0CC))
+                Modifier.size(width = if (dense) 84.dp else 96.dp, height = 34.dp).clip(RoundedCornerShape(3.dp)).background(Color(0xFFE6E0CC))
                     .semantics { contentDescription = loc("Rozłącz autopilota", "Disengage autopilot"); role = Role.Button }
                     .clickable { cmd("AUTOPILOT_OFF") },
                 contentAlignment = Alignment.Center,
@@ -284,25 +292,26 @@ fun BoeingMcp(link: LinkClient, s: FlightState, compact: Boolean = false) {
     BoxWithConstraints(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(B_PLATE).border(2.dp, B_PLATE_EDGE, RoundedCornerShape(10.dp)).padding(10.dp),
     ) {
-        if (maxWidth >= 840.dp) {
-            // Tablet: cały panel w jednym rzędzie
-            val kn = (maxWidth / 12f).coerceIn(56.dp, 76.dp)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Column(Modifier.padding(top = 18.dp)) { switches(Modifier) }
-                ias(kn, Modifier.weight(1f))
-                hdg(kn, Modifier.weight(1.4f))
-                alt(kn, Modifier.weight(1f))
-                vs(kn, Modifier.weight(0.8f))
-                engage(Modifier.padding(top = 4.dp))
+        if (maxWidth >= 680.dp) {
+            // Tablet i fold: cały panel w jednym rzędzie; poniżej 840 dp ściśnięty (przełączniki jeden pod drugim)
+            val dense = maxWidth < 840.dp
+            val sz = McpSize(if (dense) 52.dp else (maxWidth / 12f).coerceIn(56.dp, 76.dp), dense)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(if (dense) 8.dp else 10.dp)) {
+                switches(dense, Modifier.padding(top = if (dense) 0.dp else 18.dp))
+                ias(sz, Modifier.weight(1f))
+                hdg(sz, Modifier.weight(1.4f))
+                alt(sz, Modifier.weight(if (dense) 0.95f else 1f))
+                vs(sz, Modifier.weight(if (dense) 0.85f else 0.8f))
+                engage(dense, Modifier.padding(top = 4.dp))
             }
         } else {
             // Telefon: przełączniki i A/P ENGAGE, potem IAS/MACH i ALTITUDE, HEADING, na dole VERT SPEED
-            val kn = if (compact) 60.dp else ((maxWidth - 40.dp) / 4.2f).coerceIn(60.dp, 80.dp)
+            val sz = McpSize(if (compact) 60.dp else ((maxWidth - 40.dp) / 4.2f).coerceIn(60.dp, 80.dp))
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) { switches(Modifier.weight(1f)); engage(Modifier) }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) { ias(kn, Modifier.weight(1f)); alt(kn, Modifier.weight(1f)) }
-                hdg(kn, Modifier.fillMaxWidth())
-                vs(kn, Modifier.fillMaxWidth())
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) { switches(false, Modifier.weight(1f)); engage(false, Modifier) }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) { ias(sz, Modifier.weight(1f)); alt(sz, Modifier.weight(1f)) }
+                hdg(sz, Modifier.fillMaxWidth())
+                vs(sz, Modifier.fillMaxWidth())
             }
         }
     }
@@ -320,18 +329,18 @@ fun BoeingMcp(link: LinkClient, s: FlightState, compact: Boolean = false) {
 
 /** Okienko MCP: pomarańczowy tytuł nad nim, w środku mały biały opis z lewej (IAS/MACH, HDG/TRK) i białe cyfry. */
 @Composable
-private fun McpWindow(title: String, inner: String?, value: String, onClick: () -> Unit) {
+private fun McpWindow(title: String, inner: String?, value: String, dense: Boolean = false, onClick: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(title, fontWeight = FontWeight.Bold, fontSize = 10.sp, color = B_LEGEND, maxLines = 1)
         Row(
             Modifier.padding(top = 3.dp).clip(RoundedCornerShape(4.dp)).background(B_WINDOW).border(2.dp, Color(0xFF15191C), RoundedCornerShape(4.dp))
                 .semantics { contentDescription = "$title $value" }
                 .clickable(onClickLabel = loc("Wpisz wartość", "Type a value"), onClick = onClick)
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(horizontal = if (dense) 6.dp else 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (inner != null) Text(inner, fontSize = 7.sp, lineHeight = 8.sp, color = B_DIGITS.copy(alpha = 0.8f), modifier = Modifier.padding(end = 6.dp))
-            Text(value.ifEmpty { " " }.padStart(5), fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 22.sp, color = B_DIGITS, maxLines = 1, softWrap = false)
+            if (inner != null) Text(inner, fontSize = 7.sp, lineHeight = 8.sp, color = B_DIGITS.copy(alpha = 0.8f), modifier = Modifier.padding(end = if (dense) 4.dp else 6.dp))
+            Text(value.ifEmpty { " " }.padStart(5), fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = if (dense) 18.sp else 22.sp, color = B_DIGITS, maxLines = 1, softWrap = false)
         }
     }
 }
