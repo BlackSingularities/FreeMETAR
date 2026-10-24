@@ -5,6 +5,9 @@ public sealed record AxisOutput(double Aileron, double Elevator, double Rudder, 
     public static readonly AxisOutput Neutral = new(0, 0, 0, true);
 }
 
+// Osie pomocnicze, 0…1: hamulec aerodynamiczny (spoilery) i hamulce kół. null = bez zmian, nie wysyłać.
+public sealed record AuxOutput(double? Speedbrake, double? Brake);
+
 public enum AxisUpdateResult { Ok, Invalid, Busy }
 
 // Sterowanie osiami z telefonu: przycinanie wychyleń, jeden właściciel naraz
@@ -18,6 +21,14 @@ public sealed class AxisController
     private double _aileron, _elevator, _rudder;
     private long _lastUpdateMs;
     private bool _pendingNeutral;
+
+    // Osie pomocnicze mają osobnego właściciela: hamulec z telefonu nie przejmuje lotek i steru wysokości.
+    private string? _auxOwner;
+    private long _auxUpdateMs;
+    private double? _speedbrake;
+    private bool _speedbrakeDirty;
+    private double _brake;
+    private bool _brakeHeld, _brakeReleasePending;
 
     public AxisController(double maxDeflection = DefaultMaxDeflection, int timeoutMs = DefaultTimeoutMs)
     {
@@ -55,9 +66,64 @@ public sealed class AxisController
     {
         lock (_lock)
         {
+            if (_auxOwner == owner) ReleaseAux();
             if (Owner != owner) return;
             ResetToNeutral();
         }
+    }
+
+    // Hamulec aerodynamiczny zostaje tam, gdzie go ustawiono (jak dźwignia); hamulce kół działają,
+    // dopóki telefon je przysyła, i puszczają się same po [TimeoutMs] (jak pedały).
+    public AxisUpdateResult UpdateAux(string owner, double? speedbrake, double? brake, long nowMs)
+    {
+        if (!IsValid(speedbrake) || !IsValid(brake)) return AxisUpdateResult.Invalid;
+        lock (_lock)
+        {
+            ExpireAux(nowMs);
+            if (_auxOwner != null && _auxOwner != owner) return AxisUpdateResult.Busy;
+            _auxOwner = owner;
+            _auxUpdateMs = nowMs;
+            if (speedbrake.HasValue)
+            {
+                _speedbrake = Math.Clamp(speedbrake.Value, 0, 1);
+                _speedbrakeDirty = true;
+            }
+            if (brake.HasValue)
+            {
+                _brake = Math.Clamp(brake.Value, 0, 1);
+                _brakeHeld = _brake > 0;
+                _brakeReleasePending = !_brakeHeld;
+            }
+            return AxisUpdateResult.Ok;
+        }
+    }
+
+    // Wartości osi pomocniczych do wysłania w tym cyklu albo null, gdy nie ma nic nowego.
+    public AuxOutput? TickAux(long nowMs)
+    {
+        lock (_lock)
+        {
+            ExpireAux(nowMs);
+            double? sb = _speedbrakeDirty ? _speedbrake : null;
+            _speedbrakeDirty = false;
+            double? br = null;
+            if (_brakeHeld) br = _brake;
+            else if (_brakeReleasePending) { br = 0; _brakeReleasePending = false; }
+            return sb == null && br == null ? null : new AuxOutput(sb, br);
+        }
+    }
+
+    private void ExpireAux(long nowMs)
+    {
+        if (_auxOwner != null && nowMs - _auxUpdateMs > TimeoutMs) ReleaseAux();
+    }
+
+    private void ReleaseAux()
+    {
+        _auxOwner = null;
+        if (_brakeHeld || _brake > 0) _brakeReleasePending = true;
+        _brakeHeld = false;
+        _brake = 0;
     }
 
     // Wołane cyklicznie przez źródło danych. Zwraca wychylenia do wysłania,

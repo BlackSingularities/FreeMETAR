@@ -32,10 +32,10 @@ internal fun altRgb(ft: Int): IntArray {
 }
 
 /**
- * Przewyższenie kurtyny: przelot na FL240 to 7 km nad trasą długą na setki km — w prawdziwej skali
- * ściana byłaby ledwo widoczna, więc jak w widokach profilu wysokość jest pokazana 3× większa.
+ * Przewyższenie wysokości toru 3D: przelot na FL240 to 7 km nad trasą długą na setki km — w prawdziwej skali
+ * linia leżałaby prawie na ziemi, więc jak w widokach profilu wysokość jest pokazana 3× większa.
  */
-internal const val CURTAIN_EXAGGERATION = 3.0
+internal const val LINE3D_EXAGGERATION = 3.0
 
 /** Rzadszy tor do rysowania: najwyżej [max] punktów, końce zawsze zostają. */
 internal fun thin(track: List<TrackPoint>, max: Int = 1500): List<TrackPoint> =
@@ -73,11 +73,11 @@ internal fun trackGradient(track: List<TrackPoint>, n: Int = 48): List<Pair<Doub
 }
 
 /**
- * „Kurtyna” pod torem: wstęgi wzdłuż kawałków toru, wyciągnięte od ziemi do wysokości lotu (metry).
- * Każda wstęga łączy kilka punktów i ma ok. 0,5 km szerokości, żeby nie zniknęła przy upraszczaniu
- * geometrii na małym przybliżeniu. Po pochyleniu mapy widać profil wznoszenia, przelotu i zniżania.
+ * Tor w 3D jako cienka linia zawieszona na wysokości lotu: wąskie wstęgi wzdłuż kawałków toru,
+ * wyciągnięte tylko o grubość linii (od [base] do [h], metry) — bez ściany do ziemi.
+ * Każda wstęga łączy kilka punktów, żeby nie zniknęła przy upraszczaniu geometrii na małym przybliżeniu.
  */
-internal fun trackCurtain(track: List<TrackPoint>, halfWidthM: Double = 250.0, pieces: Int = 160): FeatureCollection {
+internal fun trackLine3d(track: List<TrackPoint>, halfWidthM: Double = 45.0, thicknessM: Double = 70.0, pieces: Int = 240): FeatureCollection {
     val t = thin(track, 1200)
     if (t.size < 2) return FeatureCollection.fromFeatures(emptyList())
     val step = ((t.size - 1) / pieces).coerceAtLeast(1)
@@ -88,9 +88,11 @@ internal fun trackCurtain(track: List<TrackPoint>, halfWidthM: Double = 250.0, p
         val chunk = t.subList(s, e + 1)
         ribbon(chunk, halfWidthM)?.let { ring ->
             val alt = chunk.map { it.altFt }.average().toInt()
+            val h = alt * 0.3048 * LINE3D_EXAGGERATION
             feats += Feature.fromGeometry(Polygon.fromLngLats(listOf(ring))).apply {
                 addNumberProperty("alt", alt)
-                addNumberProperty("h", alt * 0.3048 * CURTAIN_EXAGGERATION)
+                addNumberProperty("h", h + thicknessM / 2)
+                addNumberProperty("base", (h - thicknessM / 2).coerceAtLeast(0.0))
             }
         }
         s = e
@@ -138,4 +140,32 @@ internal fun trackLabels(track: List<TrackPoint>): FeatureCollection {
         }
     }
     return FeatureCollection.fromFeatures(feats)
+}
+
+/**
+ * Samolot w 3D: płaska sylwetka (kadłub, skrzydła, usterzenie) obrócona zgodnie z kursem i zawieszona
+ * na wysokości lotu — w tym samym przewyższeniu co linia toru, więc leży na jej końcu.
+ * [spanM] — rozpiętość w metrach (dobierana do przybliżenia mapy, żeby symbol miał stałą wielkość na ekranie).
+ */
+internal fun planeShape3d(lat: Double, lon: Double, hdgTrueDeg: Double, altFt: Double, spanM: Double): FeatureCollection {
+    // Sylwetka w jednostkach rozpiętości: x w prawo, y do przodu (nos = +0,5)
+    val shape = listOf(
+        0.0 to 0.5, 0.05 to 0.38, 0.05 to 0.1, 0.5 to -0.02, 0.5 to -0.08, 0.05 to -0.04, 0.04 to -0.32,
+        0.18 to -0.42, 0.18 to -0.47, 0.0 to -0.44, -0.18 to -0.47, -0.18 to -0.42, -0.04 to -0.32, -0.05 to -0.04,
+        -0.5 to -0.08, -0.5 to -0.02, -0.05 to 0.1, -0.05 to 0.38, 0.0 to 0.5,
+    )
+    val h = Math.toRadians(hdgTrueDeg)
+    val mPerLon = 111_320.0 * cos(Math.toRadians(lat))
+    val ring = shape.map { (x, y) ->
+        val east = (x * cos(h) + y * kotlin.math.sin(h)) * spanM
+        val north = (-x * kotlin.math.sin(h) + y * cos(h)) * spanM
+        Point.fromLngLat(lon + east / mPerLon, lat + north / 111_320.0)
+    }
+    val top = altFt * 0.3048 * LINE3D_EXAGGERATION
+    val thick = spanM * 0.08
+    return FeatureCollection.fromFeature(Feature.fromGeometry(Polygon.fromLngLats(listOf(ring))).apply {
+        addNumberProperty("alt", altFt)
+        addNumberProperty("h", top + thick / 2)
+        addNumberProperty("base", (top - thick / 2).coerceAtLeast(0.0))
+    })
 }

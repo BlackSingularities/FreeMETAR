@@ -55,9 +55,11 @@ public sealed class SimulationSource : IFlightSource
         var now = _clock.ElapsedMilliseconds;
         var axes = Axes.Peek(Environment.TickCount64);
         Axes.Tick(Environment.TickCount64); // zdejmij flagę jednorazowego neutralu
+        var aux = Axes.TickAux(Environment.TickCount64);
         var before = _sim.Phase;
         lock (_lock)
         {
+            if (aux?.Speedbrake is { } sb) _sim.State.Controls.SpoilersPct = Math.Round(sb * 100);
             var dt = Math.Min(0.5, (now - _lastTickMs) / 1000.0) * _timeScale;
             _lastTickMs = now;
             _sim.Step(dt, axes, DateTime.UtcNow);

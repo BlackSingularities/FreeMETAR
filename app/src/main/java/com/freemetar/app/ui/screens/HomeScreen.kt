@@ -50,7 +50,6 @@ import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.Water
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -92,7 +91,6 @@ import com.freemetar.app.R
 import com.freemetar.app.data.Airport
 import com.freemetar.app.data.Locator
 import com.freemetar.app.data.Metar
-import com.freemetar.app.domain.Geo
 import com.freemetar.app.domain.fmt
 import com.freemetar.app.ui.components.CategoryBlock
 import com.freemetar.app.ui.components.EmptyState
@@ -124,10 +122,9 @@ fun HomeScreen(vm: MainViewModel, onFlight: () -> Unit = {}, onOpen: (String) ->
     var query by rememberSaveable { mutableStateOf("") }
     var editing by rememberSaveable { mutableStateOf(false) }
     val c = Fm.c
-    val routes by vm.routes.collectAsStateWithLifecycle()
     val live by vm.flightState.collectAsStateWithLifecycle()
     // Puste elementy siatki też dostają odstęp, więc karty bez treści w ogóle nie dodajemy
-    val hasFlight = live != null || routes.any { it.id == settings.activeRouteId }
+    val hasFlight = live != null
 
     val gridState = androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
@@ -272,45 +269,37 @@ private fun Header(onLogo: () -> Unit) {
 }
 
 /**
- * „Twój lot”: dane z symulatora (jeśli połączony) i aktywny plan z kategoriami lotu na obu końcach.
- * Nic nie rysuje, gdy nie ma ani planu, ani połączenia.
+ * „Twój lot”: dane z symulatora i następny punkt planu lotu z GPS symulatora.
+ * Nic nie rysuje bez połączenia z symulatorem.
  */
 @Composable
 private fun YourFlightCard(vm: MainViewModel, onFlight: () -> Unit, onOpen: (String) -> Unit) {
     val c = Fm.c
-    val settings by vm.settings.collectAsStateWithLifecycle()
-    val routes by vm.routes.collectAsStateWithLifecycle()
-    val briefing by vm.routeBriefing.collectAsStateWithLifecycle()
     val live by vm.flightState.collectAsStateWithLifecycle()
-    val route = routes.firstOrNull { it.id == settings.activeRouteId }
-    val s = live
-    if (route == null && s == null) return
+    val s = live ?: return
+    val gps = s.avionics?.gps?.takeIf { it.activeFlightPlan && !it.nextId.isNullOrBlank() }
 
     Panel(onClick = onFlight) {
         Column(Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(8.dp).clip(RoundedCornerShape(50)).background(if (s != null) c.green else c.ink2))
+                Box(Modifier.size(8.dp).clip(RoundedCornerShape(50)).background(c.green))
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    if (s != null) s.aircraft.title ?: loc("Symulator połączony", "Simulator connected") else loc("Aktywny plan lotu", "Active flight plan"),
+                    s.aircraft.title ?: loc("Symulator połączony", "Simulator connected"),
                     style = MaterialTheme.typography.labelLarge, color = c.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
                 )
                 Text(
-                    if (s != null) loc("Kokpit", "Cockpit") else loc("Plan", "Plan"),
+                    loc("Kokpit", "Cockpit"),
                     fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = c.paper,
                     modifier = Modifier.clip(RoundedCornerShape(50)).background(c.ink).padding(horizontal = 12.dp, vertical = 5.dp),
                 )
             }
-            if (route != null) {
-                Spacer(Modifier.size(10.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RouteEnd(route.origin, briefing?.metars?.get(route.origin), Modifier.weight(1f)) { onOpen(route.origin) }
-                    Text(route.cruiseFl?.let { "FL%03d".format(it) } ?: "→", fontFamily = Mono, fontSize = 13.sp, color = c.magenta,
-                        modifier = Modifier.padding(horizontal = 10.dp))
-                    RouteEnd(route.destination, briefing?.metars?.get(route.destination), Modifier.weight(1f), end = true) { onOpen(route.destination) }
-                }
+            if (gps != null) {
+                Spacer(Modifier.size(8.dp))
+                Text("→ ${gps.nextId}" + (gps.nextDistNm?.let { "  %.1f NM".format(it) } ?: ""),
+                    fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = c.magenta, maxLines = 1)
             }
-            if (s != null) {
+            run {
                 Spacer(Modifier.size(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     StripField("ALT", s.position.altIndFt?.let { "%,d".format(it.roundToInt()).replace(',', ' ') } ?: "—", Modifier.weight(1.2f))
@@ -320,19 +309,6 @@ private fun YourFlightCard(vm: MainViewModel, onFlight: () -> Unit, onOpen: (Str
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun RouteEnd(ident: String, metar: Metar?, modifier: Modifier, end: Boolean = false, onClick: () -> Unit) {
-    val c = Fm.c
-    Column(modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onClick).padding(vertical = 2.dp), horizontalAlignment = if (end) Alignment.End else Alignment.Start) {
-        Text(ident, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 22.sp, color = c.ink)
-        val cat = metar?.flightCategory
-        Text(
-            listOfNotNull(cat, metar?.let { windShort(it) }).joinToString("  ").ifBlank { "—" },
-            fontFamily = Mono, fontSize = 12.sp, color = if (cat != null) c.category(cat) else c.ink2, maxLines = 1,
-        )
     }
 }
 

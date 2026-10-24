@@ -241,13 +241,27 @@ public sealed class MsfsSource : IFlightSource
         while (await timer.WaitForNextTickAsync(ct))
         {
             var output = Axes.Tick(Environment.TickCount64);
+            var aux = Axes.TickAux(Environment.TickCount64);
             var client = _client;
-            if (output == null || client is not { IsConnected: true }) continue;
+            if ((output == null && aux == null) || client is not { IsConnected: true }) continue;
             try
             {
-                await TransmitAsync(client, "AXIS_AILERONS_SET", ToAxis(output.Aileron * AileronSign), ct);
-                await TransmitAsync(client, "AXIS_ELEVATOR_SET", ToAxis(output.Elevator * ElevatorSign), ct);
-                await TransmitAsync(client, "AXIS_RUDDER_SET", ToAxis(output.Rudder * RudderSign), ct);
+                if (output != null)
+                {
+                    await TransmitAsync(client, "AXIS_AILERONS_SET", ToAxis(output.Aileron * AileronSign), ct);
+                    await TransmitAsync(client, "AXIS_ELEVATOR_SET", ToAxis(output.Elevator * ElevatorSign), ct);
+                    await TransmitAsync(client, "AXIS_RUDDER_SET", ToAxis(output.Rudder * RudderSign), ct);
+                }
+                if (aux?.Speedbrake is { } sb) await TransmitAsync(client, "AXIS_SPOILER_SET", ToLever(sb), ct);
+                if (aux?.Brake is { } br)
+                {
+                    // Hamulce kół tylko na ziemi — w powietrzu zawsze puszczone
+                    bool onGround;
+                    lock (_lock) onGround = _last is { } d && B(d.OnGround);
+                    var v = ToLever(onGround ? br : 0);
+                    await TransmitAsync(client, "AXIS_LEFT_BRAKE_SET", v, ct);
+                    await TransmitAsync(client, "AXIS_RIGHT_BRAKE_SET", v, ct);
+                }
                 Interlocked.Exchange(ref _failStreak, 0);
             }
             catch (Exception e) when (e is not OperationCanceledException)
@@ -259,6 +273,9 @@ public sealed class MsfsSource : IFlightSource
     }
 
     private static uint ToAxis(double v) => unchecked((uint)(int)Math.Round(Math.Clamp(v, -1, 1) * AxisRange));
+
+    // Dźwignia/pedał 0…1 na pełny zakres osi: −16383 = schowane / puszczone, 16383 = do końca.
+    private static uint ToLever(double v) => unchecked((uint)(int)Math.Round((Math.Clamp(v, 0, 1) * 2 - 1) * AxisRange));
 
     // Biblioteka serializuje wywołania na uchwycie SimConnect i rzuca wyjątek przy błędzie HRESULT.
     private Task TransmitAsync(SimConnectClient client, string eventName, uint data, CancellationToken ct) =>
@@ -350,14 +367,24 @@ public sealed class MsfsSource : IFlightSource
         try
         {
             await client.SimVars.SetAsync("CAMERA STATE", "Enum", (double)target, cancellationToken: ct);
+            if (await WaitForCameraAsync(target, ct)) return;
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
             SimCallFailed();
             Log?.Invoke($"Kamera: zapis CAMERA STATE nie powiódł się ({e.Message})");
-            return;
         }
-        if (!await WaitForCameraAsync(target, ct)) Log?.Invoke($"Kamera: MSFS nie przełączył widoku na {target}");
+        // Zapas: część wersji MSFS (zwłaszcza 2024) ignoruje zapis CAMERA STATE bez błędu. Kabinę i widok
+        // zewnętrzny przełącza wtedy zdarzenie VIEW_MODE (jak klawisz zmiany widoku) — najwyżej dwa razy.
+        if (target is 2 or 3)
+        {
+            for (var i = 0; i < 2; i++)
+            {
+                await TransmitAsync(client, "VIEW_MODE", 0, ct);
+                if (await WaitForCameraAsync(target, ct)) return;
+            }
+        }
+        Log?.Invoke($"Kamera: MSFS nie przełączył widoku na {target}");
     }
 
     private async Task<bool> WaitForCameraAsync(int target, CancellationToken ct)
@@ -480,8 +507,69 @@ public sealed class MsfsSource : IFlightSource
             Engines = engines,
             Environment = new EnvironmentData { WindDirDeg = R(d.WindDir, 0), WindSpdKt = R(d.WindSpd, 0), OatC = R(d.Oat, 1), QnhHpa = R(d.Qnh, 1) },
             Axes = new AxesData { Active = axesActive },
+            Avionics = Avionics(d),
         };
     }
+
+    // GPS WP BEARING / DESIRED TRACK są rzeczywiste — na wyświetlacze magnetyczne przez MAGVAR (E +).
+    private static double Mag(double trueDeg, double magVar) => R(((trueDeg - magVar) % 360 + 360) % 360, 1);
+
+    internal static AvionicsData Avionics(in MsfsData d)
+    {
+        var magVar = d.MagVar > 180 ? d.MagVar - 360 : d.MagVar;
+        return new AvionicsData
+        {
+            BaroHpa = R(d.Qnh, 1), BaroStd = B(d.BaroStd), PressureAltFt = R(d.PressureAlt, 0),
+            RadioAltFt = R(d.RadioAlt, 0), DecisionHeightFt = R(d.DecisionHeight, 0),
+            // Kulka: ±128 = pełne wychylenie
+            SlipBall = R(Math.Clamp(d.SlipBall / 128.0, -1, 1), 3), TurnRateDps = R(d.TurnRate, 2),
+            GForce = R(d.GForce, 2), AoaDeg = R(d.Aoa, 1),
+            // Jak PLANE PITCH/BANK: w MSFS dodatnie = nos w dół / w lewo
+            AttIndPitchDeg = R(-d.AttIndPitch, 1), AttIndBankDeg = R(-d.AttIndBank, 1), HdgIndDeg = R(d.HdgInd, 1),
+            SuctionInHg = R(d.Suction, 2), MagVarDeg = R(magVar, 1), TatC = R(d.Tat, 1),
+            Speeds = new SpeedLimits { Vs0Kt = R(d.Vs0, 0), Vs1Kt = R(d.Vs1, 0), VcKt = R(d.Vc, 0), VmoKt = R(d.BarberPole, 0) },
+            StallWarning = B(d.StallWarning), OverspeedWarning = B(d.OverspeedWarning),
+            Marker = (int)d.Marker switch { 1 => "outer", 2 => "middle", 3 => "inner", _ => "none" },
+            Nav1 = new NavReceiver
+            {
+                HasNav = B(d.Nav1Has), HasLoc = B(d.Nav1HasLoc), HasGs = B(d.Nav1HasGs), HasDme = B(d.Nav1HasDme),
+                Ident = AircraftClassifier.CleanAtcString(d.Nav1Ident), ObsDeg = R(d.Nav1Obs, 0),
+                LocCourseDeg = R(d.Nav1LocCourse, 0), RadialDeg = R(d.Nav1Radial, 0),
+                // CDI ±127 i GSI ±119 = pełne wychylenie (2,5 kropki)
+                CdiDots = Dots(d.Nav1Cdi, 127), GsDots = Dots(d.Nav1Gsi, 119),
+                DmeNm = R(d.Nav1Dme, 1), ToFrom = ToFrom(d.Nav1ToFrom),
+            },
+            Nav2 = new NavReceiver
+            {
+                HasNav = B(d.Nav2Has), HasLoc = B(d.Nav2HasLoc), HasDme = B(d.Nav2HasDme),
+                Ident = AircraftClassifier.CleanAtcString(d.Nav2Ident), ObsDeg = R(d.Nav2Obs, 0), RadialDeg = R(d.Nav2Radial, 0),
+                CdiDots = Dots(d.Nav2Cdi, 127), DmeNm = R(d.Nav2Dme, 1), ToFrom = ToFrom(d.Nav2ToFrom),
+            },
+            Adf = new AdfReceiver { HasSignal = d.AdfSignal > 0, RelBearingDeg = R(d.AdfRadial, 0) },
+            Gps = new GpsData
+            {
+                ActiveFlightPlan = B(d.GpsActivePlan), ApproachActive = B(d.GpsApproach), DrivesNav1 = B(d.GpsDrivesNav1),
+                NextId = AircraftClassifier.CleanAtcString(d.GpsNextId), PrevId = AircraftClassifier.CleanAtcString(d.GpsPrevId),
+                NextDistNm = R(d.GpsNextDist, 1), NextBearingMagDeg = Mag(d.GpsNextBearingTrue, magVar),
+                DesiredTrackMagDeg = Mag(d.GpsDtkTrue, magVar), CrossTrackNm = R(d.GpsXtk, 2),
+                NextEteSec = R(d.GpsNextEte, 0), DestEteSec = R(d.GpsDestEte, 0),
+                NextLat = R(d.GpsNextLat, 6), NextLon = R(d.GpsNextLon, 6), PrevLat = R(d.GpsPrevLat, 6), PrevLon = R(d.GpsPrevLon, 6),
+                WpIndex = (int)d.GpsWpIndex, WpCount = (int)d.GpsWpCount,
+            },
+            Fd = new FlightDirector { Active = B(d.ApFd), PitchDeg = R(-d.FdPitch, 1), BankDeg = R(-d.FdBank, 1) },
+            Ap = new ApModesExtra
+            {
+                AltArmed = B(d.ApAltArm), GsArmed = B(d.ApGsArm), GsActive = B(d.ApGsHold), BackCourse = B(d.ApBc),
+                WingLeveler = B(d.ApWingLeveler), PitchHold = B(d.ApPitchHold), AirspeedHold = B(d.ApSpdHold),
+                MachHold = B(d.ApMachHold), Toga = B(d.ApToga), YawDamper = B(d.ApYawDamper), MachVar = R(d.ApMachVar, 3),
+            },
+            BrakeLeftPct = R(d.BrakeLeft, 0), BrakeRightPct = R(d.BrakeRight, 0),
+        };
+    }
+
+    private static double Dots(double raw, double full) => R(Math.Clamp(raw / full * 2.5, -2.5, 2.5), 2);
+
+    private static string ToFrom(double v) => (int)v switch { 1 => "to", 2 => "from", _ => "off" };
 
     private static AircraftInfo Aircraft(in MsfsData d, bool paused)
     {

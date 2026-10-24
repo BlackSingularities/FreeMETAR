@@ -108,4 +108,28 @@ class LandingTest {
         t += 1000; r.onState(st(52.2, 20.0, 90.0, true), t)
         assertEquals(-300, r.lastLanding!!.vsFpm)
     }
+
+    @Test
+    fun recorderScoresEachTouchAndGoSeparately() {
+        val r = FlightRecorder(nearestAirport = { lat, _ -> if (lat < 52.15) "EPWA" else "EPMO" })
+        var t = 0L
+        var lat = 52.0
+        fun fly(n: Int) = repeat(n) { t += 5000; lat += 0.005; r.onState(st(lat, 20.0, 100.0, false, -300.0), t) }
+        r.onState(st(lat, 20.0, 100.0, false, -300.0), t)
+        fly(20)
+        // Touch and go: przyziemienie i od razu start
+        t += 1000; r.onState(st(lat, 20.0, 90.0, true, td = Touchdown(seq = 1, vsFpm = -150.0, lat = lat, lon = 20.0)), t)
+        val first = r.lastLanding!!
+        assertEquals("EPWA", first.airport)
+        fly(30)
+        t += 1000; r.onState(st(lat, 20.0, 90.0, true, td = Touchdown(seq = 2, vsFpm = -550.0, lat = lat, lon = 20.0)), t)
+        assertTrue(r.lastLanding !== first)
+        t += 5000; r.onState(st(lat, 20.0, 2.0, true), t)
+        t += 61_000; val log = r.onState(st(lat, 20.0, 0.0, true), t)!!
+        assertEquals(2, log.landings.size)
+        assertEquals(listOf(-150, -550), log.landings.map { it.vsFpm })
+        assertEquals(listOf("EPWA", "EPMO"), log.landings.map { it.airport })
+        assertEquals(0, log.landings[0].bounces)
+        assertEquals(-550, log.landing!!.vsFpm)
+    }
 }

@@ -114,7 +114,7 @@ fun LogbookScreen(vm: MainViewModel, onBack: () -> Unit, onOpenFlight: (String) 
     val shown = remember(logs, filter) {
         when (filter) {
             LogFilter.ALL -> logs
-            LogFilter.SCORED -> logs.filter { it.landing != null }
+            LogFilter.SCORED -> logs.filter { it.allLandings.isNotEmpty() }
             LogFilter.RECENT -> logs.filter { now - it.start < 30L * 24 * 3600 * 1000 }
         }
     }
@@ -194,6 +194,7 @@ private fun LogRow(f: FlightLog, onClick: () -> Unit) {
                     "${f.distanceNm} NM",
                     if (f.maxAltFt >= 18_000) "FL%03d".format(f.maxAltFt / 100) else "${f.maxAltFt} ft",
                     f.landing?.let { "${it.vsFpm} ft/min" },
+                    f.allLandings.size.takeIf { it > 1 }?.let { loc("lądowania: $it", "landings: $it") },
                 ).joinToString("   "),
                 fontFamily = Mono, fontSize = 12.sp, color = c.ink, modifier = Modifier.padding(top = 2.dp),
             )

@@ -432,6 +432,18 @@ public sealed class LinkServer : IDisposable
             await SendError(session, msg.Id, ErrorCodes.InvalidValue, "Osie muszą być liczbami −1…1");
             return;
         }
+        if (!TryAxis(msg, "speedbrake", out var sb) || !TryAxis(msg, "brake", out var br))
+        {
+            await SendError(session, msg.Id, ErrorCodes.InvalidValue, "Hamulce muszą być liczbami 0…1");
+            return;
+        }
+        if (sb.HasValue || br.HasValue)
+        {
+            if (Axes.UpdateAux(session.Id, sb, br, Environment.TickCount64) == AxisUpdateResult.Busy)
+                await SendError(session, msg.Id, ErrorCodes.NotAllowed, "Hamulcami steruje już inny telefon");
+            // Sama wiadomość o hamulcach nie przejmuje lotek, steru wysokości i kierunku
+            if (a == null && e == null && r == null) return;
+        }
 
         var wasActive = Axes.Owner == session.Id;
         switch (Axes.Update(session.Id, a, e, r, Environment.TickCount64))

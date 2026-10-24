@@ -15,6 +15,8 @@ data class GamepadState(
     val pitch: Double = 0.0,
     /** −1…1: ster kierunku (twist drążka albo prawa gałka X). */
     val yaw: Double = 0.0,
+    /** 0…1: hamulce kół ze spustów L2/R2 (większy z dwóch). */
+    val brake: Double = 0.0,
     val lastButton: Int? = null,
     val lastButtonAt: Long = 0,
 )
@@ -55,6 +57,9 @@ object Gamepad {
             // Oś Y: do przodu = ujemna; ster wysokości „do siebie” = +
             pitch = -dead(axis(MotionEvent.AXIS_Y)),
             yaw = dead(axis(yawAxis)),
+            // Spusty: LTRIGGER/RTRIGGER, a na części padów BRAKE/GAS — 0 puszczony … 1 wciśnięty
+            brake = maxOf(axis(MotionEvent.AXIS_LTRIGGER), axis(MotionEvent.AXIS_RTRIGGER), axis(MotionEvent.AXIS_BRAKE))
+                .coerceIn(0f, 1f).let { if (it < 0.05f) 0.0 else it.toDouble() },
         )
         return true
     }

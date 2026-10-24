@@ -20,6 +20,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.material.icons.automirrored.outlined.MenuOpen
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
@@ -55,6 +60,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -71,7 +77,6 @@ import com.freemetar.app.ui.components.Rule
 import com.freemetar.app.ui.components.UpdateDialog
 import com.freemetar.app.ui.components.isWide
 import com.freemetar.app.ui.screens.BriefingScreen
-import com.freemetar.app.ui.plan.PlanEditorScreen
 import com.freemetar.app.ui.flight.FlightDetailScreen
 import com.freemetar.app.ui.screens.FlightScreen
 import com.freemetar.app.ui.screens.MapScreen
@@ -156,7 +161,6 @@ class MainActivity : ComponentActivity() {
                 val route = entry?.destination?.route
                 val activeTab = when {
                     route?.startsWith("airport") == true -> "home"
-                    route?.startsWith("plan") == true -> "flight"
                     route?.startsWith("flightlog") == true -> "logbook"
                     else -> route
                 }
@@ -199,8 +203,10 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                 ) { pad ->
+                    // Tablet: lewy pasek zakładek można schować, żeby kokpit i panele dostały całą szerokość
+                    var railHidden by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
                     Row(Modifier.fillMaxSize().padding(pad)) {
-                        if (wide) {
+                        if (wide && !railHidden) {
                             // Telefon poziomo (mało wysokości): bez logo i podpisów, żeby zmieściło się 5 zakładek
                             val compactRail = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 520
                             NavigationRail(containerColor = c.paper, modifier = Modifier.fillMaxHeight()) {
@@ -226,6 +232,11 @@ class MainActivity : ComponentActivity() {
                                         ),
                                     )
                                 }
+                                Spacer(Modifier.weight(1f))
+                                androidx.compose.material3.IconButton({ railHidden = true }) {
+                                    Icon(Icons.AutoMirrored.Outlined.MenuOpen, loc("Schowaj pasek zakładek", "Hide the tab bar"), tint = c.ink2)
+                                }
+                                Spacer(Modifier.size(8.dp))
                             }
                             Box(Modifier.width(1.dp).fillMaxHeight().background(c.rule))
                         }
@@ -238,6 +249,15 @@ class MainActivity : ComponentActivity() {
                             onDispose { rootView.keepScreenOn = false }
                         }
                         Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.TopCenter) {
+                            // Pasek aktywnego lotu na pozostałych zakładkach (zajmuje miejsce paska stanu, ekran pod nim nie dodaje odstępu)
+                            val showStrip = liveState != null && activeTab != "flight" && route in tabs.map { it.route }
+                            androidx.compose.foundation.layout.Column(Modifier.fillMaxSize()) {
+                            if (showStrip) com.freemetar.app.ui.flight.LiveFlightStrip(liveState!!, onClick = { nav.goTab("flight") },
+                                Modifier.statusBarsPadding().padding(start = if (wide && railHidden) 44.dp else 0.dp))
+                            Box(
+                                (if (showStrip) Modifier.consumeWindowInsets(WindowInsets.statusBars) else Modifier).weight(1f).fillMaxWidth(),
+                                contentAlignment = Alignment.TopCenter,
+                            ) {
                             // Ekran powitalny przy pierwszym uruchomieniu
                             // Dopiero po wczytaniu ustawień — inaczej ekran mignąłby przy każdym starcie i zresetował nawigację
                             val settingsLoaded by vm.settingsLoaded.collectAsStateWithLifecycle()
@@ -293,22 +313,12 @@ class MainActivity : ComponentActivity() {
                                 composable("flight") {
                                     FlightScreen(
                                         vm,
-                                        onOpen = { id -> vm.open(id); nav.navigate("airport/$id") },
-                                        onShowMap = { vm.focusRouteOnMap(); nav.goTab("map") },
-                                        onEditPlan = { id -> vm.startEdit(id); nav.navigate("plan/$id") },
-                                        onOpenFlight = { id -> nav.navigate("flightlog/$id") },
                                         onOpenLogbook = { nav.goTab("logbook") },
-                                        onOpenSettings = { nav.goTab("settings") },
                                         onOpenChecklists = { nav.navigate("checklists") },
                                     )
                                 }
                                 composable("logbook") {
                                     com.freemetar.app.ui.flight.LogbookScreen(vm, onBack = { nav.goTab("flight") }, onOpenFlight = { id -> nav.navigate("flightlog/$id") })
-                                }
-                                composable("plan/{id}") { backStack ->
-                                    val id = backStack.arguments?.getString("id").orEmpty()
-                                    LaunchedEffect(id) { if (vm.editing.value?.id != id) vm.startEdit(id) }
-                                    PlanEditorScreen(vm, onBack = { nav.popBackStack() }, onShowMap = { vm.focusRouteOnMap(); nav.goTab("map") })
                                 }
                                 composable("flightlog/{id}") { backStack ->
                                     FlightDetailScreen(vm, backStack.arguments?.getString("id").orEmpty(), onBack = { nav.popBackStack() }, onShowMap = { nav.goTab("map") })
@@ -342,6 +352,14 @@ class MainActivity : ComponentActivity() {
                             }
                             floating()
                             }
+                            }
+                            }
+                            // Schowany pasek: mały przycisk w lewym górnym rogu przywraca zakładki
+                            if (wide && railHidden) androidx.compose.material3.IconButton(
+                                { railHidden = false },
+                                Modifier.align(Alignment.TopStart).statusBarsPadding().padding(2.dp).size(40.dp)
+                                    .clip(androidx.compose.foundation.shape.CircleShape).background(c.paper.copy(alpha = 0.85f)),
+                            ) { Icon(Icons.Outlined.Menu, loc("Pokaż pasek zakładek", "Show the tab bar"), tint = c.ink) }
                         }
                     }
                 }

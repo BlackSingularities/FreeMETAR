@@ -160,6 +160,46 @@ serwera w ms od epoki Unix.
   od ostatniej klatki w powietrzu do 0,6 s po kontakcie; `headingTrueDeg`, `iasKt`, `gsKt` — z chwili
   kontaktu. Wartości mogą się jeszcze zmienić w ciągu 0,6 s po kontakcie (ten sam `seq`).
   Tryb symulacji: przyziemienie w EPGD na pasie 29, −180 ft/min, 1,2 g.
+- `avionics` — dane dla wyświetlaczy PFD/MFD (MSFS; brak pola = starszy Link albo tryb symulacji).
+  Wszystkie kursy magnetyczne, prędkości w kt, wysokości w ft:
+
+  ```json
+  "avionics": {
+    "baroHpa": 1013.2, "baroStd": false, "pressureAltFt": 3480, "radioAltFt": 2950, "decisionHeightFt": 200,
+    "slipBall": 0.05, "turnRateDps": 1.2, "gForce": 1.02, "aoaDeg": 3.1,
+    "attIndPitchDeg": 2.4, "attIndBankDeg": -1.0, "hdgIndDeg": 287.5, "suctionInHg": 5.0,
+    "magVarDeg": 6.1, "tatC": 9.5,
+    "speeds": { "vs0Kt": 40, "vs1Kt": 48, "vcKt": 129, "vmoKt": 163 },
+    "stallWarning": false, "overspeedWarning": false, "marker": "none",
+    "nav1": { "hasNav": true, "hasLoc": true, "hasGs": true, "hasDme": true, "ident": "IGD",
+              "obsDeg": 292, "locCourseDeg": 292, "radialDeg": 112, "cdiDots": -0.4, "gsDots": 0.3,
+              "dmeNm": 8.4, "toFrom": "to" },
+    "nav2": { "hasNav": false, "...": "jak nav1, bez GS" },
+    "adf": { "hasSignal": false, "relBearingDeg": 0 },
+    "gps": { "activeFlightPlan": true, "approachActive": false, "drivesNav1": false, "nextId": "KABEL",
+             "prevId": "SOXER", "nextDistNm": 12.4, "nextBearingMagDeg": 301, "desiredTrackMagDeg": 298,
+             "crossTrackNm": 0.12, "nextEteSec": 260, "destEteSec": 2900,
+             "nextLat": 54.41, "nextLon": 18.32, "prevLat": 54.12, "prevLon": 18.95, "wpIndex": 4, "wpCount": 9 },
+    "fd": { "active": true, "pitchDeg": 2.5, "bankDeg": -8.0 },
+    "ap": { "altArmed": true, "gsArmed": false, "gsActive": false, "backCourse": false, "wingLeveler": false,
+            "pitchHold": false, "airspeedHold": true, "machHold": false, "toga": false, "yawDamper": true,
+            "machVar": 0.78 },
+    "brakeLeftPct": 0, "brakeRightPct": 0
+  }
+  ```
+
+  - `slipBall` −1 (kulka w lewo) … 1 (w prawo) z `TURN COORDINATOR BALL`; `turnRateDps` + = w prawo.
+  - `attInd*`, `hdgInd` — wskazania przyrządów żyroskopowych (przy awarii podciśnienia odbiegają
+    od rzeczywistego położenia); telefon rysuje z nich zegary analogowe.
+  - `speeds` z `DESIGN SPEED VS0/VS1/VC` i `AIRSPEED BARBER POLE` (0 = brak danych) — łuki i pasy prędkości.
+  - `nav1/nav2.cdiDots` i `gsDots` w kropkach −2,5…2,5 (CDI ±127, GSI ±119 z MSFS): CDI + = kurs w prawo,
+    GS + = ścieżka powyżej samolotu. `toFrom`: `to` / `from` / `off`.
+  - `gps.*` z SimVarów `GPS WP *` (namiar i DTK przeliczone na magnetyczne przez `MAGVAR`);
+    `crossTrackNm` + = samolot na prawo od kursu. `next*/prev*Lat/Lon` — punkty bieżącego odcinka
+    (0/0 = brak), `wpIndex`/`wpCount` — numer następnego punktu i liczba punktów planu lotu w MSFS.
+  - `fd` — polecenia dyrektora lotu (`AUTOPILOT FLIGHT DIRECTOR PITCH/BANK`): pochylenie + nos w górę,
+    przechylenie + w prawo.
+  - `ap` — tryby uzbrojone i dodatkowe (ALT ARM, G/S ARM/HOLD, BC, LVL, PITCH, SPD/MACH HOLD, TO/GA, YD).
 
 ### `status`
 
@@ -489,6 +529,22 @@ Telefon zapisuje odpowiedzi u siebie i nie musi pytać ponownie.
 
 W MSFS osie trafiają do zdarzeń `AXIS_AILERONS_SET`, `AXIS_ELEVATOR_SET`, `AXIS_RUDDER_SET`
 (±16383).
+
+#### Hamulce: `speedbrake` i `brake`
+
+```json
+{ "v": 1, "type": "axis", "speedbrake": 0.5 }
+{ "v": 1, "type": "axis", "brake": 0.8 }
+```
+
+- Dwie osobne osie 0…1, z **własnym właścicielem** — wiadomość z samymi hamulcami nie przejmuje
+  lotek, steru wysokości i kierunku (joystick przy symulatorze dalej działa).
+- `speedbrake` — hamulec aerodynamiczny (`AXIS_SPOILER_SET`, 0 = schowany, 1 = pełny). Zostaje
+  w ustawionej pozycji jak dźwignia; Link wysyła go raz po każdej zmianie.
+- `brake` — hamulce kół, oba naraz (`AXIS_LEFT_BRAKE_SET` i `AXIS_RIGHT_BRAKE_SET`). Działają jak pedały:
+  telefon wysyła je (co 50 ms), dopóki są wciśnięte; po 500 ms ciszy albo `release` Link sam je puszcza.
+  **Tylko na ziemi** — w powietrzu Link zawsze wysyła puszczone hamulce.
+- Inny telefon sterujący hamulcami dostaje `error` `not_allowed`; zakres spoza 0…1 jest przycinany.
 
 ## 5. Bezpieczeństwo
 

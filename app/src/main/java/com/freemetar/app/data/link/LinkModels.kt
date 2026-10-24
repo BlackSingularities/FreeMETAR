@@ -69,6 +69,47 @@ data class LinkServer(val name: String, val host: String, val ip: String, val po
 @Serializable data class Environment(val windDirDeg: Double? = null, val windSpdKt: Double? = null, val oatC: Double? = null, val qnhHpa: Double? = null)
 @Serializable data class Axes(val active: Boolean = false)
 
+/** Prędkości charakterystyczne samolotu z symulatora (kt; brak = null albo 0). */
+@Serializable data class SpeedLimits(val vs0Kt: Double? = null, val vs1Kt: Double? = null, val vcKt: Double? = null, val vmoKt: Double? = null)
+/** Odbiornik NAV: odchylenia w kropkach (−2,5…2,5; CDI + = kurs w prawo, GS + = ścieżka powyżej), kursy magnetyczne. */
+@Serializable data class NavReceiver(
+    val hasNav: Boolean = false, val hasLoc: Boolean = false, val hasGs: Boolean = false, val hasDme: Boolean = false,
+    val ident: String? = null, val obsDeg: Double? = null, val locCourseDeg: Double? = null, val radialDeg: Double? = null,
+    val cdiDots: Double? = null, val gsDots: Double? = null, val dmeNm: Double? = null, val toFrom: String? = null,
+)
+@Serializable data class AdfReceiver(val hasSignal: Boolean = false, val relBearingDeg: Double? = null)
+@Serializable data class GpsData(
+    val activeFlightPlan: Boolean = false, val approachActive: Boolean = false, val drivesNav1: Boolean = false,
+    val nextId: String? = null, val prevId: String? = null, val nextDistNm: Double? = null, val nextBearingMagDeg: Double? = null,
+    val desiredTrackMagDeg: Double? = null, val crossTrackNm: Double? = null, val nextEteSec: Double? = null, val destEteSec: Double? = null,
+    /** Punkty bieżącego odcinka (0/0 = brak) i miejsce w planie lotu symulatora. */
+    val nextLat: Double? = null, val nextLon: Double? = null, val prevLat: Double? = null, val prevLon: Double? = null,
+    val wpIndex: Int? = null, val wpCount: Int? = null,
+)
+/** Polecenia dyrektora lotu: pochylenie + nos w górę, przechylenie + w prawo. */
+@Serializable data class FlightDirector(val active: Boolean = false, val pitchDeg: Double? = null, val bankDeg: Double? = null)
+@Serializable data class ApModesExtra(
+    val altArmed: Boolean = false, val gsArmed: Boolean = false, val gsActive: Boolean = false, val backCourse: Boolean = false,
+    val wingLeveler: Boolean = false, val pitchHold: Boolean = false, val airspeedHold: Boolean = false, val machHold: Boolean = false,
+    val toga: Boolean = false, val yawDamper: Boolean = false, val machVar: Double? = null,
+)
+
+/** Dane dla wyświetlaczy PFD/MFD z Link (od wersji z blokiem `avionics`); starsze wersje go nie wysyłają. */
+@Serializable data class Avionics(
+    val baroHpa: Double? = null, val baroStd: Boolean = false, val pressureAltFt: Double? = null,
+    val radioAltFt: Double? = null, val decisionHeightFt: Double? = null,
+    /** Kulka −1 (lewo) … 1 (prawo), zakręt °/s (+ w prawo). */
+    val slipBall: Double? = null, val turnRateDps: Double? = null, val gForce: Double? = null, val aoaDeg: Double? = null,
+    val attIndPitchDeg: Double? = null, val attIndBankDeg: Double? = null, val hdgIndDeg: Double? = null,
+    val suctionInHg: Double? = null, val magVarDeg: Double? = null, val tatC: Double? = null,
+    val speeds: SpeedLimits = SpeedLimits(), val stallWarning: Boolean = false, val overspeedWarning: Boolean = false,
+    /** none / outer / middle / inner */
+    val marker: String? = null,
+    val nav1: NavReceiver = NavReceiver(), val nav2: NavReceiver = NavReceiver(), val adf: AdfReceiver = AdfReceiver(),
+    val gps: GpsData = GpsData(), val fd: FlightDirector = FlightDirector(), val ap: ApModesExtra = ApModesExtra(),
+    val brakeLeftPct: Double? = null, val brakeRightPct: Double? = null,
+)
+
 /** Pełny stan lotu z jednego komunikatu `state`. */
 @Serializable
 data class FlightState(
@@ -87,6 +128,7 @@ data class FlightState(
     val environment: Environment = Environment(),
     val axes: Axes = Axes(),
     val touchdown: Touchdown? = null,
+    val avionics: Avionics? = null,
 )
 
 /** Koperta przychodzącej wiadomości — pola wszystkich typów, czytamy te, które pasują do `type`. */
@@ -129,5 +171,7 @@ data class Hello(
 data class AxisMessage(
     val v: Int = 1, val type: String = "axis",
     val aileron: Double? = null, val elevator: Double? = null, val rudder: Double? = null,
+    /** Hamulec aerodynamiczny (spoilery) i hamulce kół, 0…1 — osobny właściciel, nie przejmują lotek. */
+    val speedbrake: Double? = null, val brake: Double? = null,
     val release: Boolean? = null,
 )

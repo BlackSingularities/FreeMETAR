@@ -29,9 +29,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -97,6 +97,7 @@ fun FlightControlPanel(
         StickMode.TILT -> YokePanel(link, s)
         StickMode.GAMEPAD -> GamepadPanel(link)
     }
+    BrakeAxes(link, s)
     Text(
         tr("Link ogranicza wychylenie do ±${(link.limits.maxDeflection * 100).toInt()}% i oddaje stery po 0,5 s bez sygnału.",
             "Link limits deflection to ±${(link.limits.maxDeflection * 100).toInt()}% and releases the controls after 0.5 s without input."),
@@ -207,9 +208,13 @@ private fun GamepadPanel(link: LinkClient) {
 
     LaunchedEffect(enabled) {
         if (!enabled) { link.releaseAxes(); return@LaunchedEffect }
+        var brakeWasOn = false
         while (isActive && enabled) {
             val st = state
             link.axis(st.roll * link.limits.maxDeflection, st.pitch * link.limits.maxDeflection, st.yaw * link.limits.maxDeflection)
+            // Spusty L2/R2 = hamulce kół (osobna oś); puszczone wysyłają jedno 0
+            if (st.brake > 0 || brakeWasOn) link.brakes(brake = st.brake)
+            brakeWasOn = st.brake > 0
             delay(50)
         }
     }
@@ -234,10 +239,11 @@ private fun GamepadPanel(link: LinkClient) {
     }
     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         AxisReadout(tr("Lotki", "Ail"), g.roll); AxisReadout(tr("Ster wys.", "Elev"), g.pitch); AxisReadout(tr("Ster kier.", "Rud"), g.yaw)
+        AxisReadout(tr("Hamulce", "Brakes"), g.brake)
     }
     Text(
-        tr("Y podwozie · L1/R1 klapy · X autopilot · B hamulec postojowy · Select spoilery · krzyżak ↑↓ trym",
-            "Y gear · L1/R1 flaps · X autopilot · B parking brake · Select spoilers · D-pad ↑↓ trim"),
+        tr("Y podwozie · L1/R1 klapy · L2/R2 hamulce kół · X autopilot · B hamulec postojowy · Select spoilery · krzyżak ↑↓ trym",
+            "Y gear · L1/R1 flaps · L2/R2 wheel brakes · X autopilot · B parking brake · Select spoilers · D-pad ↑↓ trim"),
         style = MaterialTheme.typography.labelSmall, color = c.ink2, modifier = Modifier.padding(top = 8.dp).fillMaxWidth(),
     )
 }

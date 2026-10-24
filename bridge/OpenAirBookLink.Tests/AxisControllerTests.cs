@@ -86,4 +86,32 @@ public class AxisControllerTests
         Assert.Equal(AxisUpdateResult.Invalid, axes.Update("a", v, 0, 0, 0));
         Assert.False(axes.IsActive);
     }
+
+    [Fact]
+    public void Brake_alone_does_not_take_flight_axes_and_releases_after_timeout()
+    {
+        var axes = new AxisController();
+        Assert.Equal(AxisUpdateResult.Ok, axes.UpdateAux("a", null, 0.7, nowMs: 1000));
+        Assert.False(axes.IsActive);
+        Assert.Null(axes.Tick(1010));
+
+        var held = axes.TickAux(1050)!;
+        Assert.Null(held.Speedbrake);
+        Assert.Equal(0.7, held.Brake);
+
+        var released = axes.TickAux(1600)!;             // brak aktualizacji > 500 ms — pedały puszczone
+        Assert.Equal(0.0, released.Brake);
+        Assert.Null(axes.TickAux(1700));
+    }
+
+    [Fact]
+    public void Speedbrake_is_sent_once_and_stays()
+    {
+        var axes = new AxisController();
+        axes.UpdateAux("a", 1.4, null, nowMs: 0);
+        Assert.Equal(AxisUpdateResult.Busy, axes.UpdateAux("b", 0.5, null, nowMs: 5));
+        Assert.Equal(1.0, axes.TickAux(10)!.Speedbrake);
+        Assert.Null(axes.TickAux(20));
+        Assert.Null(axes.TickAux(2000));                 // po czasie nie chowa spoilerów sam
+    }
 }

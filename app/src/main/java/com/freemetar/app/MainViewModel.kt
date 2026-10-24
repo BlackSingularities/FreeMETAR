@@ -29,9 +29,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
 import com.freemetar.app.data.Locator
-import com.freemetar.app.data.ProcSelection
-import com.freemetar.app.data.RoutePoint
-import com.freemetar.app.domain.RouteEdit
 import com.freemetar.app.data.nav.AirportNav
 import com.freemetar.app.data.nav.NavDataStore
 import com.freemetar.app.data.nav.NavRepository
@@ -44,12 +41,6 @@ import com.freemetar.app.data.link.TrackPoint
 import com.freemetar.app.data.sync.DriveSync
 import com.freemetar.app.data.sync.SyncViewModel
 import android.net.Uri
-import com.freemetar.app.data.AloftCell
-import com.freemetar.app.data.RouteImport
-import com.freemetar.app.data.RouteStore
-import com.freemetar.app.data.SavedRoute
-import com.freemetar.app.data.SimBrief
-import com.freemetar.app.data.Taf
 import com.freemetar.app.data.LatLon
 import com.freemetar.app.data.OpenMeteo
 import com.freemetar.app.data.Pirep
@@ -106,17 +97,6 @@ sealed interface NearMe {
     data class Failed(val message: String) : NearMe
 }
 
-/** Pogoda dla aktywnej trasy: lotniska końcowe i zapasowe, SIGMET przecinające trasę, wiatr na przelotowym FL. */
-data class RouteBriefing(
-    val routeId: String,
-    val metars: Map<String, Metar> = emptyMap(),
-    val tafs: Map<String, Taf> = emptyMap(),
-    val sigmets: List<Sigmet> = emptyList(),
-    /** Wiatr na poziomie przelotowym w punktach kontrolnych: start, środek trasy, cel. */
-    val cruiseWinds: List<Pair<String, AloftCell?>> = emptyList(),
-    val loading: Boolean = true,
-)
-
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val db = AirportDb(app)
     private val prefs = Prefs(app)
@@ -165,168 +145,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _updatePromptDismissed = MutableStateFlow(false)
     val updatePromptDismissed = _updatePromptDismissed.asStateFlow()
 
-    // ---------- trasy i plan lotu ----------
-
-    private val routeStore = RouteStore(app)
-    private val _routes = MutableStateFlow<List<SavedRoute>>(emptyList())
-    val routes = _routes.asStateFlow()
-    private val _routeBriefing = MutableStateFlow<RouteBriefing?>(null)
-    val routeBriefing = _routeBriefing.asStateFlow()
-    /** Krótki komunikat dla użytkownika po imporcie/eksporcie (pokazywany jako pasek u dołu). */
+    /** Krótki komunikat dla użytkownika (ocena lądowania, błędy) — pokazywany jako pasek u dołu ekranu Lot. */
     private val _flightMessage = MutableStateFlow<String?>(null)
     val flightMessage = _flightMessage.asStateFlow()
-    private val _importing = MutableStateFlow(false)
-    val importing = _importing.asStateFlow()
-
-    fun activeRoute(): SavedRoute? = settings.value.activeRouteId?.let { id -> _routes.value.firstOrNull { it.id == id } }
 
     fun consumeFlightMessage() { _flightMessage.value = null }
-
-    /** Prośba o wykadrowanie aktywnej trasy na mapie (licznik, żeby każde dotknięcie działało). */
-    private val _mapRouteFocus = MutableStateFlow(0)
-    val mapRouteFocus = _mapRouteFocus.asStateFlow()
-    fun focusRouteOnMap() { _mapRouteFocus.value += 1 }
-
-    private fun addRoutes(new: List<SavedRoute>, activate: Boolean) = viewModelScope.launch {
-        // Ten sam plan z SimBrief zastępuje poprzednią wersję zamiast się dublować
-        val keep = _routes.value.filterNot { old -> new.any { it.id == old.id } }
-        val all = new + keep
-        _routes.value = all
-        routeStore.save(all)
-        if (activate) new.firstOrNull()?.let { activateRoute(it.id) }
-    }
-
-    fun importSimbrief(user: String) = viewModelScope.launch {
-        if (user.isBlank()) { _flightMessage.value = loc("Wpisz nazwę użytkownika lub Pilot ID z SimBrief.", "Enter your SimBrief username or Pilot ID."); return@launch }
-        _importing.value = true
-        prefs.setSimbriefUser(user)
-        try {
-            val r = SimBrief.fetch(user)
-            addRoutes(listOf(r), activate = true).join()
-            _flightMessage.value = loc("Pobrano plan ${r.name} z SimBrief.", "Downloaded plan ${r.name} from SimBrief.")
-        } catch (e: Exception) {
-            _flightMessage.value = loc("Nie pobrano planu z SimBrief: ${e.message}. Sprawdź nazwę użytkownika i czy masz wygenerowany plan.", "Could not download the SimBrief plan: ${e.message}. Check the username and that you have generated a plan.")
-        } finally {
-            _importing.value = false
-        }
-    }
-
-    // ---------- planowanie trasy na mapie ----------
-
-    private val _planning = MutableStateFlow(false)
-    /** Tryb planowania na mapie: dotknięcie dodaje punkt do szkicu trasy. */
-    val planning = _planning.asStateFlow()
-    private val _draft = MutableStateFlow<List<RoutePoint>>(emptyList())
-    /** Szkic trasy budowany na mapie (pierwszy i ostatni punkt to zwykle lotniska). */
-    val draft = _draft.asStateFlow()
-
-    fun startMapPlanning() { _planning.value = true }
-    fun stopMapPlanning() { _planning.value = false }
-    fun undoDraft() { _draft.value = _draft.value.dropLast(1) }
-    fun clearDraft() { _draft.value = emptyList() }
-
-    /**
-     * Punkt w miejscu dotknięcia: najbliższe lotnisko albo pomoc nawigacyjna (baza OurAirports
-     * i — gdy jest połączenie — baza MSFS) w promieniu [radiusNm]; inaczej punkt użytkownika ze współrzędnymi.
-     */
-    fun addDraftAt(lat: Double, lon: Double, radiusNm: Double) {
-        val candidates = buildList {
-            // Lotniska z kodem ICAO (4 litery) — lądowiska typu „PL-0124” nie istnieją w symulatorze
-            db.nearby(lat, lon, radiusNm, limit = 8).firstOrNull { (a, _) -> a.ident.length == 4 && a.ident.all { it.isLetter() } }
-                ?.let { (a, d) -> add(RoutePoint(a.ident, a.lat, a.lon, "airport", a.elevationFt) to d) }
-            db.navaidsNear(lat, lon, radiusNm).firstOrNull()?.let { (n, d) -> add(RoutePoint(n.ident, n.lat, n.lon, n.type.lowercase()) to d) }
-            _nearbyNav.value.map { it to com.freemetar.app.domain.Geo.distanceNm(lat, lon, it.lat, it.lon) }.filter { it.second <= radiusNm }
-                .minByOrNull { it.second }?.let { (f, d) -> add(RoutePoint(f.ident, f.lat, f.lon, if (f.type == "waypoint") "fix" else f.type) to d) }
-        }
-        val p = candidates.minByOrNull { it.second }?.first
-            ?: RoutePoint("WP%02d".format(_draft.value.count { it.ident.startsWith("WP") } + 1), lat, lon, "user")
-        // Ten sam punkt dwa razy pod rząd nic nie zmienia
-        if (_draft.value.lastOrNull()?.ident == p.ident) return
-        _draft.value = _draft.value + p
-    }
-
-    /** Zapis szkicu jako trasy (aktywnej). Wymaga co najmniej dwóch punktów. */
-    fun saveDraft(cruiseFl: Int?) = viewModelScope.launch {
-        val pts = _draft.value
-        if (pts.size < 2) { _flightMessage.value = loc("Dodaj co najmniej dwa punkty.", "Add at least two points."); return@launch }
-        val route = SavedRoute(
-            name = "${pts.first().ident} → ${pts.last().ident}",
-            origin = pts.first().ident, destination = pts.last().ident, cruiseFl = cruiseFl,
-            routeText = pts.drop(1).dropLast(1).joinToString(" ") { it.ident },
-            points = pts,
-            source = "map",
-        ).let { it.copy(distanceNm = it.measuredDistanceNm()) }
-        addRoutes(listOf(route), activate = true).join()
-        _draft.value = emptyList()
-        _planning.value = false
-        _flightMessage.value = loc("Zapisano trasę ${route.name} (${route.distanceNm ?: 0} NM).", "Saved route ${route.name} (${route.distanceNm ?: 0} NM).")
-    }
-
-    fun addRouteFromText(text: String, cruiseFl: Int?) = viewModelScope.launch {
-        try {
-            val r = RouteImport.fromText(text, cruiseFl, db.fixResolver)
-            addRoutes(listOf(r), activate = true).join()
-            val unknown = r.points.count { !it.hasPosition }
-            _flightMessage.value = loc("Zapisano trasę ${r.name}", "Saved route ${r.name}") + if (unknown > 0) loc(". $unknown punktów bez pozycji (brak w bazie) — pominięte na mapie.", ". $unknown waypoints without a position (not in the database) are skipped on the map.") else "."
-        } catch (e: Exception) {
-            _flightMessage.value = e.message ?: loc("Nie rozpoznano trasy.", "Could not recognise the route.")
-        }
-    }
-
-    fun importRoutesFile(uri: Uri) = viewModelScope.launch {
-        try {
-            val text = routeStore.readText(getApplication(), uri)
-            val list = RouteImport.parseAny(text, db.fixResolver)
-            addRoutes(list, activate = list.size == 1).join()
-            _flightMessage.value = loc("Zaimportowano trasy: ${list.size}.", "Routes imported: ${list.size}.")
-        } catch (e: Exception) {
-            _flightMessage.value = loc("Nie zaimportowano pliku: ${e.message}", "File not imported: ${e.message}")
-        }
-    }
-
-    fun exportRoutes(uri: Uri) = viewModelScope.launch {
-        try {
-            routeStore.exportTo(getApplication(), uri, _routes.value)
-            _flightMessage.value = loc("Wyeksportowano trasy: ${_routes.value.size}.", "Routes exported: ${_routes.value.size}.")
-        } catch (e: Exception) {
-            _flightMessage.value = loc("Nie zapisano pliku: ${e.message}", "File not saved: ${e.message}")
-        }
-    }
-
-    fun deleteRoute(id: String) = viewModelScope.launch {
-        _routes.value = _routes.value.filterNot { it.id == id }
-        routeStore.save(_routes.value)
-        if (settings.value.activeRouteId == id) { prefs.setActiveRoute(null); _routeBriefing.value = null }
-    }
-
-    fun activateRoute(id: String) = viewModelScope.launch {
-        prefs.setActiveRoute(id)
-        _routes.value.firstOrNull { it.id == id }?.let { refreshRouteBriefing(it) }
-    }
-
-    fun refreshRouteBriefing(r: SavedRoute? = activeRoute()) {
-        r ?: return
-        viewModelScope.launch {
-            _routeBriefing.value = RouteBriefing(r.id)
-            val ids = (listOf(r.origin, r.destination) + r.alternates).distinct()
-            val m = async { runCatching { WeatherApi.metars(ids) }.getOrDefault(emptyList()).associateBy { it.station } }
-            val t = async { ids.mapNotNull { id -> runCatching { WeatherApi.taf(id) }.getOrNull()?.let { id to it } }.toMap() }
-            val sig = async {
-                val pts = r.fullPath().filter { it.hasPosition }.map { LatLon(it.lat!!, it.lon!!) }
-                runCatching { WeatherApi.sigmets() }.getOrDefault(emptyList())
-                    .filter { s -> pts.any { p -> s.distanceNm(p) <= 25 } }
-            }
-            val winds = async {
-                val pts = r.fullPath().filter { it.hasPosition }
-                val fl = r.cruiseFl
-                if (pts.isEmpty() || fl == null) emptyList() else
-                    listOf(pts.first(), pts[pts.size / 2], pts.last()).distinct().map { p ->
-                        p.ident to runCatching { OpenMeteo.fetch(p.lat!!, p.lon!!, hours = 3)?.windAt(fl) }.getOrNull()
-                    }
-            }
-            _routeBriefing.value = RouteBriefing(r.id, m.await(), t.await(), sig.await(), winds.await(), loading = false)
-        }
-    }
 
     // ---------- OpenTakeoff Link (MSFS) ----------
 
@@ -537,7 +360,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             link.status.collect { s ->
                 if (s is LinkStatus.Connected && s.source == "msfs" || s is LinkStatus.Connected && s.source == "simulation") {
                     val ids = buildList {
-                        activeRoute()?.let { r -> add(r.origin); add(r.destination); addAll(r.alternates) }
                         _detail.value?.ident?.let(::add)
                         addAll(settings.value.favorites.take(6))
                     }.distinct()
@@ -568,99 +390,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         super.onCleared()
     }
 
-    // ---------- edytor planu lotu ----------
-
-    private val _editing = MutableStateFlow<SavedRoute?>(null)
-    /** Kopia trasy w edycji; zapisywana dopiero po [saveEdit]. */
-    val editing = _editing.asStateFlow()
-    private val _editNav = MutableStateFlow<Map<String, AirportNav>>(emptyMap())
-    /** Dane MSFS lotnisk edytowanej trasy (pasy, procedury). */
-    val editNav = _editNav.asStateFlow()
-    private val _editBusy = MutableStateFlow<String?>(null)
-    val editBusy = _editBusy.asStateFlow()
-
-    /** Oznaczenia pasów z bazy OurAirports (gdy brak danych MSFS). */
-    fun airportRunwayIdents(icao: String): List<String> =
-        db.runways(icao).flatMap { listOf(it.le.ident, it.he.ident) }.filter { it.isNotBlank() }.distinct()
-
-    fun startEdit(id: String) {
-        val r = _routes.value.firstOrNull { it.id == id } ?: return
-        _editing.value = r
-        refreshEditNav(listOf(r.origin, r.destination), refresh = false)
-    }
-
-    fun refreshEditNav(icaos: List<String>, refresh: Boolean) = viewModelScope.launch {
-        _editBusy.value = if (nav.connected) loc("Pobieranie procedur z MSFS…", "Loading procedures from MSFS…") else null
-        val map = _editNav.value.toMutableMap()
-        icaos.distinct().forEach { id -> runCatching { nav.airport(id, refresh) }.getOrNull()?.let { map[id] = it } }
-        _editNav.value = map
-        _editBusy.value = null
-    }
-
-    fun editUpdate(change: (SavedRoute) -> SavedRoute) { _editing.update { it?.let(change) } }
-
-    fun cancelEdit() { _editing.value = null }
-
-    fun saveEdit() = viewModelScope.launch {
-        val r = _editing.value ?: return@launch
-        _routes.value = _routes.value.map { if (it.id == r.id) r else it }
-        routeStore.save(_routes.value)
-        _editing.value = null
-        _flightMessage.value = loc("Zapisano plan ${r.name}.", "Saved plan ${r.name}.")
-        if (settings.value.activeRouteId == r.id) refreshRouteBriefing(r)
-    }
-
-    /** Wybór SID / STAR / podejścia: odcinki z pamięci telefonu albo z MSFS przez Link. */
-    fun chooseProcedure(kind: String, icao: String, name: String?, runway: String?, transition: String?, label: String?) = viewModelScope.launch {
-        if (name == null) {
-            editUpdate { r ->
-                when (kind) {
-                    "departure" -> RouteEdit.setDeparture(r, runway, null)
-                    "arrival" -> RouteEdit.setArrival(r, null)
-                    else -> RouteEdit.setApproach(r, runway, null)
-                }
-            }
-            return@launch
-        }
-        _editBusy.value = loc("Pobieranie odcinków $name…", "Loading legs of $name…")
-        val legs = runCatching { nav.legs(icao, kind, name, runway, transition) }.getOrNull()
-        _editBusy.value = null
-        val segment = when (kind) { "departure" -> "sid"; "arrival" -> "star"; else -> "approach" }
-        val sel = ProcSelection(kind, name, runway, transition, label, legs?.let { RouteEdit.legsToPoints(it.legs, segment) }.orEmpty())
-        if (legs == null) _flightMessage.value = loc("Brak odcinków $name w pamięci — połącz się z OpenTakeoff Link, aby pobrać je z MSFS.", "No legs for $name stored — connect to OpenTakeoff Link to load them from MSFS.")
-        editUpdate { r ->
-            when (kind) {
-                "departure" -> RouteEdit.setDeparture(r, runway, sel)
-                "arrival" -> RouteEdit.setArrival(r, sel)
-                else -> RouteEdit.setApproach(r, runway, sel)
-            }
-        }
-    }
-
-    /** Dodanie punktu po identyfikatorze: najpierw baza OurAirports (lotniska, VOR, NDB), potem punkty MSFS. */
-    fun addFix(ident: String, index: Int) = viewModelScope.launch {
-        val r = _editing.value ?: return@launch
-        val id = ident.trim().uppercase()
-        if (id.isEmpty()) return@launch
-        val before = (listOf(r.points.firstOrNull()) + r.enroute.take(index)).lastOrNull { it?.hasPosition == true }
-        val near = before?.let { LatLon(it.lat!!, it.lon!!) }
-        val p = db.fixResolver.resolve(id, near)
-            ?: nav.fixes(id, near?.lat, near?.lon).firstOrNull()?.let { RoutePoint(it.ident, it.lat, it.lon, it.type) }
-        if (p == null) {
-            _flightMessage.value = loc("Nie znaleziono punktu $id", "Waypoint $id not found") + if (!nav.connected) loc(". Punkty RNAV są w bazie MSFS — połącz się z OpenTakeoff Link.", ". RNAV waypoints are in the MSFS database — connect to OpenTakeoff Link.") else "."
-            return@launch
-        }
-        editUpdate { RouteEdit.insert(it, index, p) }
-    }
-
     private val _nearMe = MutableStateFlow<NearMe>(NearMe.Idle)
     val nearMe = _nearMe.asStateFlow()
 
     init {
-        viewModelScope.launch {
-            _routes.value = routeStore.load()
-            prefs.settings.first().activeRouteId?.let { id -> _routes.value.firstOrNull { it.id == id }?.let { refreshRouteBriefing(it) } }
-        }
         loadDb(force = false)
         startLinkWatchers()
         startAutoRefresh()
@@ -874,7 +607,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setControlMode(m: String) = viewModelScope.launch { prefs.setControlMode(m) }
     fun setFloatingControl(v: Boolean) = viewModelScope.launch { prefs.setFloatingControl(v) }
     fun setPinJumpBar(v: Boolean) = viewModelScope.launch { prefs.setPinJumpBar(v) }
-    fun setSimbriefUser(v: String) = viewModelScope.launch { prefs.setSimbriefUser(v) }
     fun setHideStatusBar(v: Boolean) = viewModelScope.launch { prefs.setHideStatusBar(v) }
     fun setLeversLeft(v: Boolean) = viewModelScope.launch { prefs.setLeversLeft(v) }
     fun setFloatingStyle(v: String) = viewModelScope.launch { prefs.setFloatingStyle(v) }

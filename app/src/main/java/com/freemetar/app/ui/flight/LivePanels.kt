@@ -3,7 +3,6 @@ package com.freemetar.app.ui.flight
 import com.freemetar.app.domain.loc
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,8 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Computer
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.LinkOff
 import androidx.compose.material.icons.outlined.LocalGasStation
 import androidx.compose.material.icons.outlined.Speed
@@ -45,31 +42,26 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.freemetar.app.MainViewModel
-import com.freemetar.app.data.SavedRoute
+import com.freemetar.app.ui.flight.avionics.gpsLeg
 import com.freemetar.app.data.link.FlightState
 import com.freemetar.app.data.link.LinkClient
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import com.freemetar.app.data.link.LinkStatus
-import com.freemetar.app.domain.Geo
 import com.freemetar.app.ui.components.Fact
 import com.freemetar.app.ui.components.FactGrid
-import com.freemetar.app.ui.components.Rule
 import com.freemetar.app.ui.components.Section
 import com.freemetar.app.ui.components.isWide
 import com.freemetar.app.ui.theme.Fm
 import com.freemetar.app.ui.theme.Mono
-import java.text.DateFormat
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import java.util.Date
 import kotlin.math.roundToInt
 
 /** Połączenie z OpenTakeoff Link: znalezione komputery, parowanie kodem, ręczne IP. */
@@ -160,7 +152,7 @@ private enum class LiveView(private val labelOf: () -> String, val instrument: B
 
 /** Widoki na żywo: PFD, mapa nawigacyjna, silniki i paliwo, postęp lotu. Na tablecie PFD i mapa obok siebie. */
 @Composable
-fun LiveSection(s: FlightState, route: SavedRoute?, link: LinkClient, profile: com.freemetar.app.domain.AircraftProfile? = null, onProfile: (com.freemetar.app.domain.AircraftProfile?) -> Unit = {}) {
+fun LiveSection(s: FlightState, link: LinkClient, profile: com.freemetar.app.domain.AircraftProfile? = null, onProfile: (com.freemetar.app.domain.AircraftProfile?) -> Unit = {}) {
     val c = Fm.c
     var view by rememberSaveable { mutableStateOf(LiveView.PFD) }
     var panel by rememberSaveable { mutableStateOf(LiveView.AP) }
@@ -170,12 +162,12 @@ fun LiveSection(s: FlightState, route: SavedRoute?, link: LinkClient, profile: c
         if (s.aircraft.paused == true) Text(loc("Symulator wstrzymany", "Simulator paused"), style = MaterialTheme.typography.labelMedium, color = c.caution, modifier = Modifier.padding(bottom = 6.dp))
         if (wide) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(Modifier.weight(1.1f).clip(RoundedCornerShape(8.dp))) { Pfd(s) }
-                Box(Modifier.weight(1f).clip(RoundedCornerShape(8.dp))) { NavDisplay(s, route?.fullPath().orEmpty(), range) }
+                Box(Modifier.weight(1.1f).clip(RoundedCornerShape(8.dp))) { Pfd(s, profile = profile) }
+                Box(Modifier.weight(1f).clip(RoundedCornerShape(8.dp))) { NavDisplay(s, s.gpsLeg(), range, profile = profile) }
             }
             RangeRow(range) { range = it }
             Spacer(Modifier.size(12.dp))
-            Progress(s, route)
+            Progress(s)
             Spacer(Modifier.size(12.dp))
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 LiveView.entries.filterNot { it.instrument }.forEach { v -> FilterChip(panel == v, { panel = v }, { Text(v.label) }) }
@@ -187,15 +179,15 @@ fun LiveSection(s: FlightState, route: SavedRoute?, link: LinkClient, profile: c
                 LiveView.entries.forEach { v -> FilterChip(view == v, { view = v }, { Text(v.label) }) }
             }
             when (view) {
-                LiveView.PFD -> Box(Modifier.clip(RoundedCornerShape(8.dp))) { Pfd(s) }
+                LiveView.PFD -> Box(Modifier.clip(RoundedCornerShape(8.dp))) { Pfd(s, profile = profile) }
                 LiveView.ND -> {
-                    Box(Modifier.clip(RoundedCornerShape(8.dp))) { NavDisplay(s, route?.fullPath().orEmpty(), range) }
+                    Box(Modifier.clip(RoundedCornerShape(8.dp))) { NavDisplay(s, s.gpsLeg(), range, profile = profile) }
                     RangeRow(range) { range = it }
                 }
                 else -> PanelFor(view, s, link, profile, onProfile)
             }
             // Postęp lotu pod przyrządami; przy panelach sterowania nie zabiera miejsca
-            if (view.instrument) { Spacer(Modifier.size(12.dp)); Progress(s, route) }
+            if (view.instrument) { Spacer(Modifier.size(12.dp)); Progress(s) }
         }
     }
 }
@@ -220,27 +212,35 @@ private fun RangeRow(range: Int, onRange: (Int) -> Unit) {
     }
 }
 
-/** Postęp: do celu, czas, ETA, początek zniżania (3°), paliwo i jego starczalność. */
+/**
+ * Postęp z planu lotu w symulatorze (GPS): następny punkt, czas do celu i ETA, początek zniżania (3°),
+ * paliwo i jego starczalność. Bez aktywnego planu w symulatorze pola trasy są puste.
+ */
 @Composable
-internal fun Progress(s: FlightState, route: SavedRoute?) {
+internal fun Progress(s: FlightState) {
     val c = Fm.c
-    val lat = s.position.lat; val lon = s.position.lon
-    val dest = route?.fullPath()?.lastOrNull { it.hasPosition }
+    val g = s.avionics?.gps?.takeIf { it.activeFlightPlan }
     val gs = s.speed.gsKt ?: 0.0
-    val toDest = if (lat != null && lon != null && dest != null) Geo.distanceNm(lat, lon, dest.lat!!, dest.lon!!) else null
-    val eteMin = if (toDest != null && gs > 50) toDest / gs * 60 else null
-    val eta = eteMin?.let {
+    val destEteMin = g?.destEteSec?.takeIf { it > 0 }?.let { it / 60 }
+    // Odległość do celu z czasu GPS i prędkości względem ziemi (MSFS nie podaje jej wprost)
+    val toDest = destEteMin?.let { if (gs > 50) it / 60 * gs else null }
+    val eta = destEteMin?.let {
         Instant.now().plusSeconds((it * 60).toLong()).atZone(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("HH:mm")) + "Z"
     }
-    val alt = s.position.altMslFt ?: 0.0
-    val todNm = ((alt - (dest?.altitudeFt ?: 0)) / 1000.0 * 3).coerceAtLeast(0.0)
+    val alt = s.position.altAglFt ?: s.position.altMslFt ?: 0.0
+    val todNm = (alt / 1000.0 * 3).coerceAtLeast(0.0)
     val fuel = s.fuel.totalKg
     val ff = s.engines.mapNotNull { it.fuelFlowKgH }.sum()
     val endurance = if (fuel != null && ff > 1) fuel / ff * 60 else null
+    val nextEte = g?.nextEteSec?.takeIf { it > 0 }
     FactGrid(
         listOfNotNull(
-            Fact("Do ${dest?.ident ?: "celu"}", toDest?.let { "${it.roundToInt()} NM" } ?: "—", accent = c.magenta, sub = if (dest == null) loc("wybierz trasę", "choose a route") else null),
-            Fact(loc("Przylot", "Arrival"), eta ?: "—", sub = eteMin?.let { "za %d:%02d".format(it.toInt() / 60, it.toInt() % 60) }),
+            Fact(g?.nextId?.takeIf { it.isNotBlank() } ?: loc("Następny punkt", "Next waypoint"),
+                g?.nextDistNm?.let { "%.1f NM".format(it) } ?: "—", accent = c.magenta,
+                sub = if (g == null) loc("brak planu w symulatorze", "no flight plan in the simulator")
+                else listOfNotNull(nextEte?.let { "%d:%02d".format(it.toInt() / 60, it.toInt() % 60) },
+                    g.wpCount?.takeIf { it > 0 }?.let { n -> "${g.wpIndex ?: 0}/$n" }).joinToString("  ").ifEmpty { null }),
+            Fact(loc("Przylot", "Arrival"), eta ?: "—", sub = destEteMin?.let { loc("za %d:%02d", "in %d:%02d").format(it.toInt() / 60, it.toInt() % 60) }),
             Fact(loc("Początek zniżania", "Top of descent"), if (toDest == null || s.aircraft.onGround == true) "—" else if (toDest <= todNm) loc("teraz", "now") else loc("za ${(toDest - todNm).roundToInt()} NM", "in ${(toDest - todNm).roundToInt()} NM"),
                 accent = if (toDest != null && toDest - todNm < 10 && s.aircraft.onGround != true) c.caution else null, sub = loc("${todNm.roundToInt()} NM przed celem", "${todNm.roundToInt()} NM before destination")),
             Fact("V/S", "${(s.speed.vsFpm ?: 0.0).roundToInt()} ft/min", sub = "GS ${gs.roundToInt()} kt"),

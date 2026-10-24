@@ -112,7 +112,9 @@ fun FlightDetailScreen(vm: MainViewModel, id: String, onBack: () -> Unit, onShow
         }
         Rule()
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
-            f.landing?.let { LandingCard(it) } ?: Section(loc("Lądowanie", "Landing"), Icons.Outlined.FlightLand) {
+            val landings = f.allLandings
+            landings.forEachIndexed { i, l -> LandingCard(l, if (landings.size > 1) "${i + 1}/${landings.size}" else null) }
+            if (landings.isEmpty()) Section(loc("Lądowanie", "Landing"), Icons.Outlined.FlightLand) {
                 Text(loc("Brak danych o przyziemieniu (lot zakończony w powietrzu albo nagrany starszą wersją).", "No touchdown data (the flight ended in the air or was recorded by an older version)."), style = MaterialTheme.typography.bodyMedium, color = c.ink2)
             }
             Section(loc("Lot", "Flight"), Icons.Outlined.Timeline) {
@@ -142,10 +144,10 @@ fun FlightDetailScreen(vm: MainViewModel, id: String, onBack: () -> Unit, onShow
 }
 
 @Composable
-private fun LandingCard(l: LandingReport) {
+private fun LandingCard(l: LandingReport, ordinal: String? = null) {
     val c = Fm.c
     val col = scoreColor(l.score)
-    Section(loc("Lądowanie", "Landing") + (l.runway?.let { " — $it" } ?: ""), Icons.Outlined.FlightLand, frame = if (l.score < 55) c.danger else null) {
+    Section(loc("Lądowanie", "Landing") + (ordinal?.let { " $it" } ?: "") + ((l.runway ?: l.airport)?.let { " — $it" } ?: ""), Icons.Outlined.FlightLand, frame = if (l.score < 55) c.danger else null) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             ScoreBadge(l, 72)
             Spacer(Modifier.width(16.dp))

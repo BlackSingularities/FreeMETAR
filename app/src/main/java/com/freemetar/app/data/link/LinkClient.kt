@@ -282,6 +282,16 @@ class LinkClient(private val context: Context, private val tokens: LinkTokenStor
         return ws.send(LinkJson.encodeToString(AxisMessage.serializer(), AxisMessage(aileron = aileron, elevator = elevator, rudder = rudder)))
     }
 
+    /**
+     * Osie hamulców 0…1: [speedbrake] zostaje w ustawionej pozycji, [brake] (koła, tylko na ziemi)
+     * trzeba przysyłać, dopóki jest wciśnięty — Link puszcza go sam po 0,5 s ciszy. null = bez zmian.
+     */
+    fun brakes(speedbrake: Double? = null, brake: Double? = null): Boolean {
+        val ws = socket ?: return false
+        if (speedbrake == null && brake == null) return false
+        return ws.send(LinkJson.encodeToString(AxisMessage.serializer(), AxisMessage(speedbrake = speedbrake, brake = brake)))
+    }
+
     fun releaseAxes() {
         socket?.send(LinkJson.encodeToString(AxisMessage.serializer(), AxisMessage(release = true)))
     }

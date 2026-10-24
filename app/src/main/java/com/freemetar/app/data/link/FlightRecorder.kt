@@ -32,10 +32,16 @@ data class FlightLog(
     val maxAltFt: Int,
     val distanceNm: Int,
     val track: List<TrackPoint>,
+    /** Ostatnie lądowanie lotu (zgodność ze starszymi wpisami i szybki podgląd). */
     val landing: LandingReport? = null,
     val category: String? = null,
+    /** Wszystkie lądowania w kolejności (touch and go, międzylądowania); puste we wpisach ze starszych wersji. */
+    val landings: List<LandingReport> = emptyList(),
 ) {
     val durationMin get() = ((end - start) / 60_000).toInt()
+
+    /** Lądowania do statystyk: lista, a dla starszych wpisów pojedyncze [landing]. */
+    val allLandings: List<LandingReport> get() = landings.ifEmpty { listOfNotNull(landing) }
 }
 
 @Serializable
@@ -63,9 +69,12 @@ class FlightRecorder(
     private var category: String? = null
     private var stoppedSince: Long? = null
 
-    // Przyziemienia: pierwsze po locie to lądowanie, kolejne w ciągu 15 s to odbicia
+    // Przyziemienia: pierwsze po locie to lądowanie, kolejne w ciągu 15 s to odbicia.
+    // Po ponownym wzniesieniu (touch and go, międzylądowanie) następne przyziemienie to nowe lądowanie.
     private var lastTdSeq: Long? = null
+    private val landings = ArrayList<LandingReport>()
     private var landing: TouchdownData? = null
+    private var landingAirport: String? = null
     private var landingAt = 0L
     private var bounces = 0
     private var prev: FlightState? = null
@@ -101,7 +110,7 @@ class FlightRecorder(
                 aircraft = s.aircraft.title
                 category = s.aircraft.category
                 stoppedSince = null
-                landing = null; bounces = 0; lastLanding = null
+                landing = null; bounces = 0; lastLanding = null; landings.clear()
                 airborneSince = now
                 lastTdSeq = s.touchdown?.seq
                 points += point(s, now, lat, lon, alt, gs)
@@ -152,8 +161,8 @@ class FlightRecorder(
         if (!fromLink && !fromTransition) return
         if (fromLink) lastTdSeq = td!!.seq
         val flownLongEnough = (airborneSince?.let { now - it } ?: 0) >= 60_000
-        if (landing != null && now - landingAt <= 15_000) { bounces++; return }
-        if (!flownLongEnough && landing == null) return
+        if (landing != null && (now - landingAt <= 15_000 || !flownLongEnough)) { bounces++; return }
+        if (!flownLongEnough) return
         val vs = if (fromLink) td!!.vsFpm!! else (prev?.speed?.vsFpm ?: 0.0)
         val lat = (if (fromLink) td!!.lat else null) ?: s.position.lat ?: return
         val lon = (if (fromLink) td!!.lon else null) ?: s.position.lon ?: return
@@ -164,6 +173,7 @@ class FlightRecorder(
             val wd = s.environment.windDirDeg; val ws = s.environment.windSpdKt
             if (wd != null && ws != null) Wind.components(wd, ws, r.headingTrueDeg).crosswind else null
         }
+        report()?.let { landings += it }
         landing = TouchdownData(
             vsFpm = vs,
             gForce = if (fromLink) td!!.gForce else null,
@@ -174,12 +184,15 @@ class FlightRecorder(
             crosswindKt = cross,
         )
         landingAt = now
+        landingAirport = nearestAirport(lat, lon)
         bounces = 0
         airborneSince = null
-        lastLanding = LandingScore.evaluate(landing!!)
+        lastLanding = report()
     }
 
-    private fun report(): LandingReport? = landing?.let { LandingScore.evaluate(it.copy(bounces = bounces)) }
+    private fun report(): LandingReport? = landing?.let {
+        LandingScore.evaluate(it.copy(bounces = bounces)).copy(airport = landingAirport, at = landingAt)
+    }
 
     companion object { const val MAX_POINTS = 60_000 }
 
@@ -224,7 +237,7 @@ class FlightRecorder(
             from = nearestAirport(pts.first().lat, pts.first().lon),
             to = nearestAirport(pts.last().lat, pts.last().lon),
             maxAltFt = pts.maxOf { it.altFt }, distanceNm = dist.toInt(),
-            landing = report(), category = category,
+            landing = report(), category = category, landings = landings + listOfNotNull(report()),
             // Bezpiecznik: ponad 60 tys. punktów (np. 4 Hz przez 4 h) — co n-ty punkt, końce zawsze zostają
             track = if (pts.size <= MAX_POINTS) pts else pts.filterIndexed { i, _ -> i % (pts.size / MAX_POINTS + 1) == 0 } + pts.last(),
         )

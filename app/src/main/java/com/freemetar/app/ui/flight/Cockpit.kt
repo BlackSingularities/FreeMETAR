@@ -32,6 +32,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AirlineSeatReclineNormal
+import androidx.compose.material.icons.outlined.Checklist
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material.icons.outlined.FlightTakeoff
 import androidx.compose.material.icons.outlined.Gamepad
 import androidx.compose.material.icons.outlined.LocalGasStation
@@ -57,10 +60,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.freemetar.app.data.SavedRoute
 import com.freemetar.app.data.link.FlightState
 import com.freemetar.app.data.link.LinkClient
 import com.freemetar.app.domain.AircraftProfile
@@ -90,7 +91,7 @@ private fun CockpitTab.label(): String = when (this) {
  */
 @Composable
 fun CockpitView(
-    link: LinkClient, s: FlightState, route: SavedRoute?, profile: AircraftProfile?, onProfile: (AircraftProfile?) -> Unit,
+    link: LinkClient, s: FlightState, profile: AircraftProfile?, onProfile: (AircraftProfile?) -> Unit,
     controlMode: String = "TILT", onControlMode: (String) -> Unit = {}, floating: Boolean = false, onFloating: (Boolean) -> Unit = {},
     nearby: List<com.freemetar.app.data.nav.FixResult> = emptyList(), floatingTrim: Boolean = false, leversLeft: Boolean = false,
     onShowPlan: () -> Unit = {},
@@ -122,7 +123,7 @@ fun CockpitView(
                     CockpitTab.SYSTEMS -> SystemsPanel(link, s, effective)
                     CockpitTab.STICK -> FlightControlPanel(link, s, controlMode, onControlMode, floating, onFloating)
                     CockpitTab.ENGINES -> EnginePanel(link, s, effective)
-                    CockpitTab.PROGRESS -> Progress(s, route)
+                    CockpitTab.PROGRESS -> Progress(s)
                 }
             }
             val panel: (@Composable () -> Unit)? = tab?.takeIf { !persistent }?.let { t ->
@@ -133,18 +134,23 @@ fun CockpitView(
                         CockpitTab.SYSTEMS -> SystemsPanel(link, s, effective)
                         CockpitTab.STICK -> FlightControlPanel(link, s, controlMode, onControlMode, floating, onFloating)
                         CockpitTab.ENGINES -> EnginePanel(link, s, effective)
-                        CockpitTab.PROGRESS -> Progress(s, route)
+                        CockpitTab.PROGRESS -> Progress(s)
                     }
                 }
             }
-            // Wszystko na jednym ekranie: otwarty panel zastępuje ND, PFD i dźwignie zostają
-            Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 4.dp)) {
-                CockpitHeader(link, s, effective, onShowPlan, onShowChecklists, controlMode, recording, onStopRecording, onResumeRecording)
+            val actions: @Composable (Boolean, Modifier) -> Unit = { vertical, m ->
+                CockpitActions(link, s, profile, onProfile, controlMode, recording, onStopRecording, onResumeRecording,
+                    onShowChecklists, onShowPlan, vertical, m)
+            }
+            // Wszystko na jednym ekranie: otwarty panel zastępuje ND, PFD i dźwignie zostają.
+            // Bez nagłówka — akcje kokpitu siedzą przy zakładkach paneli, żeby wyświetlacze dostały całą wysokość.
+            Column(Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 2.dp)) {
                 if (wide) {
                     val sideW = (screenW * 0.34f).coerceIn(340.dp, 480.dp)
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        FlyDeck(link, s, route, effective, nearby, screenH - 40.dp - 14.dp, Modifier.weight(1f), leversLeft = leversLeft)
+                        FlyDeck(link, s, effective, nearby, screenH - 8.dp, Modifier.weight(1f), leversLeft = leversLeft, displayProfile = profile)
                         Column(Modifier.width(sideW)) {
+                            actions(false, Modifier.align(Alignment.End).padding(top = 2.dp, bottom = 4.dp))
                             PanelBar(shownTab, onTab, indicatorTop = false)
                             Column(Modifier.fillMaxWidth().weight(1f, fill = false).verticalScroll(rememberScrollState())) {
                                 panelFor(shownTab!!, false)
@@ -153,28 +159,36 @@ fun CockpitView(
                         }
                     }
                 } else if (tabletPortrait) {
-                    FlyDeck(link, s, route, effective, nearby, screenH * 0.5f, leversLeft = leversLeft)
-                    PanelBar(shownTab, onTab, indicatorTop = false)
+                    FlyDeck(link, s, effective, nearby, screenH * 0.54f, leversLeft = leversLeft, displayProfile = profile)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        PanelBar(shownTab, onTab, Modifier.weight(1f), indicatorTop = false)
+                        actions(false, Modifier.padding(start = 8.dp))
+                    }
                     Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) {
                         panelFor(shownTab!!, false)
                         Spacer(Modifier.height(16.dp))
                     }
                 } else if (landscape) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FlyDeck(link, s, route, effective, nearby, screenH - 40.dp - 14.dp, Modifier.weight(1f), panel, leversLeft)
-                        PanelRail(tab, onTab)
+                        FlyDeck(link, s, effective, nearby, screenH - 8.dp, Modifier.weight(1f), panel, leversLeft, profile)
+                        Column(Modifier.verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
+                            actions(true, Modifier.padding(bottom = 6.dp))
+                            PanelRail(tab, onTab)
+                        }
                     }
                 } else if (tab != null) {
                     // Telefon pionowo z otwartym panelem: wyświetlacze (z ND) u góry, panel pod nimi, pasek na dole
-                    FlyDeck(link, s, route, effective, nearby, screenH * 0.48f, leversLeft = leversLeft)
+                    actions(false, Modifier.align(Alignment.End).padding(bottom = 4.dp))
+                    FlyDeck(link, s, effective, nearby, screenH * 0.48f, leversLeft = leversLeft, displayProfile = profile)
                     Column(Modifier.fillMaxWidth().weight(1f).padding(top = 6.dp).verticalScroll(rememberScrollState())) {
                         panelFor(tab, true)
                         Spacer(Modifier.height(8.dp))
                     }
                     PanelBar(tab, onTab)
                 } else {
-                    // Miejsce na wyświetlacze: wysokość ekranu minus nagłówek, pasek paneli i marginesy
-                    FlyDeck(link, s, route, effective, nearby, screenH - 40.dp - 56.dp - 16.dp, leversLeft = leversLeft)
+                    // Miejsce na wyświetlacze: wysokość ekranu minus rząd akcji, pasek paneli i marginesy
+                    actions(false, Modifier.align(Alignment.End).padding(bottom = 4.dp))
+                    FlyDeck(link, s, effective, nearby, screenH - 38.dp - 58.dp - 8.dp, leversLeft = leversLeft, displayProfile = profile)
                     PanelBar(tab, onTab)
                 }
             }
@@ -184,39 +198,57 @@ fun CockpitView(
     }
 }
 
-/** Nagłówek: stan i nazwa samolotu, profil panelu, kamera MSFS jako trzy małe ikony. */
+/**
+ * Akcje kokpitu w miejscu dawnego nagłówka: zapis lotu (zakończenie / wznowienie), kamera MSFS, checklisty
+ * i menu samolotu (profil decydujący o wyświetlaczach i panelach, wejście do planu lotu).
+ * [vertical] — w kolumnie (pasek zakładek z boku na telefonie poziomo), inaczej w rzędzie.
+ */
 @Composable
-private fun CockpitHeader(
-    link: LinkClient, s: FlightState, p: AircraftProfile, onShowPlan: () -> Unit, onShowChecklists: () -> Unit, controlMode: String,
-    rec: com.freemetar.app.MainViewModel.RecordingInfo, onStop: () -> Unit, onResume: () -> Unit,
+private fun CockpitActions(
+    link: LinkClient, s: FlightState, profile: AircraftProfile?, onProfile: (AircraftProfile?) -> Unit,
+    controlMode: String, rec: com.freemetar.app.MainViewModel.RecordingInfo, onStop: () -> Unit, onResume: () -> Unit,
+    onShowChecklists: () -> Unit, onShowPlan: () -> Unit, vertical: Boolean, modifier: Modifier = Modifier,
 ) {
     val c = Fm.c
     var askStop by remember { mutableStateOf(false) }
-    Row(Modifier.fillMaxWidth().height(40.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(8.dp).clip(CircleShape).background(if (s.aircraft.paused == true) c.caution else c.green))
-        Spacer(Modifier.width(8.dp))
-        Text(s.aircraft.title ?: tr("Samolot", "Aircraft"), style = MaterialTheme.typography.titleSmall, color = c.ink,
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-        FlightParams(s, Modifier.weight(1f).padding(start = 10.dp))
-        if (s.aircraft.paused == true) Text(tr("PAUZA", "PAUSED"), fontFamily = Mono, fontSize = 11.sp, color = c.caution, modifier = Modifier.padding(end = 6.dp))
-        Text(p.short, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 10.sp, color = Color.Black,
-            modifier = Modifier.clip(RoundedCornerShape(50)).background(c.ink).padding(horizontal = 7.dp, vertical = 2.dp))
-        Spacer(Modifier.width(6.dp))
+    var menu by remember { mutableStateOf(false) }
+    val style = com.freemetar.app.ui.flight.avionics.DisplayStyle.of(s, profile)
+    val checklists = tr("Checklisty", "Checklists")
+    val aircraftMenu = tr("Samolot: ${style.label}. Profil, połączenie i dziennik", "Aircraft: ${style.label}. Profile, connection and logbook")
+    val content: @Composable () -> Unit = {
         RecordChip(rec, onClick = { if (rec.recording) askStop = true else if (rec.held) onResume() })
-        Spacer(Modifier.width(6.dp))
-        CameraSwitch(link, s, controlMode = controlMode)
-        Spacer(Modifier.width(6.dp))
-        Text("CHK", fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = c.ink,
-            modifier = Modifier.clip(RoundedCornerShape(50)).border(1.dp, c.rule, RoundedCornerShape(50))
-                .clickable(role = Role.Button, onClickLabel = tr("Checklisty", "Checklists"), onClick = onShowChecklists)
-                .padding(horizontal = 10.dp, vertical = 7.dp))
-        Spacer(Modifier.width(6.dp))
-        // Plan lotu, połączenie i dziennik — zamiast osobnego przełącznika nad kokpitem
-        Text(tr("PLAN", "PLAN"), fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = c.ink,
-            modifier = Modifier.clip(RoundedCornerShape(50)).border(1.dp, c.rule, RoundedCornerShape(50))
-                .clickable(role = Role.Button, onClickLabel = tr("Plan lotu i dziennik", "Flight plan and logbook"), onClick = onShowPlan)
-                .padding(horizontal = 10.dp, vertical = 7.dp))
+        CameraSwitch(link, s, controlMode = controlMode, vertical = vertical)
+        Box(
+            Modifier.size(34.dp).clip(CircleShape).border(1.dp, c.rule, CircleShape)
+                .semantics { contentDescription = checklists }
+                .clickable(role = Role.Button, onClick = onShowChecklists),
+            contentAlignment = Alignment.Center,
+        ) { Icon(Icons.Outlined.Checklist, null, tint = c.ink, modifier = Modifier.size(18.dp)) }
+        Box {
+            Text(style.label, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 10.sp, color = c.ink, maxLines = 1,
+                modifier = Modifier.clip(RoundedCornerShape(50)).border(1.dp, if (profile != null) c.accent else c.rule, RoundedCornerShape(50))
+                    .semantics { contentDescription = aircraftMenu }
+                    .clickable(role = Role.Button) { menu = true }
+                    .padding(horizontal = 8.dp, vertical = 9.dp))
+            DropdownMenu(menu, { menu = false }) {
+                Text(tr("Profil samolotu (wyświetlacze i panele)", "Aircraft profile (displays and panels)"),
+                    style = MaterialTheme.typography.labelMedium, color = c.ink2, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp))
+                val detected = AircraftProfile.detect(s.aircraft.title, s.aircraft.atcModel, s.aircraft.category, s.aircraft.engineType)
+                DropdownMenuItem(
+                    text = { Text((if (profile == null) "✓  " else "     ") + tr("Automatycznie (${detected.label})", "Automatic (${detected.label})")) },
+                    onClick = { onProfile(null); menu = false },
+                )
+                AircraftProfile.entries.forEach { p ->
+                    DropdownMenuItem(text = { Text((if (profile == p) "✓  " else "     ") + p.label) }, onClick = { onProfile(p); menu = false })
+                }
+                androidx.compose.material3.HorizontalDivider()
+                DropdownMenuItem(text = { Text(tr("Połączenie i dziennik", "Connection and logbook")) }, onClick = { menu = false; onShowPlan() })
+            }
+        }
     }
+    if (vertical) Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) { content() }
+    else Row(modifier, horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) { content() }
+
     if (askStop) androidx.compose.material3.AlertDialog(
         onDismissRequest = { askStop = false },
         title = { Text(tr("Zakończyć zapis lotu?", "Stop recording this flight?")) },
@@ -225,35 +257,6 @@ private fun CockpitHeader(
         confirmButton = { androidx.compose.material3.TextButton({ askStop = false; onStop() }) { Text(tr("Zakończ zapis", "Stop recording"), color = c.danger) } },
         dismissButton = { androidx.compose.material3.TextButton({ askStop = false }) { Text(tr("Anuluj", "Cancel")) } },
     )
-}
-
-/**
- * Podstawowe parametry lotu w nagłówku: prędkość, wysokość, kurs, prędkość pionowa.
- * Gdy brakuje miejsca, pola od końca znikają, zamiast ściskać nazwę samolotu.
- */
-@Composable
-private fun FlightParams(s: FlightState, modifier: Modifier = Modifier) {
-    val c = Fm.c
-    fun n(v: Double?) = v?.roundToInt()?.toString() ?: "—"
-    val vs = s.speed.vsFpm?.roundToInt()
-    val items = listOf(
-        "IAS" to n(s.speed.iasKt),
-        "ALT" to n(s.position.altIndFt ?: s.position.altMslFt),
-        "HDG" to (s.attitude.hdgMagDeg?.let { "%03d".format(((it.roundToInt() % 360) + 360) % 360) } ?: "—"),
-        "VS" to (vs?.let { if (it > 0) "+$it" else "$it" } ?: "—"),
-    )
-    BoxWithConstraints(modifier) {
-        val fit = (maxWidth / 66.dp).toInt().coerceIn(0, items.size)   // ok. 66 dp na pole
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            items.take(fit).forEach { (label, value) ->
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(label, fontFamily = Mono, fontSize = 9.sp, color = c.ink2)
-                    Spacer(Modifier.width(3.dp))
-                    Text(value, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = c.ink, maxLines = 1)
-                }
-            }
-        }
-    }
 }
 
 /** Podpis zakładki: krótki, ale słowem (AP zostaje skrótem, jak na panelu). */
@@ -339,7 +342,7 @@ private fun PanelBar(tab: CockpitTab?, onTab: (CockpitTab) -> Unit, modifier: Mo
  * naciśnięcia) albo przesuwanie palca. Puszczenie wraca z kamerą na wprost.
  */
 @Composable
-internal fun CameraSwitch(link: LinkClient, s: FlightState, modifier: Modifier = Modifier, controlMode: String = "TILT") {
+internal fun CameraSwitch(link: LinkClient, s: FlightState, modifier: Modifier = Modifier, controlMode: String = "TILT", vertical: Boolean = false) {
     val c = Fm.c
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val density = androidx.compose.ui.platform.LocalDensity.current
@@ -372,8 +375,7 @@ internal fun CameraSwitch(link: LinkClient, s: FlightState, modifier: Modifier =
         }
     }
 
-    Row(modifier.clip(RoundedCornerShape(50)).border(1.dp, if (looking) c.accent else c.rule, RoundedCornerShape(50)).padding(2.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+    val buttons: @Composable () -> Unit = {
         listOf(
             Triple(2, tr("Kamera: kabina", "Camera: cockpit"), Icons.Outlined.AirlineSeatReclineNormal),
             Triple(3, tr("Kamera: zewnętrzna", "Camera: external"), Icons.Outlined.FlightTakeoff),
@@ -416,6 +418,9 @@ internal fun CameraSwitch(link: LinkClient, s: FlightState, modifier: Modifier =
             ) { Icon(icon, null, tint = if (on) c.paper else c.ink2, modifier = Modifier.size(17.dp)) }
         }
     }
+    val frame = modifier.clip(RoundedCornerShape(50)).border(1.dp, if (looking) c.accent else c.rule, RoundedCornerShape(50)).padding(2.dp)
+    if (vertical) Column(frame, verticalArrangement = Arrangement.spacedBy(2.dp), horizontalAlignment = Alignment.CenterHorizontally) { buttons() }
+    else Row(frame, horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) { buttons() }
 }
 
 /**

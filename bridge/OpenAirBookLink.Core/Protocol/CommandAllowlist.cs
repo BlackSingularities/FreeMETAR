@@ -148,7 +148,11 @@ public static class CommandAllowlist
     };
 
     // Zdarzenia osi — nie są komendami `command`, przychodzą przez wiadomość `axis`.
-    public static readonly string[] AxisEvents = { "AXIS_AILERONS_SET", "AXIS_ELEVATOR_SET", "AXIS_RUDDER_SET" };
+    public static readonly string[] AxisEvents =
+    {
+        "AXIS_AILERONS_SET", "AXIS_ELEVATOR_SET", "AXIS_RUDDER_SET",
+        "AXIS_SPOILER_SET", "AXIS_LEFT_BRAKE_SET", "AXIS_RIGHT_BRAKE_SET",
+    };
 
     private static readonly Dictionary<string, CommandSpec> ByName =
         Specs.ToDictionary(s => s.Name, StringComparer.Ordinal);

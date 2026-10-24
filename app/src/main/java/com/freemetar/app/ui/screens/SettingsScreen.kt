@@ -10,7 +10,6 @@ import com.freemetar.app.ui.theme.AUTHOR_URL
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.clip
-import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.foundation.layout.Arrangement
@@ -26,12 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Autorenew
-import androidx.compose.material.icons.outlined.DarkMode
-import androidx.compose.material.icons.outlined.LightMode
-import androidx.compose.material.icons.outlined.Smartphone
-import androidx.compose.material.icons.outlined.Compress
 import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.Height
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Straighten
@@ -39,7 +33,6 @@ import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.ViewDay
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Fullscreen
-import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.ScreenRotation
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Upload
@@ -119,15 +112,6 @@ fun SettingsScreen(vm: MainViewModel, onOpenCallouts: () -> Unit = {}) {
             ToggleRow(Icons.Outlined.ViewDay, loc("Stały pasek rozdziałów", "Always show section bar"),
                 loc("W briefingu lotniska; wyłączony pokazuje się tylko podczas przewijania", "In the airport briefing; when off it appears only while scrolling"),
                 s.pinJumpBar) { vm.setPinJumpBar(it) }
-        }
-
-        SectionCard("SimBrief", icon = Icons.Outlined.CloudDownload, dense = true) {
-            var user by androidx.compose.runtime.saveable.rememberSaveable(s.simbriefUser) { androidx.compose.runtime.mutableStateOf(s.simbriefUser) }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                androidx.compose.material3.OutlinedTextField(user, { user = it.trim() }, Modifier.weight(1f), singleLine = true,
-                    label = { Text(loc("Użytkownik lub Pilot ID", "Username or Pilot ID")) }, shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
-                OutlinedButton({ vm.setSimbriefUser(user) }, enabled = user != s.simbriefUser) { Text(loc("Zapisz", "Save")) }
-            }
         }
 
         SectionCard(loc("Sterowanie samolotem", "Flying the aircraft"), icon = Icons.Outlined.ScreenRotation, dense = true) {

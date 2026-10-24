@@ -18,6 +18,8 @@ public sealed class FlightState
     public List<EngineData> Engines { get; set; } = new();
     public EnvironmentData Environment { get; set; } = new();
     public AxesData Axes { get; set; } = new();
+    // Dane dla wyświetlaczy PFD/MFD (nastawy, radionawigacja, GPS, tryby FMA). Brak pola = źródło ich nie podaje.
+    public AvionicsData? Avionics { get; set; }
     // Ostatnie przyziemienie (zatrzaśnięte); brak pola, dopóki samolot nie wylądował od startu Link.
     public TouchdownData? Touchdown { get; set; }
 
@@ -203,4 +205,121 @@ public sealed class EnvironmentData
 public sealed class AxesData
 {
     public bool Active { get; set; }
+}
+
+public sealed class AvionicsData
+{
+    // Wysokościomierz: nastawa (hPa) i tryb STD
+    public double BaroHpa { get; set; }
+    public bool BaroStd { get; set; }
+    public double PressureAltFt { get; set; }
+    public double RadioAltFt { get; set; }
+    public double DecisionHeightFt { get; set; }
+    // Przyrządy: kulka (−1 lewo … 1 prawo), zakręt (°/s, + w prawo), przeciążenie, kąt natarcia
+    public double SlipBall { get; set; }
+    public double TurnRateDps { get; set; }
+    public double GForce { get; set; }
+    public double AoaDeg { get; set; }
+    // Wskazania przyrządów żyroskopowych (przy awariach odbiegają od rzeczywistego położenia)
+    public double AttIndPitchDeg { get; set; }
+    public double AttIndBankDeg { get; set; }
+    public double HdgIndDeg { get; set; }
+    public double SuctionInHg { get; set; }
+    // Deklinacja magnetyczna, E +
+    public double MagVarDeg { get; set; }
+    public double TatC { get; set; }
+    public SpeedLimits Speeds { get; set; } = new();
+    public bool StallWarning { get; set; }
+    public bool OverspeedWarning { get; set; }
+    // none / outer / middle / inner
+    public string Marker { get; set; } = "none";
+    public NavReceiver Nav1 { get; set; } = new();
+    public NavReceiver Nav2 { get; set; } = new();
+    public AdfReceiver Adf { get; set; } = new();
+    public GpsData Gps { get; set; } = new();
+    public FlightDirector Fd { get; set; } = new();
+    public ApModesExtra Ap { get; set; } = new();
+    // Hamulce kół, 0–100 %
+    public double BrakeLeftPct { get; set; }
+    public double BrakeRightPct { get; set; }
+}
+
+// Prędkości charakterystyczne samolotu, kt (0 = brak danych)
+public sealed class SpeedLimits
+{
+    public double Vs0Kt { get; set; }
+    public double Vs1Kt { get; set; }
+    public double VcKt { get; set; }
+    public double VmoKt { get; set; }
+}
+
+public sealed class NavReceiver
+{
+    public bool HasNav { get; set; }
+    public bool HasLoc { get; set; }
+    public bool HasGs { get; set; }
+    public bool HasDme { get; set; }
+    public string Ident { get; set; } = "";
+    // Kurs nastawiony (OBS), kurs lokalizera i radial, stopnie magnetyczne
+    public double ObsDeg { get; set; }
+    public double LocCourseDeg { get; set; }
+    public double RadialDeg { get; set; }
+    // Odchylenia w kropkach −2,5…2,5: CDI + = kurs w prawo, GS + = ścieżka powyżej
+    public double CdiDots { get; set; }
+    public double GsDots { get; set; }
+    public double DmeNm { get; set; }
+    // to / from / off
+    public string ToFrom { get; set; } = "off";
+}
+
+public sealed class AdfReceiver
+{
+    public bool HasSignal { get; set; }
+    // Namiar względny na NDB (0 = przed samolotem)
+    public double RelBearingDeg { get; set; }
+}
+
+public sealed class GpsData
+{
+    public bool ActiveFlightPlan { get; set; }
+    public bool ApproachActive { get; set; }
+    public bool DrivesNav1 { get; set; }
+    public string NextId { get; set; } = "";
+    public string PrevId { get; set; } = "";
+    public double NextDistNm { get; set; }
+    public double NextBearingMagDeg { get; set; }
+    public double DesiredTrackMagDeg { get; set; }
+    public double CrossTrackNm { get; set; }
+    public double NextEteSec { get; set; }
+    public double DestEteSec { get; set; }
+    // Pozycje punktów bieżącego odcinka (0 = brak) i miejsce w planie lotu symulatora
+    public double NextLat { get; set; }
+    public double NextLon { get; set; }
+    public double PrevLat { get; set; }
+    public double PrevLon { get; set; }
+    public int WpIndex { get; set; }
+    public int WpCount { get; set; }
+}
+
+public sealed class FlightDirector
+{
+    public bool Active { get; set; }
+    // Polecenia dyrektora lotu: pochylenie + nos w górę, przechylenie + w prawo
+    public double PitchDeg { get; set; }
+    public double BankDeg { get; set; }
+}
+
+public sealed class ApModesExtra
+{
+    public bool AltArmed { get; set; }
+    public bool GsArmed { get; set; }
+    public bool GsActive { get; set; }
+    public bool BackCourse { get; set; }
+    public bool WingLeveler { get; set; }
+    public bool PitchHold { get; set; }
+    public bool AirspeedHold { get; set; }
+    public bool MachHold { get; set; }
+    public bool Toga { get; set; }
+    public bool YawDamper { get; set; }
+    public double MachVar { get; set; }
 }

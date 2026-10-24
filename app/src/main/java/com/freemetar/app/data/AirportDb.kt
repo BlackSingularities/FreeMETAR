@@ -92,14 +92,6 @@ class AirportDb(context: Context) {
             .take(limit)
             .toList()
 
-    /** Punkt trasy: lotnisko (4 znaki) albo radiolatarnia o danym kodzie najbliższa poprzedniemu punktowi. */
-    val fixResolver = FixResolver { ident, near ->
-        airport(ident)?.takeIf { ident.length == 4 }?.let { return@FixResolver RoutePoint(it.ident, it.lat, it.lon, "airport", it.elevationFt) }
-        navaids.asSequence().filter { it.ident == ident }
-            .minByOrNull { n -> near?.let { Geo.distanceNm(it.lat, it.lon, n.lat, n.lon) } ?: 0.0 }
-            ?.let { RoutePoint(it.ident, it.lat, it.lon, it.type.lowercase()) }
-    }
-
     fun navaidsNear(lat: Double, lon: Double, radiusNm: Double = 40.0): List<Pair<Navaid, Double>> =
         navaids.asSequence()
             .filter { kotlin.math.abs(it.lat - lat) < radiusNm / 60.0 + 0.1 }

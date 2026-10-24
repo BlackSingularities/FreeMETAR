@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -58,7 +57,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
-import com.freemetar.app.data.SavedRoute
+import com.freemetar.app.ui.flight.avionics.gpsLeg
 import com.freemetar.app.data.link.FlightState
 import com.freemetar.app.data.link.LinkClient
 import com.freemetar.app.data.nav.FixResult
@@ -85,8 +84,10 @@ private val RANGES = listOf(5, 10, 20, 40, 80, 160, 320)
  */
 @Composable
 fun FlyDeck(
-    link: LinkClient, s: FlightState, route: SavedRoute?, profile: AircraftProfile, nearby: List<FixResult>, availableHeight: Dp,
+    link: LinkClient, s: FlightState, profile: AircraftProfile, nearby: List<FixResult>, availableHeight: Dp,
     modifier: Modifier = Modifier, panel: (@Composable () -> Unit)? = null, leversLeft: Boolean = false,
+    /** Profil wybrany ręcznie (null = automatycznie) — decyduje też o stylu PFD i ND. */
+    displayProfile: AircraftProfile? = null,
 ) {
     val piston = profile == AircraftProfile.PISTON
     val levers = if (piston) 3 else if (profile == AircraftProfile.TURBOPROP) 2 else 1
@@ -104,9 +105,9 @@ fun FlyDeck(
             val h = rowH
             Row(horizontalArrangement = Arrangement.spacedBy(gap), verticalAlignment = Alignment.Top) {
                 if (leversLeft) Levers(link, s, profile, Modifier.height(h).width(thrW))
-                Box(Modifier.clip(RoundedCornerShape(10.dp))) { Pfd(s, Modifier.width(h * 1.12f)) }
+                Box(Modifier.clip(RoundedCornerShape(10.dp))) { Pfd(s, Modifier.width(h * 1.12f), displayProfile) }
                 if (panel != null) PanelSlot(Modifier.width(h * 1.05f).height(h), panel)
-                else NdWithControls(s, route, nearby, Modifier.width(h * 1.05f), aspect = 1.05f)
+                else NdWithControls(s, nearby, Modifier.width(h * 1.05f), aspect = 1.05f, displayProfile)
                 if (!leversLeft) Levers(link, s, profile, Modifier.height(h).width(thrW))
             }
         } else {
@@ -118,9 +119,9 @@ fun FlyDeck(
             Row(horizontalArrangement = Arrangement.spacedBy(gap), verticalAlignment = Alignment.Top) {
                 if (leversLeft) Levers(link, s, profile, Modifier.height(pfdH + gap + ndH).width(thrW))
                 Column(Modifier.width(w), verticalArrangement = Arrangement.spacedBy(gap)) {
-                    Box(Modifier.clip(RoundedCornerShape(10.dp))) { Pfd(s) }
+                    Box(Modifier.clip(RoundedCornerShape(10.dp))) { Pfd(s, profile = displayProfile) }
                     if (panel != null) PanelSlot(Modifier.fillMaxWidth().height(ndH), panel)
-                    else NdWithControls(s, route, nearby, Modifier.fillMaxWidth(), aspect = ndAspect)
+                    else NdWithControls(s, nearby, Modifier.fillMaxWidth(), aspect = ndAspect, displayProfile)
                 }
                 if (!leversLeft) Levers(link, s, profile, Modifier.height(pfdH + gap + ndH).width(thrW))
             }
@@ -133,7 +134,7 @@ fun FlyDeck(
  * i zasięg −/+ (prawy dolny róg). Wszystko na wyświetlaczu — bez osobnych rzędów przycisków.
  */
 @Composable
-private fun NdWithControls(s: FlightState, route: SavedRoute?, nearby: List<FixResult>, modifier: Modifier, aspect: Float) {
+private fun NdWithControls(s: FlightState, nearby: List<FixResult>, modifier: Modifier, aspect: Float, displayProfile: AircraftProfile? = null) {
     var rangeIdx by rememberSaveable { mutableIntStateOf(3) }
     var rose by rememberSaveable { mutableStateOf(false) }
     var layersText by rememberSaveable { mutableStateOf("airport,vor,ndb") }
@@ -142,7 +143,7 @@ private fun NdWithControls(s: FlightState, route: SavedRoute?, nearby: List<FixR
     val range = RANGES[rangeIdx]
     BoxWithConstraints(modifier.clip(RoundedCornerShape(10.dp))) {
         val narrow = maxWidth < 230.dp
-        NavDisplay(s, route?.fullPath().orEmpty(), range, rose = rose, nav = nearby, layers = layers, aspect = aspect)
+        NavDisplay(s, s.gpsLeg(), range, rose = rose, nav = nearby, layers = layers, aspect = aspect, profile = displayProfile)
         Row(Modifier.align(Alignment.BottomStart).padding(6.dp)) {
             EfisKey(if (rose) "ROSE" else "ARC", loc("Tryb mapy: dotknij, aby zmienić", "Map mode: tap to switch")) { rose = !rose }
         }

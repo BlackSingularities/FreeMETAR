@@ -24,8 +24,6 @@ data class Settings(
     val altUnit: AltUnit = AltUnit.FT,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val autoRefresh: Boolean = true,
-    val simbriefUser: String = "",
-    val activeRouteId: String? = null,
     /** Ręcznie wybrany profil panelu (null = automatycznie z danych samolotu). */
     val aircraftProfile: String? = null,
     /** SYSTEM / PL / EN */
@@ -62,8 +60,6 @@ class Prefs(private val context: Context) {
     private val ALT = stringPreferencesKey("alt")
     private val THEME = stringPreferencesKey("theme")
     private val AUTO = booleanPreferencesKey("auto_refresh")
-    private val SIMBRIEF = stringPreferencesKey("simbrief_user")
-    private val ROUTE = stringPreferencesKey("active_route")
     private val PROFILE = stringPreferencesKey("aircraft_profile")
     private val LANGUAGE = stringPreferencesKey("language")
     private val LINK_TOKENS = stringPreferencesKey("link_tokens")   // ip=token;ip=token
@@ -91,8 +87,6 @@ class Prefs(private val context: Context) {
             altUnit = p[ALT]?.let { runCatching { AltUnit.valueOf(it) }.getOrNull() } ?: AltUnit.FT,
             themeMode = p[THEME]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM,
             autoRefresh = p[AUTO] ?: true,
-            simbriefUser = p[SIMBRIEF].orEmpty(),
-            activeRouteId = p[ROUTE],
             aircraftProfile = p[PROFILE],
             language = p[LANGUAGE] ?: "SYSTEM",
             controlMode = p[CONTROL] ?: "TILT",
@@ -136,7 +130,6 @@ class Prefs(private val context: Context) {
     suspend fun setAlt(u: AltUnit) = context.dataStore.edit { it[ALT] = u.name }
     suspend fun setTheme(m: ThemeMode) = context.dataStore.edit { it[THEME] = m.name }
     suspend fun setAutoRefresh(v: Boolean) = context.dataStore.edit { it[AUTO] = v }
-    suspend fun setSimbriefUser(v: String) = context.dataStore.edit { it[SIMBRIEF] = v.trim() }
     private fun tokenMap(v: String?): Map<String, String> =
         v?.split(";")?.mapNotNull { e -> e.split("=", limit = 2).takeIf { it.size == 2 }?.let { it[0] to it[1] } }?.toMap().orEmpty()
 
@@ -165,7 +158,6 @@ class Prefs(private val context: Context) {
     suspend fun setRecordInterval(ms: Int) = context.dataStore.edit { it[RECORD_MS] = ms }
     suspend fun setLanguage(v: String) = context.dataStore.edit { it[LANGUAGE] = v }
     suspend fun setAircraftProfile(name: String?) = context.dataStore.edit { if (name == null) it.remove(PROFILE) else it[PROFILE] = name }
-    suspend fun setActiveRoute(id: String?) = context.dataStore.edit { if (id == null) it.remove(ROUTE) else it[ROUTE] = id }
     suspend fun setWelcomeShown(shown: Boolean) = context.dataStore.edit { it[WELCOME_SHOWN] = shown }
     suspend fun setCalloutsEnabled(v: Boolean) = context.dataStore.edit { it[CALLOUTS_ON] = v }
     suspend fun setCallout(id: String, on: Boolean) = context.dataStore.edit { p ->

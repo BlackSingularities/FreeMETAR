@@ -28,16 +28,12 @@ Do sterowania samolotem i danych z symulatora służy **OpenTakeoff Link**, mał
 **Mapa**
 - lotniska w kolorach kategorii lotu, obszary SIGMET, aktywna trasa z procedurami;
 - **widok 3D**: pochylenie i obrót mapy, a przy śledzeniu kamera patrzy w kierunku lotu;
-- **ślad lotu z wysokością**: linia zmienia kolor wraz z wysokością, na śladzie są etykiety wysokości (stopy albo FL), a w 3D pod śladem stoi „kurtyna” do ziemi, która pokazuje profil wznoszenia i zniżania (wysokość kurtyny jest przewyższona 3×, żeby profil był czytelny);
+- **ślad lotu z wysokością**: linia zmienia kolor wraz z wysokością, na śladzie są etykiety wysokości (stopy albo FL), a w 3D ślad to cienka linia zawieszona na wysokości lotu (przewyższonej 3×, żeby profil był czytelny), z samolotem na jej końcu;
 - bieżąca wysokość przy symbolu samolotu, budynki 3D przy dużym przybliżeniu;
-- przyciski mapy przy prawej krawędzi (warstwy, 3D, śledzenie samolotu, przybliżenie) i kompas pod paskiem stanu; w menu warstw METAR, SIGMET, trasa oraz lotniska, VOR, NDB i punkty z bazy MSFS wokół samolotu;
+- przyciski mapy w jednej grupie przy prawej krawędzi (warstwy, śledzenie samolotu, przybliżenie) i kompas pod paskiem stanu; w menu warstw METAR, SIGMET, bieżący odcinek planu lotu z GPS symulatora oraz lotniska, VOR, NDB i punkty z bazy MSFS wokół samolotu;
 - każdy zapisany lot można otworzyć na mapie 3D z dziennika lotów.
 
-**Plan lotu**
-- SimBrief: konto wpisuje się raz w Ustawieniach, potem ostatni plan pobiera jeden przycisk;
-- trasa wpisana z lotnisk i punktów albo **wskazana na mapie**: dotknięcia dodają punkty, w pobliżu lotniska z kodem ICAO lub radiolatarni wybiera się ono samo, w pustym miejscu powstaje punkt ze współrzędnymi;
-- edytor z wyborem SID, STAR i podejścia (dane z bazy MSFS przez Link);
-- eksport i import tras.
+**Plan lotu** — prosto z symulatora: następny punkt, odległość, czasy i bieżący odcinek z GPS MSFS (bez planowania tras w aplikacji).
 
 **Kokpit (z OpenTakeoff Link)**
 - **jeden widok do latania**: PFD, ND, dźwignie mocy i pływający przycisk sterowania na ekranie naraz, bez przewijania (telefon pionowo: PFD nad ND, dźwignie z boku; poziomo: wszystko w rzędzie; tablet: obok stała kolumna albo pod spodem stały panel autopilota, radia itd.). Tryb i zasięg ND oraz warstwy to małe przyciski EFIS na samym wyświetlaczu, kamera MSFS to trzy ikony w nagłówku. Autopilot, radio, systemy, silniki i postęp otwierają się z paska ikon w miejscu ND, więc PFD i dźwignie zostają na widoku;
@@ -77,7 +73,6 @@ Do sterowania samolotem i danych z symulatora służy **OpenTakeoff Link**, mał
 | Wiatr i temperatura na wysokościach | [Open-Meteo](https://open-meteo.com/) | CC BY 4.0 |
 | Podkład mapy i budynki | [OpenFreeMap](https://openfreemap.org/) / OpenStreetMap | ODbL |
 | Charty (USA) | [FAA d-TPP](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/dtpp/) | domena publiczna |
-| Plan lotu | [SimBrief](https://www.simbrief.com/) (publiczny eksport planu) | — |
 | Procedury, ILS, lotniska i pomoce na ND, stan lotu | baza i SimConnect Twojego MSFS przez OpenTakeoff Link | — |
 
 Baza OurAirports pobiera się raz przy pierwszym uruchomieniu i odświeża co 30 dni. Historia lotów i trasy są przechowywane tylko na telefonie.
@@ -124,16 +119,12 @@ To fly the aircraft and read live data from the simulator, run **OpenTakeoff Lin
 **Map**
 - airports coloured by flight category, SIGMET areas, the active route with procedures;
 - **3D view**: tilt and rotate the map; while following the aircraft the camera looks along the flight path;
-- **flight track with altitude**: the line changes colour with altitude and carries altitude labels (feet or FL). In 3D a curtain drops from the track to the ground and shows the climb and descent profile (its height is exaggerated 3× so the profile is readable);
+- **flight track with altitude**: the line changes colour with altitude and carries altitude labels (feet or FL). In 3D the track is a thin line hanging at flight altitude (exaggerated 3× so the profile is readable) with the aircraft at its end;
 - current altitude next to the aircraft symbol, 3D buildings when zoomed in;
-- map buttons along the right edge (layers, 3D, follow aircraft, zoom) and the compass below the status bar; the layers menu has METAR, SIGMET, the route, and airports, VORs, NDBs and waypoints from the MSFS database around the aircraft;
+- map buttons in one group along the right edge (layers, follow aircraft, zoom) and the compass below the status bar; the layers menu has METAR, SIGMET, the current flight-plan leg from the simulator GPS, and airports, VORs, NDBs and waypoints from the MSFS database around the aircraft;
 - any saved flight can be opened on the 3D map from the logbook.
 
-**Flight plan**
-- SimBrief: enter your account once in Settings, then one button downloads your latest plan;
-- a route typed from airports and waypoints, or **picked on the map**: taps add points, an airport with an ICAO code or a navaid nearby is picked automatically, an empty spot becomes a coordinate waypoint;
-- editor with SID, STAR and approach selection (from the MSFS database via Link);
-- route export and import.
+**Flight plan** — straight from the simulator: next waypoint, distance, times and the current leg from the MSFS GPS (no route planning in the app).
 
 **Cockpit (with OpenTakeoff Link)**
 - **one view for flying**: PFD, ND, thrust levers and the floating control button on screen at once, without scrolling (phone in portrait: PFD above ND, levers at the side; landscape: all in one row; tablet: a fixed column or a fixed panel below for the autopilot, radios and more). ND mode, range and layers are small EFIS buttons on the display itself, and the MSFS camera is three icons in the header. Autopilot, radios, systems, engines and progress open from an icon bar in place of the ND, so the PFD and levers stay in view;
@@ -173,7 +164,6 @@ To fly the aircraft and read live data from the simulator, run **OpenTakeoff Lin
 | Winds and temperatures aloft | [Open-Meteo](https://open-meteo.com/) | CC BY 4.0 |
 | Base map and buildings | [OpenFreeMap](https://openfreemap.org/) / OpenStreetMap | ODbL |
 | Charts (USA) | [FAA d-TPP](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/dtpp/) | public domain |
-| Flight plan | [SimBrief](https://www.simbrief.com/) (public plan export) | — |
 | Procedures, ILS, airports and navaids on the ND, live flight data | your MSFS database and SimConnect via OpenTakeoff Link | — |
 
 The OurAirports database downloads once on first launch and refreshes every 30 days. Flight history and routes stay on the phone.

@@ -64,6 +64,10 @@ data class LandingReport(
     val crosswindKt: Int? = null,
     val bounces: Int = 0,
     val notes: List<String> = emptyList(),
+    /** Lotnisko najbliższe przyziemieniu (lot może mieć kilka lądowań na różnych lotniskach). */
+    val airport: String? = null,
+    /** Chwila przyziemienia (ms). */
+    val at: Long? = null,
 )
 
 /**

@@ -70,8 +70,8 @@ fun LogbookStatistics(logs: List<FlightLog>) {
             )
         }
 
-        // Lądowania
-        val scored = logs.mapNotNull { it.landing?.score }
+        // Lądowania — każde osobno (touch and go i międzylądowania liczą się oddzielnie)
+        val scored = logs.flatMap { f -> f.allLandings.map { it.score } }
         if (scored.isNotEmpty()) {
             Row(
                 Modifier.fillMaxWidth(),
@@ -88,15 +88,15 @@ fun LogbookStatistics(logs: List<FlightLog>) {
                 StatCard(
                     icon = Icons.Outlined.TrendingUp,
                     value = scored.size.toString(),
-                    label = loc("Z oceną", "Scored"),
-                    subtitle = "${(scored.size * 100 / logs.size)}%",
+                    label = loc("Lądowań", "Landings"),
+                    subtitle = loc("lotów z oceną: ", "scored flights: ") + logs.count { it.allLandings.isNotEmpty() },
                     modifier = Modifier.weight(1f)
                 )
             }
         }
 
-        // Wykres postępów w czasie (ostatnie 10 lotów z oceną)
-        val recent = logs.mapNotNull { if (it.landing?.score != null) it to it.landing.score else null }.take(10).reversed()
+        // Wykres postępów w czasie (ostatnie 10 lądowań; loty od najnowszego, lądowania w locie chronologicznie)
+        val recent = logs.flatMap { f -> f.allLandings.reversed().map { it.score } }.take(10).reversed()
         if (recent.size >= 3) {
             Column(
                 Modifier
@@ -105,17 +105,20 @@ fun LogbookStatistics(logs: List<FlightLog>) {
                     .padding(16.dp)
             ) {
                 Text(
-                    loc("Postępy (ostatnie 10 lotów)", "Progress (last 10 flights)"),
+                    loc("Postępy (ostatnie 10 lądowań)", "Progress (last 10 landings)"),
                     style = MaterialTheme.typography.titleSmall,
                     color = c.ink
                 )
                 Spacer(Modifier.height(12.dp))
-                ProgressChart(recent.map { it.second }, modifier = Modifier.fillMaxWidth().height(120.dp))
+                ProgressChart(recent, modifier = Modifier.fillMaxWidth().height(120.dp))
             }
         }
 
-        // Top lotniska
-        val airports = logs.flatMap { listOfNotNull(it.from, it.to) }
+        // Top lotniska: start i każde lądowanie (bez lądowań — lotnisko końcowe)
+        val airports = logs.flatMap { f ->
+            val landed = f.allLandings.mapNotNull { it.airport }
+            listOfNotNull(f.from) + landed.ifEmpty { listOfNotNull(f.to) }
+        }
             .groupingBy { it }.eachCount()
             .entries.sortedByDescending { it.value }.take(5)
 
@@ -140,7 +143,7 @@ fun LogbookStatistics(logs: List<FlightLog>) {
                     ) {
                         Text(icao, fontWeight = FontWeight.Bold, color = c.ink)
                         Text(
-                            loc("$count lotów", "$count flights"),
+                            loc("$count wizyt", "$count visits"),
                             fontSize = 13.sp,
                             color = c.ink2
                         )
