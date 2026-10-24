@@ -1,4 +1,4 @@
-## next release — One profile per display set, A320 cockpit panels
+## 2.1.0 — One profile per display set, A320 cockpit panels
 
 - Nine aircraft profiles, one per display set (A320, 737, 787, ATR 72, E190, G1000, C172, R44, glider); each has its own
   autopilot layout, radios, systems, lights and engine levers. Saved AIRBUS/BOEING choices carry over to A320/737.
