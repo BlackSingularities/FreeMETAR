@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -358,10 +359,10 @@ private fun McpKnobView(kind: McpKnob, size: Dp, desc: String, onStep: (Int) -> 
         drawCircle(androidx.compose.ui.graphics.Brush.radialGradient(listOf(MCP_KNOB_HI, MCP_KNOB_MID, MCP_KNOB_LO),
             Offset(c.x - body * 0.35f, c.y - body * 0.45f), body * 1.6f), body, c)
         drawCircle(if (grip != 0) B_LAMP else Color(0x55000000), body, c, style = Stroke(if (grip != 0) 3f else 1.5f))
-        androidx.compose.ui.graphics.drawscope.rotate(angle, c) {
+        rotate(angle, c) {
             val ribs = when (kind) { McpKnob.IAS -> 40; McpKnob.HDG -> 24; McpKnob.ALT -> 16 }
             val depth = when (kind) { McpKnob.ALT -> 0.7f; else -> 0.86f }
-            for (i in 0 until ribs) androidx.compose.ui.graphics.drawscope.rotate(i * 360f / ribs, c) {
+            for (i in 0 until ribs) rotate(i * 360f / ribs, c) {
                 drawLine(Color(0x55000000), Offset(c.x, c.y - body * 0.98f), Offset(c.x, c.y - body * depth), if (kind == McpKnob.ALT) 3.5f else 1.5f)
             }
             if (kind == McpKnob.ALT) drawCircle(MCP_KNOB_HI.copy(alpha = 0.6f), body * 0.6f, c)

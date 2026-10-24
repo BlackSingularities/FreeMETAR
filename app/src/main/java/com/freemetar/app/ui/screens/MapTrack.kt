@@ -74,10 +74,10 @@ internal fun trackGradient(track: List<TrackPoint>, n: Int = 48): List<Pair<Doub
 
 /**
  * Tor w 3D jako cienka linia zawieszona na wysokości lotu: wąskie wstęgi wzdłuż kawałków toru,
- * wyciągnięte tylko o grubość linii (od [base] do [h], metry) — bez ściany do ziemi.
+ * wyciągnięte tylko o grubość linii (od [base] do [h], metry). Z [wall] — ściana od ziemi do spodu linii ([trackWall3d]).
  * Każda wstęga łączy kilka punktów, żeby nie zniknęła przy upraszczaniu geometrii na małym przybliżeniu.
  */
-internal fun trackLine3d(track: List<TrackPoint>, halfWidthM: Double = 45.0, thicknessM: Double = 70.0, pieces: Int = 240): FeatureCollection {
+internal fun trackLine3d(track: List<TrackPoint>, halfWidthM: Double = 45.0, thicknessM: Double = 70.0, pieces: Int = 240, wall: Boolean = false): FeatureCollection {
     val t = thin(track, 1200)
     if (t.size < 2) return FeatureCollection.fromFeatures(emptyList())
     val step = ((t.size - 1) / pieces).coerceAtLeast(1)
@@ -91,14 +91,21 @@ internal fun trackLine3d(track: List<TrackPoint>, halfWidthM: Double = 45.0, thi
             val h = alt * 0.3048 * LINE3D_EXAGGERATION
             feats += Feature.fromGeometry(Polygon.fromLngLats(listOf(ring))).apply {
                 addNumberProperty("alt", alt)
-                addNumberProperty("h", h + thicknessM / 2)
-                addNumberProperty("base", (h - thicknessM / 2).coerceAtLeast(0.0))
+                // Ściana: od ziemi do spodu linii; linia: tylko jej grubość
+                addNumberProperty("h", if (wall) (h - thicknessM / 2).coerceAtLeast(0.0) else h + thicknessM / 2)
+                addNumberProperty("base", if (wall) 0.0 else (h - thicknessM / 2).coerceAtLeast(0.0))
             }
         }
         s = e
     }
     return FeatureCollection.fromFeatures(feats)
 }
+
+/**
+ * Półprzezroczysta ściana łącząca tor na ziemi z linią na wysokości lotu: bardzo wąska wstęga
+ * wyciągnięta od ziemi do spodu linii 3D (te same kawałki toru, więc ściana idzie dokładnie pod linią).
+ */
+internal fun trackWall3d(track: List<TrackPoint>): FeatureCollection = trackLine3d(track, halfWidthM = 6.0, wall = true)
 
 /** Obrys wstęgi wokół łamanej: lewa krawędź w przód, prawa wstecz. */
 private fun ribbon(pts: List<TrackPoint>, half: Double): List<Point>? {

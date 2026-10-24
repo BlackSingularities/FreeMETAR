@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -98,6 +99,8 @@ private const val LYR_PLANE3D = "oab-plane-3d-layer"
 private const val SRC_TRACK = "oab-track"
 private const val IMG_PLANE = "oab-plane-icon"
 private const val SRC_LINE3D = "oab-track-line3d"
+private const val SRC_WALL3D = "oab-track-wall3d"
+private const val LYR_WALL3D = "oab-track-wall3d-layer"
 private const val SRC_TRACK_LBL = "oab-track-labels"
 private const val LYR_LINE3D = "oab-track-line3d-layer"
 private const val LYR_BUILDINGS = "oab-buildings-3d"
@@ -182,10 +185,9 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
     var showNav by rememberSaveable { mutableStateOf(true) }
     var layersMenu by remember { mutableStateOf(false) }
     val nearbyNav by vm.nearbyNav.collectAsStateWithLifecycle()
-    // Kompas MapLibre pod paskiem stanu i chipami (domyślnie wchodził pod pasek stanu)
+    // Kompas MapLibre w prawym dolnym rogu, nad paskiem nawigacji systemu
     val density = androidx.compose.ui.platform.LocalDensity.current
-    val statusTop = WindowInsets.statusBars.getTop(density)
-    val compassTop = statusTop + with(density) { 64.dp.roundToPx() }
+    val compassBottom = WindowInsets.navigationBars.getBottom(density) + with(density) { 18.dp.roundToPx() }
     val compassRight = with(density) { 14.dp.roundToPx() }
     // Mapa zawsze w 3D - domyślne pochylenie 50°
     val defaultTilt = 50.0
@@ -234,8 +236,8 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
             // Tilt i rotate dwoma palcami
             map.uiSettings.isRotateGesturesEnabled = true
             map.uiSettings.isTiltGesturesEnabled = true
-            map.uiSettings.compassGravity = android.view.Gravity.TOP or android.view.Gravity.END
-            map.uiSettings.setCompassMargins(0, compassTop, compassRight, 0)
+            map.uiSettings.compassGravity = android.view.Gravity.BOTTOM or android.view.Gravity.END
+            map.uiSettings.setCompassMargins(0, 0, compassRight, compassBottom)
             map.uiSettings.setCompassFadeFacingNorth(true)
             map.setStyle(Style.Builder().fromUri(styleUrl)) { st ->
                 addOverlay(st, c)
@@ -327,6 +329,7 @@ fun MapScreen(vm: MainViewModel, onOpen: (String) -> Unit) {
                 *stops.map { (f, alt) -> val c = altRgb(alt); Expression.stop(f, Expression.rgb(c[0], c[1], c[2])) }.toTypedArray()),
         ))
         (st.getSource(SRC_LINE3D) as? GeoJsonSource)?.setGeoJson(trackLine3d(track))
+        (st.getSource(SRC_WALL3D) as? GeoJsonSource)?.setGeoJson(trackWall3d(track))
         (st.getSource(SRC_TRACK_LBL) as? GeoJsonSource)?.setGeoJson(trackLabels(track))
     }
     // Plan lotu z symulatora: bieżący odcinek GPS
@@ -469,7 +472,14 @@ private fun addOverlay(st: Style, c: FmColors) {
     ).apply { minZoom = 8f })
     // Tor lotu w kolorze wysokości, w 3D także cienka linia na wysokości lotu; samolot nad wszystkim
     // Bez upraszczania: wąskie wstęgi znikałyby przy małym przybliżeniu
-    // Tor w 3D: sama cienka linia zawieszona na wysokości lotu (bez ściany do ziemi)
+    // Tor w 3D: półprzezroczysta ściana od toru na ziemi do linii w powietrzu, nad nią cienka linia na wysokości lotu
+    st.addSource(GeoJsonSource(SRC_WALL3D, GeoJsonOptions().withTolerance(0f)))
+    st.addLayer(FillExtrusionLayer(LYR_WALL3D, SRC_WALL3D).withProperties(
+        PropertyFactory.fillExtrusionColor(altColor()),
+        PropertyFactory.fillExtrusionHeight(Expression.get("h")),
+        PropertyFactory.fillExtrusionBase(Expression.get("base")),
+        PropertyFactory.fillExtrusionOpacity(0.28f),
+    ))
     st.addSource(GeoJsonSource(SRC_LINE3D, GeoJsonOptions().withTolerance(0f)))
     st.addLayer(FillExtrusionLayer(LYR_LINE3D, SRC_LINE3D).withProperties(
         PropertyFactory.fillExtrusionColor(altColor()),
@@ -548,6 +558,7 @@ private fun addOverlay(st: Style, c: FmColors) {
 private fun set3dLayers(st: Style, on: Boolean) {
     val v = PropertyFactory.visibility(if (on) "visible" else "none")
     st.getLayer(LYR_LINE3D)?.setProperties(v)
+    st.getLayer(LYR_WALL3D)?.setProperties(v)
     st.getLayer(LYR_PLANE3D)?.setProperties(v)
     st.getLayer(LYR_BUILDINGS)?.setProperties(v)
 }

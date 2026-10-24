@@ -56,6 +56,8 @@ import com.freemetar.app.domain.Atmo
 import com.freemetar.app.domain.MetarDecoder
 import com.freemetar.app.domain.Wind
 import com.freemetar.app.domain.fmt
+import androidx.compose.foundation.layout.wrapContentWidth
+import com.freemetar.app.ui.components.Panel
 import com.freemetar.app.ui.components.SectionCard
 import com.freemetar.app.ui.components.StatTile
 import com.freemetar.app.ui.theme.Mono
@@ -78,8 +80,9 @@ private enum class Tool(private val labelOf: () -> String, val icon: ImageVector
 }
 
 /**
- * Narzędzia: wszystkie widoczne naraz jako kafelki (telefon) albo lista po lewej (tablet / poziomo),
- * wybrane narzędzie pod spodem lub obok. Aktywny kafelek to blok w kolorze tekstu.
+ * Narzędzia: wszystkie widoczne naraz jako kafelki w siatce 4 × 2 (telefon) albo lista w panelu po lewej
+ * (tablet / poziomo), wybrane narzędzie pod spodem lub obok. Wygląd jak reszta aplikacji: panele z zaokrągleniem 10 dp,
+ * aktywny kafelek z jaśniejszym tłem, obwódką w kolorze akcentu i kropką — bez odwróconego bloku.
  */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -97,28 +100,35 @@ fun ToolsScreen(vm: MainViewModel) {
             Tool.DECODE -> DecodeTool()
         }
     }
+    val title: @Composable () -> Unit = {
+        Text(loc("Narzędzia", "Tools"), style = MaterialTheme.typography.headlineLarge, color = Fm.c.ink, modifier = Modifier.padding(top = 4.dp))
+        Text(loc("Obliczenia i ściąga do planowania lotu", "Calculators and a cheat sheet for flight planning"),
+            style = MaterialTheme.typography.bodySmall, color = Fm.c.ink2, modifier = Modifier.padding(bottom = 4.dp))
+    }
     androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding()) {
         if (maxWidth >= 720.dp) {
-            androidx.compose.foundation.layout.Row(Modifier.fillMaxSize()) {
-                androidx.compose.foundation.layout.Column(
-                    Modifier.width(230.dp).fillMaxHeight().verticalScroll(rememberScrollState()).padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(loc("Narzędzia", "Tools"), style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 8.dp, bottom = 10.dp))
-                    Tool.entries.forEach { t -> ToolTile(t, tool == t, Modifier.fillMaxWidth(), row = true) { tool = t } }
+            // Tablet: lista narzędzi w panelu po lewej, wybrane narzędzie obok (szerokość treści jak w ustawieniach)
+            Row(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(Modifier.width(240.dp).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    title()
+                    Panel {
+                        Column(Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Tool.entries.forEach { t -> ToolRow(t, tool == t) { tool = t } }
+                        }
+                    }
                 }
-                androidx.compose.foundation.layout.Box(Modifier.width(1.dp).fillMaxHeight().background(Fm.c.rule))
-                androidx.compose.foundation.layout.Column(
-                    Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(20.dp).widthIn(max = 760.dp),
+                Column(
+                    Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(top = 4.dp).widthIn(max = 760.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) { content() }
             }
         } else {
             LazyColumn(
-                Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                Modifier.fillMaxSize().wrapContentWidth(androidx.compose.ui.Alignment.CenterHorizontally).widthIn(max = 760.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                item { Text(loc("Narzędzia", "Tools"), style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 8.dp, start = 4.dp)) }
+                item { Column { title() } }
                 item {
                     androidx.compose.foundation.layout.FlowRow(
                         maxItemsInEachRow = 4,
@@ -128,29 +138,47 @@ fun ToolsScreen(vm: MainViewModel) {
                     }
                 }
                 item { content() }
+                item { Spacer(Modifier.size(16.dp)) }
             }
         }
     }
 }
 
+/** Kafelek narzędzia (telefon): panel z ikoną i podpisem; aktywny — jaśniejsze tło, obwódka akcentu, kropka pod podpisem. */
 @Composable
-private fun ToolTile(t: Tool, on: Boolean, modifier: Modifier, row: Boolean = false, onClick: () -> Unit) {
+private fun ToolTile(t: Tool, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val c = Fm.c
-    val shape = RoundedCornerShape(if (row) 50 else 14)
-    val m = modifier.clip(shape).background(if (on) c.ink else c.card).border(1.dp, if (on) c.ink else c.rule, shape).clickable(onClick = onClick)
-    if (row) {
-        androidx.compose.foundation.layout.Row(m.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-            Icon(t.icon, null, tint = if (on) c.paper else c.ink2, modifier = Modifier.size(18.dp))
-            androidx.compose.foundation.layout.Spacer(Modifier.width(10.dp))
-            Text(t.label, color = if (on) c.paper else c.ink, style = MaterialTheme.typography.labelLarge)
-        }
-    } else {
-        androidx.compose.foundation.layout.Column(m.padding(vertical = 10.dp, horizontal = 4.dp), horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
-            Icon(t.icon, null, tint = if (on) c.paper else c.ink2, modifier = Modifier.size(22.dp))
-            androidx.compose.foundation.layout.Spacer(Modifier.size(4.dp))
-            Text(t.label, color = if (on) c.paper else c.ink, style = MaterialTheme.typography.labelMedium, maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-        }
+    val shape = RoundedCornerShape(10.dp)
+    androidx.compose.foundation.layout.Column(
+        modifier.clip(shape).background(if (on) c.terrain else c.card).border(if (on) 1.5.dp else 1.dp, if (on) c.accent else c.rule, shape)
+            .clickable(role = androidx.compose.ui.semantics.Role.Tab, onClick = onClick)
+            .padding(top = 12.dp, bottom = 8.dp, start = 4.dp, end = 4.dp),
+        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+    ) {
+        Icon(t.icon, null, tint = if (on) c.accent else c.ink2, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.size(6.dp))
+        Text(t.label, color = if (on) c.ink else c.ink2, style = MaterialTheme.typography.labelMedium,
+            fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium, maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+        Spacer(Modifier.size(5.dp))
+        androidx.compose.foundation.layout.Box(Modifier.size(5.dp).clip(RoundedCornerShape(50)).background(if (on) c.accent else androidx.compose.ui.graphics.Color.Transparent))
+    }
+}
+
+/** Pozycja listy narzędzi (tablet): ikona i nazwa; aktywna — jaśniejsze tło i kropka akcentu z prawej. */
+@Composable
+private fun ToolRow(t: Tool, on: Boolean, onClick: () -> Unit) {
+    val c = Fm.c
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(if (on) c.terrain else androidx.compose.ui.graphics.Color.Transparent)
+            .clickable(role = androidx.compose.ui.semantics.Role.Tab, onClick = onClick).padding(horizontal = 12.dp, vertical = 11.dp),
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+    ) {
+        Icon(t.icon, null, tint = if (on) c.accent else c.ink2, modifier = Modifier.size(19.dp))
+        Spacer(Modifier.width(12.dp))
+        Text(t.label, color = if (on) c.ink else c.ink2, style = MaterialTheme.typography.labelLarge,
+            fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium, modifier = Modifier.weight(1f))
+        if (on) androidx.compose.foundation.layout.Box(Modifier.size(6.dp).clip(RoundedCornerShape(50)).background(c.accent))
     }
 }
 
@@ -159,8 +187,19 @@ internal fun NumField(label: String, value: String, modifier: Modifier = Modifie
     OutlinedTextField(
         value = value, onValueChange = onChange, label = { Text(label) }, singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-        shape = RoundedCornerShape(12.dp), modifier = modifier,
+        textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = Mono),
+        shape = RoundedCornerShape(10.dp), modifier = modifier,
     )
+}
+
+/** Wiersz tabeli wyników (przelicznik, dekoder): opis z lewej, wartość z prawej, cienka linia pod spodem. */
+@Composable
+private fun ResultRow(label: String, value: String, last: Boolean = false) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 9.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+        Text(label, color = Fm.c.ink2, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        Text(value, fontFamily = Mono, color = Fm.c.ink, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+    }
+    if (!last) com.freemetar.app.ui.components.Rule()
 }
 
 internal fun String.num() = replace(',', '.').toDoubleOrNull()
@@ -312,12 +351,7 @@ private fun UnitsTool() {
                 "°C → °F" to Atmo.cToF(x).fmt(1),
                 "°F → °C" to Atmo.fToC(x).fmt(1),
             )
-            rows.forEach { (l, r) ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
-                    Text(l, color = Fm.c.ink2, modifier = Modifier.weight(1f))
-                    Text(r, fontFamily = Mono, color = Fm.c.ink, fontWeight = FontWeight.SemiBold)
-                }
-            }
+            rows.forEachIndexed { i, (l, r) -> ResultRow(l, r, last = i == rows.lastIndex) }
         }
     }
 }
@@ -326,13 +360,17 @@ private fun UnitsTool() {
 private fun DecodeTool() {
     var raw by rememberSaveable { mutableStateOf("EPWA 171030Z 24012G24KT 210V280 9999 -SHRA FEW012 BKN025CB 12/09 Q1008 TEMPO 4000 TSRA") }
     SectionCard(loc("Dekoder METAR/TAF", "METAR/TAF decoder"), icon = Icons.Outlined.Translate) {
-        OutlinedTextField(raw, { raw = it.uppercase() }, Modifier.fillMaxWidth(), textStyle = RawText, shape = RoundedCornerShape(12.dp), minLines = 3)
+        OutlinedTextField(raw, { raw = it.uppercase() }, Modifier.fillMaxWidth(), textStyle = RawText, shape = RoundedCornerShape(10.dp), minLines = 3)
         Spacer(Modifier.size(10.dp))
-        MetarDecoder.decode(raw).filter { it.text != "—" && it.text.isNotBlank() }.forEach { d ->
-            Row(Modifier.padding(vertical = 4.dp)) {
-                Text(d.token, fontFamily = Mono, color = Fm.c.accent, fontSize = 12.sp, modifier = Modifier.width(96.dp))
-                Column { Text(d.text, color = Fm.c.ink, fontSize = 14.sp) }
+        val decoded = MetarDecoder.decode(raw).filter { it.text != "—" && it.text.isNotBlank() }
+        decoded.forEachIndexed { i, d ->
+            // Fragment depeszy w ramce kodu, obok jego znaczenie; cienka linia między pozycjami
+            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                Text(d.token, fontFamily = Mono, color = Fm.c.accent, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.width(104.dp).padding(end = 8.dp))
+                Text(d.text, color = Fm.c.ink, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
             }
+            if (i != decoded.lastIndex) com.freemetar.app.ui.components.Rule()
         }
     }
 }

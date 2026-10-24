@@ -56,7 +56,7 @@ fun SectionCard(
 /** Pole wyniku obliczeń: etykieta, wartość krojem kokpitowym, dopisek. */
 @Composable
 fun StatTile(label: String, value: String, sub: String? = null, modifier: Modifier = Modifier, accent: Color? = null, icon: ImageVector? = null) {
-    Column(modifier.clip(RoundedCornerShape(6.dp)).background(Fm.c.terrain).padding(horizontal = 12.dp, vertical = 10.dp)) {
+    Column(modifier.clip(RoundedCornerShape(8.dp)).background(Fm.c.terrain).padding(horizontal = 12.dp, vertical = 10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (icon != null) {
                 Icon(icon, null, tint = Fm.c.ink2, modifier = Modifier.size(14.dp))

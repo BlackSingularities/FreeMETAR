@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -80,12 +81,13 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 // ---------------- Wybór panelu wg profilu ----------------
-// A320 i 737 mają własne widoki w stylu kabiny producenta; pozostałe profile — panele ogólne dopasowane do profilu.
+// A320, 737 i E190 mają własne widoki w stylu kabiny producenta; pozostałe profile — panele ogólne dopasowane do profilu.
 
 @Composable
 fun AutopilotFor(link: LinkClient, s: FlightState, p: AircraftProfile, compact: Boolean = false) = when (p) {
     AircraftProfile.A320 -> AirbusFcu(link, s, compact)
     AircraftProfile.B737 -> BoeingMcp(link, s, compact)
+    AircraftProfile.E190 -> EmbraerGuidancePanel(link, s, compact)
     else -> AutopilotPanelV2(link, s, p, compact)
 }
 
@@ -93,6 +95,7 @@ fun AutopilotFor(link: LinkClient, s: FlightState, p: AircraftProfile, compact: 
 fun RadioFor(link: LinkClient, s: FlightState, p: AircraftProfile) = when (p) {
     AircraftProfile.A320 -> { AirbusRmp(link, s); Spacer(Modifier.height(10.dp)); AirbusAtc(link, s) }
     AircraftProfile.B737 -> { BoeingRadioPanel(link, s); Spacer(Modifier.height(10.dp)); BoeingAtc(link, s) }
+    AircraftProfile.E190 -> EmbraerRadio(link, s)
     else -> RadioPanel(link, s, p)
 }
 
@@ -100,6 +103,7 @@ fun RadioFor(link: LinkClient, s: FlightState, p: AircraftProfile) = when (p) {
 fun SystemsFor(link: LinkClient, s: FlightState, p: AircraftProfile) = when (p) {
     AircraftProfile.A320 -> AirbusSystems(link, s)
     AircraftProfile.B737 -> BoeingSystems(link, s)
+    AircraftProfile.E190 -> EmbraerSystems(link, s)
     else -> SystemsPanel(link, s, p)
 }
 
@@ -107,6 +111,7 @@ fun SystemsFor(link: LinkClient, s: FlightState, p: AircraftProfile) = when (p) 
 fun EnginesFor(link: LinkClient, s: FlightState, p: AircraftProfile) = when (p) {
     AircraftProfile.A320 -> AirbusEngines(link, s)
     AircraftProfile.B737 -> BoeingEngines(link, s)
+    AircraftProfile.E190 -> EmbraerEngines(link, s)
     else -> EnginePanel(link, s, p)
 }
 
@@ -349,11 +354,11 @@ private fun AirbusKnob(kind: FcuKnob, size: Dp, desc: String, onStep: (Int) -> U
         drawCircle(androidx.compose.ui.graphics.Brush.radialGradient(listOf(Color(0xFFE9ECEE), Color(0xFFA9AFB4), Color(0xFF6E757B)),
             Offset(c.x - body * 0.35f, c.y - body * 0.45f), body * 1.6f), body, c)
         drawCircle(if (grip != 0) AB_LAMP else Color(0x55000000), body, c, style = Stroke(if (grip != 0) 3f else 1.5f))
-        androidx.compose.ui.graphics.drawscope.rotate(angle, c) {
+        rotate(angle, c) {
             when (kind) {
                 FcuKnob.SPD -> {
                     // Drobne karbowanie na obwodzie i kropka-znacznik
-                    for (i in 0 until 48) androidx.compose.ui.graphics.drawscope.rotate(i * 7.5f, c) {
+                    for (i in 0 until 48) rotate(i * 7.5f, c) {
                         drawLine(Color(0x55000000), Offset(c.x, c.y - body * 0.98f), Offset(c.x, c.y - body * 0.86f), 1.5f)
                     }
                     drawCircle(Color(0xFF3A3F44), body * 0.09f, Offset(c.x, c.y - body * 0.6f))
@@ -368,7 +373,7 @@ private fun AirbusKnob(kind: FcuKnob, size: Dp, desc: String, onStep: (Int) -> U
                 }
                 FcuKnob.ALT -> {
                     // Żebrowany chwyt (12 żeber) i biała kreska położenia
-                    for (i in 0 until 12) androidx.compose.ui.graphics.drawscope.rotate(i * 30f, c) {
+                    for (i in 0 until 12) rotate(i * 30f, c) {
                         drawLine(Color(0x66000000), Offset(c.x, c.y - body * 0.98f), Offset(c.x, c.y - body * 0.62f), 3f)
                     }
                     drawCircle(Color(0xFFCDD2D6), body * 0.55f, c)
@@ -377,7 +382,7 @@ private fun AirbusKnob(kind: FcuKnob, size: Dp, desc: String, onStep: (Int) -> U
                 FcuKnob.VS -> {
                     // Rowek przez czapkę (kółko V/S obraca się „w górę / w dół”)
                     drawLine(Color(0x77000000), Offset(c.x - body * 0.75f, c.y), Offset(c.x + body * 0.75f, c.y), 5f, cap = StrokeCap.Round)
-                    for (i in 0 until 24) androidx.compose.ui.graphics.drawscope.rotate(i * 15f, c) {
+                    for (i in 0 until 24) rotate(i * 15f, c) {
                         drawLine(Color(0x44000000), Offset(c.x, c.y - body * 0.98f), Offset(c.x, c.y - body * 0.88f), 2f)
                     }
                 }

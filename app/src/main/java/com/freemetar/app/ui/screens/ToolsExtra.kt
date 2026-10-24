@@ -132,14 +132,14 @@ private fun IcaoField(label: String, value: String, icon: ImageVector, modifier:
         singleLine = true,
         textStyle = RawText,
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, keyboardType = KeyboardType.Ascii),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(10.dp),
         modifier = modifier,
     )
 }
 
 @Composable
 private fun RouteMetar(a: Airport, m: Metar?) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(12.dp)).background(Fm.c.terrain).padding(12.dp)) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(8.dp)).background(Fm.c.terrain).padding(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(a.ident, fontFamily = Mono, fontWeight = FontWeight.Bold, color = Fm.c.ink)
             Spacer(Modifier.width(8.dp))

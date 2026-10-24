@@ -1,4 +1,15 @@
-## 2.2.0 — Boeing 737 cockpit panels, cockpit-style FCU and MCP, brakes in Systems
+## 2.3.0 — E190 cockpit panels, map wall, Tools screen polish
+
+- E190 (Primus Epic): guidance panel (FD, NAV, APP, HDG SEL with PUSH SYNC, AP, YD, A/T, SPEED with FLCH, ALT SEL with ALT,
+  V/S wheel), MCDU-style RADIO page with COM/NAV and XPDR plus a 0–7 keypad, external lights, gear, flaps 0–5/FULL,
+  speed brake axis, EMER/PRKG BRAKE with the wheel brake axis, pitch trim, and an E-Jet EICAS (N1, ITT, N2, FF, fuel, gear, flaps, trim).
+- Map: a translucent wall joins the ground track with the 3D line at flight altitude; the compass moved to the bottom-right corner.
+
+- Tools look like the rest of the app: 10 dp panels, active tool marked with a lighter background, accent outline and dot
+  (no inverted block), tablet list inside a panel, same margins and content width as Settings, monospaced number fields,
+  divided result rows in the unit converter and METAR decoder.
+
+## 2.2.0 (not released: build failed; shipped in 2.3.0) — Boeing 737 cockpit panels, cockpit-style FCU and MCP, brakes in Systems
 
 - 737: MCP (A/T ARM and F/D switches, IAS/MACH, HEADING, ALTITUDE, VERT SPEED wheel, N1, SPEED, LVL CHG, HDG SEL, LNAV,
   VOR LOC, APP, ALT HLD, V/S, CMD A, DISENGAGE); VHF/NAV radio panel; ATC panel with per-digit setting and STBY / ALT RPTG OFF / XPNDR;
