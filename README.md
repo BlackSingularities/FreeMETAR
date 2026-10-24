@@ -91,7 +91,7 @@ powershell -ExecutionPolicy Bypass -File tools/build-local.ps1
 
 ### Wydania
 
-Każdy push na `main` uruchamia [workflow](.github/workflows/release.yml), który buduje APK i `OpenTakeoff-Link.exe` i publikuje je w wydaniu `v1.10.<numer przebiegu>`.
+Każdy push na `main` uruchamia [workflow](.github/workflows/release.yml), który tylko buduje APK i `OpenTakeoff-Link.exe`. Wydanie powstaje po wypchnięciu tagu `vX.Y.Z` (np. `git tag v2.0.1 && git push origin v2.0.1`): workflow buduje obie aplikacje w wersji `X.Y.Z` i publikuje je w wydaniu o tej nazwie. Człony `Y` i `Z` muszą być mniejsze niż 100.
 
 Bez sekretów APK jest podpisane kluczem debug. Żeby aktualizacje instalowały się na stałym kluczu, dodaj sekrety repozytorium: `SIGNING_KEYSTORE_BASE64`, `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`.
 
@@ -182,7 +182,7 @@ powershell -ExecutionPolicy Bypass -File tools/build-local.ps1
 
 ### Releases
 
-Every push to `main` runs the [workflow](.github/workflows/release.yml), which builds the APK and `OpenTakeoff-Link.exe` and publishes them as release `v1.10.<run number>`.
+Every push to `main` runs the [workflow](.github/workflows/release.yml), which only builds the APK and `OpenTakeoff-Link.exe`. A release is created by pushing a `vX.Y.Z` tag (e.g. `git tag v2.0.1 && git push origin v2.0.1`): the workflow builds both apps as version `X.Y.Z` and publishes them under that release. `Y` and `Z` must be below 100.
 
 Without secrets the APK is signed with the debug key. To keep updates on a fixed key, add these repository secrets: `SIGNING_KEYSTORE_BASE64`, `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`.
 

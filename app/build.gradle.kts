@@ -5,8 +5,13 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-// Numer wersji z CI (GITHUB_RUN_NUMBER), lokalnie 1
-val buildNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+// Wersja X.Y.Z z tagu wydania (CI ustawia APP_VERSION), lokalnie 0.0.0.
+// versionCode = X·10000 + Y·100 + Z, więc Y i Z muszą być < 100; 2.0.0 = 20000 > dawnych numerów przebiegu.
+val appVersion = System.getenv("APP_VERSION")?.takeIf { it.isNotBlank() } ?: "0.0.0"
+val appVersionCode = appVersion.split('.').map { it.toInt() }.let { (major, minor, patch) ->
+    require(minor < 100 && patch < 100) { "Wersja $appVersion: człony minor i patch muszą być < 100" }
+    maxOf(1, major * 10000 + minor * 100 + patch)
+}
 val keystorePath: String? = System.getenv("SIGNING_KEYSTORE_PATH")
 
 android {
@@ -17,8 +22,8 @@ android {
         applicationId = "com.freemetar.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = buildNumber
-        versionName = "1.10.$buildNumber"
+        versionCode = appVersionCode
+        versionName = appVersion
         // Google Drive: włączyć dopiero po założeniu klienta OAuth (Android, SHA-1 klucza) w Google Cloud
         buildConfigField("boolean", "DRIVE_SYNC", "false")
     }

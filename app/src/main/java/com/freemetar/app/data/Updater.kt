@@ -30,8 +30,8 @@ data class UpdateInfo(
 )
 
 /**
- * Aktualizacje z GitHub Releases. Tag ma postać v1.<x>.<N>, gdzie N = versionCode
- * (numer przebiegu workflow), więc porównujemy liczby, nie napisy.
+ * Aktualizacje z GitHub Releases. Tag ma postać vX.Y.Z, a versionCode = X·10000 + Y·100 + Z
+ * (jak w app/build.gradle.kts), więc porównujemy liczby, nie napisy.
  */
 object Updater {
     const val REPO = "BlackSingularities/OpenTakeoff"
@@ -43,7 +43,9 @@ object Updater {
         val o = json.parseToJsonElement(body).jsonObject
         fun s(k: String) = (o[k] as? JsonPrimitive)?.contentOrNull.orEmpty()
         val tag = s("tag_name").removePrefix("v")
-        val code = tag.substringAfterLast('.').toIntOrNull() ?: return null
+        val parts = tag.split('.').map { it.toIntOrNull() ?: return null }
+        if (parts.size != 3) return null
+        val code = parts[0] * 10000 + parts[1] * 100 + parts[2]
         if (code <= BuildConfig.VERSION_CODE) return null
         val apk = o["assets"]?.jsonArray?.map { it.jsonObject }
             ?.firstOrNull { (it["name"] as? JsonPrimitive)?.contentOrNull?.endsWith(".apk") == true } ?: return null

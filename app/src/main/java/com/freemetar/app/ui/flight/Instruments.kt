@@ -185,7 +185,7 @@ fun VerticalProfile(s: FlightState, route: List<RoutePoint>, rangeNm: Int, modif
     } else emptyList()
     val values = listOfNotNull(alt, sel) + pts.map { it.third.toDouble() }
     val top = ((values.max() + 2000) / 1000).let { kotlin.math.ceil(it) * 1000 }
-    val bottom = (((values.min() - 2000) / 1000).let { floor(it) * 1000 }).coerceAtLeast(0.0)
+    val bottom = (((values.min() - 2000) / 1000).let { kotlin.math.floor(it) * 1000 }).coerceAtLeast(0.0)
     Canvas(modifier.fillMaxWidth().aspectRatio(3.2f).semantics { contentDescription = loc("Profil pionowy na $rangeNm mil", "Vertical profile over $rangeNm miles") }) {
         val w = size.width; val h = size.height
         val left = w * 0.12f; val right = w * 0.98f; val tp = h * 0.1f; val bt = h * 0.86f

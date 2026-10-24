@@ -420,6 +420,7 @@ private fun addOverlay(st: Style, c: FmColors) {
     st.addSource(GeoJsonSource(SRC_SIGMET))
     st.addLayer(FillLayer("oab-sigmet-fill", SRC_SIGMET).withProperties(
         PropertyFactory.fillColor(hex(c.caution)), PropertyFactory.fillOpacity(0.16f),
+    ))
     st.addLayer(LineLayer("oab-sigmet-line", SRC_SIGMET).withProperties(
         PropertyFactory.lineColor(hex(c.caution)), PropertyFactory.lineWidth(1.6f), PropertyFactory.lineDasharray(arrayOf(3f, 2f)),
     ))

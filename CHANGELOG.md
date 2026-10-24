@@ -1,4 +1,7 @@
-## next CI release — Aircraft-matched displays (from OpenPFD)
+## 2.0.0 — Aircraft-matched displays (from OpenPFD)
+
+- Versioning: releases are now cut from `vX.Y.Z` tags instead of every push to `main`; the app and Link carry the tag version.
+  Apps on 1.10.x cannot detect 2.0.0 automatically — install it once by hand from the release page.
 
 - PFD and ND/MFD now match the aircraft: Airbus A320, Boeing 737, 787, ATR 72, Embraer E190, Garmin G1000 (with SVT terrain),
   analog six-pack (3 per row), R44 and glider panels. The aircraft profile picked in the cockpit menu drives the displays too.

@@ -1,17 +1,15 @@
 name: Build & Release
 
-# Każdy commit na main = nowy release z podpisanym APK
+# Push na main = sam build (sprawdzenie, że się kompiluje).
+# Tag vX.Y.Z = release z podpisanym APK i OpenTakeoff-Link.exe w wersji X.Y.Z.
 on:
   push:
     branches: [main]
+    tags: ["v*.*.*"]
   workflow_dispatch:
 
 permissions:
   contents: write
-
-# Wersja wydania: <VERSION_PREFIX>.<numer przebiegu>; ostatni człon to versionCode APK
-env:
-  VERSION_PREFIX: "1.10"
 
 concurrency:
   group: release-${{ github.ref }}
@@ -22,6 +20,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+
+      # Wersja z tagu (v2.0.0 → 2.0.0); bez tagu build ma wersję 0.0.0 i nie jest wydawany
+      - name: Wersja
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Tag musi mieć postać vX.Y.Z"; exit 1; }
+          else
+            VERSION="0.0.0"
+          fi
+          echo "APP_VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - uses: actions/setup-java@v6
         with:
@@ -57,21 +66,17 @@ jobs:
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: gradle :app:assembleRelease --no-daemon --stacktrace
 
-      - name: Nazwij APK
-        run: |
-          VERSION="${VERSION_PREFIX}.${GITHUB_RUN_NUMBER}"
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          cp app/build/outputs/apk/release/app-release.apk "OpenTakeoff-$VERSION.apk"
-
       - name: Publikuj release
+        if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          cp app/build/outputs/apk/release/app-release.apk "OpenTakeoff-$APP_VERSION.apk"
           NOTES=$(git log -1 --pretty=format:'%s%n%n%b')
-          gh release create "v$VERSION" "OpenTakeoff-$VERSION.apk" \
-            --title "OpenTakeoff $VERSION" \
+          gh release create "$GITHUB_REF_NAME" "OpenTakeoff-$APP_VERSION.apk" \
+            --title "OpenTakeoff $APP_VERSION" \
             --notes "$NOTES" \
-            --target "$GITHUB_SHA"
+            --verify-tag
 
   # OpenTakeoff Link (most MSFS ↔ telefon) — dołączany do tego samego release co APK.
   # Osobny job po APK: jego błąd nie blokuje wydania aplikacji.
@@ -80,6 +85,12 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+
+      - name: Wersja
+        shell: bash
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then VERSION="${GITHUB_REF_NAME#v}"; else VERSION="0.0.0"; fi
+          echo "APP_VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - uses: actions/setup-dotnet@v6
         with:
@@ -91,13 +102,12 @@ jobs:
       - name: Publikuj OpenTakeoff-Link.exe
         shell: bash
         run: |
-          VERSION="${VERSION_PREFIX}.${GITHUB_RUN_NUMBER}"
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          dotnet publish bridge/OpenAirBookLink/OpenAirBookLink.csproj -c Release -o publish -p:Version=$VERSION
+          dotnet publish bridge/OpenAirBookLink/OpenAirBookLink.csproj -c Release -o publish -p:Version=$APP_VERSION
           cp publish/OpenTakeoff-Link.exe OpenTakeoff-Link.exe
 
       - name: Dołącz do release
+        if: github.ref_type == 'tag'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "v$VERSION" OpenTakeoff-Link.exe --clobber
+        run: gh release upload "$GITHUB_REF_NAME" OpenTakeoff-Link.exe --clobber

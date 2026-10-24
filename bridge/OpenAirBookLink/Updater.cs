@@ -9,8 +9,8 @@ namespace OpenAirBookLink;
 public sealed record LinkUpdate(Version Version, string Tag, string ExeUrl, long Size, string? Sha256, string PageUrl);
 
 /// <summary>
-/// Samoaktualizacja z GitHub Releases. Tag ma postać v1.&lt;x&gt;.&lt;N&gt; i tę samą wersję CI wpisuje do exe
-/// (-p:Version), więc porównujemy System.Version. Lokalne buildy mają numer przebiegu 0 i się nie aktualizują.
+/// Samoaktualizacja z GitHub Releases. Tag ma postać vX.Y.Z i tę samą wersję CI wpisuje do exe
+/// (-p:Version), więc porównujemy System.Version. Lokalne buildy mają wersję 0.0.0 i się nie aktualizują.
 ///
 /// Podmiana działającego pliku: Windows nie pozwala go usunąć, ale pozwala zmienić nazwę.
 /// Nowy plik pobieramy obok jako .new, bieżący przenosimy na .old, .new na miejsce bieżącego,
@@ -28,12 +28,12 @@ public static class Updater
 
     private static readonly HttpClient Http = CreateClient();
 
-    /// <summary>Ścieżka exe, z którego działamy; null dla buildów lokalnych (wersja x.y.0) i spoza single-file (np. dotnet run).</summary>
+    /// <summary>Ścieżka exe, z którego działamy; null dla buildów lokalnych (wersja 0.0.0) i spoza single-file (np. dotnet run).</summary>
     public static string? ExePath
     {
         get
         {
-            if (Current.Build == 0) return null;
+            if (Current == new Version(0, 0, 0)) return null;
             var path = Environment.ProcessPath;
             if (path is null || !string.Equals(Path.GetExtension(path), ".exe", StringComparison.OrdinalIgnoreCase)) return null;
             // W trybie single-file Assembly.Location jest pusty; przy zwykłym buildzie obok leży .dll i podmiana exe nic by nie dała.
