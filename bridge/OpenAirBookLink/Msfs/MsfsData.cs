@@ -111,6 +111,10 @@ public struct MsfsData
     [SimConnect("GENERAL ENG RPM:4", "rpm")] public double Rpm4;
     [SimConnect("GENERAL ENG EXHAUST GAS TEMPERATURE:4", "celsius")] public double Egt4;
     [SimConnect("ENG FUEL FLOW PPH:4", "pounds per hour")] public double Ff4;
+    // Dźwignie mocy pozostałych silników (silnik 1 to Throttle1 wyżej)
+    [SimConnect("GENERAL ENG THROTTLE LEVER POSITION:2", "percent")] public double Throttle2;
+    [SimConnect("GENERAL ENG THROTTLE LEVER POSITION:3", "percent")] public double Throttle3;
+    [SimConnect("GENERAL ENG THROTTLE LEVER POSITION:4", "percent")] public double Throttle4;
 
     [SimConnect("AMBIENT WIND DIRECTION", "degrees")] public double WindDir;
     [SimConnect("AMBIENT WIND VELOCITY", "knots")] public double WindSpd;

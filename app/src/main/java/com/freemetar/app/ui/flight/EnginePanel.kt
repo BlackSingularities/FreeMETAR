@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import com.freemetar.app.data.link.FlightState
 import com.freemetar.app.data.link.LinkClient
 import com.freemetar.app.domain.AircraftProfile
+import com.freemetar.app.domain.Lever as LeverKind
 import com.freemetar.app.domain.loc
 import com.freemetar.app.ui.theme.Fm
 import com.freemetar.app.ui.theme.Mono
@@ -103,8 +104,12 @@ fun EnginePanel(link: LinkClient, s: FlightState, profile: AircraftProfile) {
 internal fun Eicas(s: FlightState, profile: AircraftProfile) {
     val m = rememberTextMeasurer()
     val engines = s.engines.ifEmpty { return }
-    val piston = profile == AircraftProfile.PISTON
-    val title = when (profile) { AircraftProfile.AIRBUS -> "E/WD"; AircraftProfile.BOEING -> "EICAS"; AircraftProfile.PISTON -> "ENGINE"; else -> "EIS" }
+    // Wskaźnik obrotów (RPM) dla tłokowych, N1 dla turbinowych (w ATR to NH)
+    val piston = !profile.jet && profile != AircraftProfile.ATR72
+    val title = when (profile) {
+        AircraftProfile.A320 -> "E/WD"; AircraftProfile.B737, AircraftProfile.B787, AircraftProfile.E190 -> "EICAS"
+        AircraftProfile.ATR72 -> "EWD"; AircraftProfile.G1000 -> "EIS"; else -> "ENGINE"
+    }
     val desc = engines.mapIndexed { i, e -> loc("Silnik ${i + 1}: ", "Engine ${i + 1}: ") + if (piston) "${(e.rpm ?: 0.0).roundToInt()} RPM" else "N1 ${"%.1f".format(e.n1Pct ?: 0.0)}%" }.joinToString(", ")
     Canvas(Modifier.fillMaxWidth().aspectRatio(if (engines.size > 2) 1.5f else 1.25f).clip(RoundedCornerShape(10.dp)).semantics { contentDescription = desc }) {
         val w = size.width; val h = size.height
@@ -165,36 +170,49 @@ internal fun Eicas(s: FlightState, profile: AircraftProfile) {
     }
 }
 
-/** Pulpit dźwigni: każda dźwignia to pionowa szczelina z rączką przeciąganą palcem. */
+/**
+ * Pulpit dźwigni: osobna dźwignia mocy dla każdego silnika (THROTTLEn_SET), obok dźwignie wspólne
+ * dla wszystkich silników (śmigło, mieszanka, dźwignia warunku w ATR). Każda to pionowa szczelina z rączką.
+ */
 @Composable
-private fun Quadrant(link: LinkClient, s: FlightState, p: AircraftProfile) {
+internal fun Quadrant(link: LinkClient, s: FlightState, p: AircraftProfile) {
     val c = Fm.c
+    if (!p.hasThrottle) return
     val skin = panelSkin(p)
-    val jet = p == AircraftProfile.AIRBUS || p == AircraftProfile.BOEING || p == AircraftProfile.BIZJET
-    val detents = when (p) {
-        AircraftProfile.AIRBUS -> listOf(Detent(0, "IDLE"), Detent(70, "CL"), Detent(86, "FLX"), Detent(100, "TOGA"))
-        AircraftProfile.BOEING, AircraftProfile.BIZJET -> listOf(Detent(0, "IDLE"), Detent(100, "MAX"))
-        else -> listOf(Detent(0, "IDLE"), Detent(100, "FULL"))
-    }
+    val detents = p.detents.map { (pct, label) -> Detent(pct, label) }
+    // Liczba silników z symulatora (najwyżej 4 — tyle obsługuje Link), bez danych — z profilu
+    val count = s.engines.size.takeIf { it > 0 }?.coerceAtMost(4) ?: p.engines
     fun send(name: String, pct: Float) = link.command(name, (pct / 100f * 16383f).roundToInt().coerceIn(0, 16383).toDouble())
 
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(skin.plate).border(1.dp, skin.plateEdge, RoundedCornerShape(12.dp)).padding(10.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            Lever(loc("MOC", "THRUST"), s.controls.throttlePct, Color(0xFF2A2D31), Color(0xFFE6E9EC), detents, skin, Modifier.weight(1f)) { send("THROTTLE_SET", it) }
-            if (p == AircraftProfile.PISTON || p == AircraftProfile.TURBOPROP)
-                Lever(loc("ŚMIGŁO", "PROP"), s.controls.propPct, Color(0xFF1F5FBF), Color.White, listOf(Detent(0, "LOW"), Detent(100, "HIGH")), skin, Modifier.weight(1f)) { send("PROPELLER_SET", it) }
-            if (p == AircraftProfile.PISTON)
-                Lever(loc("MIESZANKA", "MIXTURE"), s.controls.mixturePct, Color(0xFFC62828), Color.White, listOf(Detent(0, "CUT"), Detent(100, "RICH")), skin, Modifier.weight(1f)) { send("MIXTURE_SET", it) }
+            repeat(count) { i ->
+                val label = if (count == 1) loc("MOC", "THRUST") else loc("SIL. ${i + 1}", "ENG ${i + 1}")
+                val actual = s.engines.getOrNull(i)?.throttlePct ?: s.controls.throttlePct
+                Lever(label, actual, Color(0xFF2A2D31), Color(0xFFE6E9EC), detents, skin, Modifier.weight(1f)) {
+                    if (count == 1) send("THROTTLE_SET", it) else send("THROTTLE${i + 1}_SET", it)
+                }
+            }
+            p.levers.forEach { lever ->
+                when (lever) {
+                    LeverKind.PROP -> Lever(loc("ŚMIGŁO", "PROP"), s.controls.propPct, Color(0xFF1F5FBF), Color.White, listOf(Detent(0, "LOW"), Detent(100, "HIGH")), skin, Modifier.weight(1f)) { send("PROPELLER_SET", it) }
+                    // ATR: dźwignia warunku ustawia obroty śmigła (FTR / AUTO / 100 OVRD)
+                    LeverKind.CONDITION -> Lever("CL", s.controls.propPct, Color(0xFF1F5FBF), Color.White, listOf(Detent(0, "FTR"), Detent(70, "AUTO"), Detent(100, "OVRD")), skin, Modifier.weight(1f)) { send("PROPELLER_SET", it) }
+                    LeverKind.MIXTURE -> Lever(loc("MIESZANKA", "MIXTURE"), s.controls.mixturePct, Color(0xFFC62828), Color.White, listOf(Detent(0, "CUT"), Detent(100, "RICH")), skin, Modifier.weight(1f)) { send("MIXTURE_SET", it) }
+                }
+            }
         }
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             AfdsKey("IDLE", (s.controls.throttlePct ?: 1.0) < 1, Modifier.weight(1f), skin) { link.command("THROTTLE_CUT") }
-            if (jet) AfdsKey("TO/GA", (s.controls.throttlePct ?: 0.0) > 99, Modifier.weight(1f), skin) { toga(link) }
+            if (p.jet) AfdsKey("TO/GA", (s.controls.throttlePct ?: 0.0) > 99, Modifier.weight(1f), skin) { toga(link) }
             else AfdsKey(loc("PEŁNA", "FULL"), (s.controls.throttlePct ?: 0.0) > 99, Modifier.weight(1f), skin) { link.command("THROTTLE_FULL") }
-            if (hasReverser(s, p)) AfdsKey("REV", false, Modifier.weight(1f), skin) { if (s.aircraft.onGround != false) link.command("THROTTLE_REVERSE_THRUST_TOGGLE") }
+            if (p.hasReverser) AfdsKey("REV", false, Modifier.weight(1f), skin) { if (s.aircraft.onGround != false) link.command("THROTTLE_REVERSE_THRUST_TOGGLE") }
         }
     }
-    Text(loc("Przeciągnij rączkę w górę lub w dół. Ustawienie działa na wszystkie silniki.", "Drag a handle up or down. It sets all engines at once."),
+    Text(if (count > 1) loc("Każda dźwignia ustawia jeden silnik. Wspólna dźwignia przy wyświetlaczach ustawia wszystkie naraz.",
+            "Each lever sets one engine. The shared lever next to the displays sets all of them at once.")
+        else loc("Przeciągnij rączkę w górę lub w dół.", "Drag a handle up or down."),
         style = MaterialTheme.typography.labelSmall, color = c.ink2, modifier = Modifier.padding(top = 6.dp))
 }
 

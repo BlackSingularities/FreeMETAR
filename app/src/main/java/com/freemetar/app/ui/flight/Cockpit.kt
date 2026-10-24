@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.AirlineSeatReclineNormal
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.outlined.Flight
 import androidx.compose.material.icons.outlined.FlightTakeoff
 import androidx.compose.material.icons.outlined.Gamepad
 import androidx.compose.material.icons.outlined.LocalGasStation
@@ -65,6 +66,7 @@ import androidx.compose.ui.unit.sp
 import com.freemetar.app.data.link.FlightState
 import com.freemetar.app.data.link.LinkClient
 import com.freemetar.app.domain.AircraftProfile
+import com.freemetar.app.ui.flight.avionics.detectedProfile
 import com.freemetar.app.ui.theme.Fm
 import com.freemetar.app.ui.theme.Mono
 import com.freemetar.app.ui.theme.tr
@@ -101,7 +103,7 @@ fun CockpitView(
 ) {
     var tabName by rememberSaveable { mutableStateOf<String?>(null) }
     val tab = CockpitTab.entries.firstOrNull { it.name == tabName }
-    val effective = profile ?: AircraftProfile.detect(s.aircraft.title, s.aircraft.atcModel, s.aircraft.category, s.aircraft.engineType)
+    val effective = profile ?: s.detectedProfile()
 
     Box(Modifier.fillMaxSize()) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -118,22 +120,22 @@ fun CockpitView(
             val onTab: (CockpitTab) -> Unit = { t -> tabName = if (tab == t && !persistent) null else t.name }
             val panelFor: @Composable (CockpitTab, Boolean) -> Unit = { t, compact ->
                 when (t) {
-                    CockpitTab.AP -> AutopilotPanelV2(link, s, profile, onProfile, compact = compact)
-                    CockpitTab.RADIO -> RadioPanel(link, s)
-                    CockpitTab.SYSTEMS -> SystemsPanel(link, s, effective)
+                    CockpitTab.AP -> AutopilotFor(link, s, effective, compact)
+                    CockpitTab.RADIO -> RadioFor(link, s, effective)
+                    CockpitTab.SYSTEMS -> SystemsFor(link, s, effective)
                     CockpitTab.STICK -> FlightControlPanel(link, s, controlMode, onControlMode, floating, onFloating)
-                    CockpitTab.ENGINES -> EnginePanel(link, s, effective)
+                    CockpitTab.ENGINES -> EnginesFor(link, s, effective)
                     CockpitTab.PROGRESS -> Progress(s)
                 }
             }
             val panel: (@Composable () -> Unit)? = tab?.takeIf { !persistent }?.let { t ->
                 {
                     when (t) {
-                        CockpitTab.AP -> AutopilotPanelV2(link, s, profile, onProfile, compact = true)
-                        CockpitTab.RADIO -> RadioPanel(link, s)
-                        CockpitTab.SYSTEMS -> SystemsPanel(link, s, effective)
+                        CockpitTab.AP -> AutopilotFor(link, s, effective, true)
+                        CockpitTab.RADIO -> RadioFor(link, s, effective)
+                        CockpitTab.SYSTEMS -> SystemsFor(link, s, effective)
                         CockpitTab.STICK -> FlightControlPanel(link, s, controlMode, onControlMode, floating, onFloating)
-                        CockpitTab.ENGINES -> EnginePanel(link, s, effective)
+                        CockpitTab.ENGINES -> EnginesFor(link, s, effective)
                         CockpitTab.PROGRESS -> Progress(s)
                     }
                 }
@@ -224,16 +226,18 @@ private fun CockpitActions(
                 .clickable(role = Role.Button, onClick = onShowChecklists),
             contentAlignment = Alignment.Center,
         ) { Icon(Icons.Outlined.Checklist, null, tint = c.ink, modifier = Modifier.size(18.dp)) }
+        // Mały okrągły przełącznik profilu, jak przycisk checklist; obwódka w akcencie, gdy profil wybrany ręcznie
         Box {
-            Text(style.label, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 10.sp, color = c.ink, maxLines = 1,
-                modifier = Modifier.clip(RoundedCornerShape(50)).border(1.dp, if (profile != null) c.accent else c.rule, RoundedCornerShape(50))
+            Box(
+                Modifier.size(34.dp).clip(CircleShape).border(1.dp, if (profile != null) c.accent else c.rule, CircleShape)
                     .semantics { contentDescription = aircraftMenu }
-                    .clickable(role = Role.Button) { menu = true }
-                    .padding(horizontal = 8.dp, vertical = 9.dp))
+                    .clickable(role = Role.Button) { menu = true },
+                contentAlignment = Alignment.Center,
+            ) { Icon(Icons.Outlined.Flight, null, tint = c.ink, modifier = Modifier.size(18.dp)) }
             DropdownMenu(menu, { menu = false }) {
                 Text(tr("Profil samolotu (wyświetlacze i panele)", "Aircraft profile (displays and panels)"),
                     style = MaterialTheme.typography.labelMedium, color = c.ink2, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp))
-                val detected = AircraftProfile.detect(s.aircraft.title, s.aircraft.atcModel, s.aircraft.category, s.aircraft.engineType)
+                val detected = s.detectedProfile()
                 DropdownMenuItem(
                     text = { Text((if (profile == null) "✓  " else "     ") + tr("Automatycznie (${detected.label})", "Automatic (${detected.label})")) },
                     onClick = { onProfile(null); menu = false },

@@ -1,5 +1,6 @@
 package com.freemetar.app.ui.flight
 
+import com.freemetar.app.ui.flight.avionics.detectedProfile
 import com.freemetar.app.domain.loc
 
 import androidx.compose.foundation.background
@@ -194,13 +195,13 @@ fun LiveSection(s: FlightState, link: LinkClient, profile: com.freemetar.app.dom
 
 @Composable
 private fun PanelFor(v: LiveView, s: FlightState, link: LinkClient, profile: com.freemetar.app.domain.AircraftProfile?, onProfile: (com.freemetar.app.domain.AircraftProfile?) -> Unit) {
-    val effective = profile ?: com.freemetar.app.domain.AircraftProfile.detect(s.aircraft.title, s.aircraft.atcModel, s.aircraft.category, s.aircraft.engineType)
+    val effective = profile ?: s.detectedProfile()
     when (v) {
-        LiveView.AP -> AutopilotPanelV2(link, s, profile, onProfile)
-        LiveView.RADIO -> RadioPanel(link, s)
-        LiveView.CONTROLS -> SystemsPanel(link, s, effective)
+        LiveView.AP -> AutopilotFor(link, s, effective)
+        LiveView.RADIO -> RadioFor(link, s, effective)
+        LiveView.CONTROLS -> SystemsFor(link, s, effective)
         LiveView.YOKE -> YokePanel(link, s)
-        LiveView.ENGINES -> EnginePanel(link, s, effective)
+        LiveView.ENGINES -> EnginesFor(link, s, effective)
         else -> {}
     }
 }

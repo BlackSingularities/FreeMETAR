@@ -1,3 +1,13 @@
+## next release — One profile per display set, A320 cockpit panels
+
+- Nine aircraft profiles, one per display set (A320, 737, 787, ATR 72, E190, G1000, C172, R44, glider); each has its own
+  autopilot layout, radios, systems, lights and engine levers. Saved AIRBUS/BOEING choices carry over to A320/737.
+- A320: FCU with SPD/HDG/ALT/V/S windows, knobs and PUSH/PULL; RMP; ATC panel with 0–7 keypad and STBY/AUTO/ON;
+  EXT LT, gear, flaps CONF, speed brake and pitch trim; E/WD engine display. Only controls the simulator accepts are shown.
+- Engines page: one thrust lever per engine (new Link commands `THROTTLE1_SET`…`THROTTLE4_SET`, lever position in `engines[n].throttlePct`);
+  the shared lever next to the PFD/MFD still sets all engines.
+- The long profile bar above the autopilot panel is gone; the profile is picked from the small round button next to checklists.
+
 ## 2.0.0 — Aircraft-matched displays (from OpenPFD)
 
 - Versioning: releases are now cut from `vX.Y.Z` tags instead of every push to `main`; the app and Link carry the tag version.

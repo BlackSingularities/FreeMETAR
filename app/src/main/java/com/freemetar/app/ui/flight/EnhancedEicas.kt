@@ -61,8 +61,8 @@ fun EnhancedEicas(
 
     // Dostępne widoki zależnie od profilu samolotu
     val availableViews = when (profile) {
-        AircraftProfile.PISTON -> listOf(EicasView.ENG) // Tylko silniki
-        AircraftProfile.TURBOPROP -> listOf(EicasView.ENG, EicasView.FUEL)
+        AircraftProfile.C172, AircraftProfile.R44, AircraftProfile.GLIDER -> listOf(EicasView.ENG) // Tylko silniki
+        AircraftProfile.G1000, AircraftProfile.ATR72 -> listOf(EicasView.ENG, EicasView.FUEL)
         else -> listOf(EicasView.ENG, EicasView.ELEC, EicasView.HYD, EicasView.FUEL, EicasView.DOOR, EicasView.STATUS)
     }
 

@@ -192,6 +192,8 @@ public sealed class EngineData
     public double Rpm { get; set; }
     public double EgtC { get; set; }
     public double FuelFlowKgH { get; set; }
+    // Dźwignia mocy tego silnika, 0–100 % (THROTTLEn_SET)
+    public double ThrottlePct { get; set; }
 }
 
 public sealed class EnvironmentData

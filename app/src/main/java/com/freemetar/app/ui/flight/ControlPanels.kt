@@ -57,7 +57,9 @@ import androidx.compose.ui.unit.sp
 import com.freemetar.app.data.link.FlightState
 import com.freemetar.app.data.link.LinkClient
 import com.freemetar.app.data.link.Radio
+import com.freemetar.app.domain.AircraftProfile
 import com.freemetar.app.domain.ControlMath
+import com.freemetar.app.domain.Light
 import com.freemetar.app.ui.theme.Fm
 import com.freemetar.app.ui.theme.Mono
 import kotlinx.coroutines.delay
@@ -220,14 +222,15 @@ fun AutopilotPanel(link: LinkClient, s: FlightState) {
 // ---------------- RADIO ----------------
 
 @Composable
-fun RadioPanel(link: LinkClient, s: FlightState) {
+fun RadioPanel(link: LinkClient, s: FlightState, profile: AircraftProfile) {
     var enter by remember { mutableStateOf<String?>(null) }
     fun cmd(n: String, v: Number? = null) { link.command(n, v?.toDouble()) }
     val r = s.radios
+    // Tylko radia, które ma dany samolot (szybowiec — jedno COM, śmigłowiec — COM i NAV)
     RadioRow("COM1", r.com1, "%.3f", onSwap = { cmd("COM_STBY_RADIO_SWAP") }) { enter = "COM1" }
-    RadioRow("COM2", r.com2, "%.3f", onSwap = { cmd("COM2_RADIO_SWAP") }) { enter = "COM2" }
-    RadioRow("NAV1", r.nav1, "%.2f", onSwap = { cmd("NAV1_RADIO_SWAP") }) { enter = "NAV1" }
-    RadioRow("NAV2", r.nav2, "%.2f", onSwap = { cmd("NAV2_RADIO_SWAP") }) { enter = "NAV2" }
+    if (profile.com2) RadioRow("COM2", r.com2, "%.3f", onSwap = { cmd("COM2_RADIO_SWAP") }) { enter = "COM2" }
+    if (profile.nav) RadioRow("NAV1", r.nav1, "%.2f", onSwap = { cmd("NAV1_RADIO_SWAP") }) { enter = "NAV1" }
+    if (profile.nav2) RadioRow("NAV2", r.nav2, "%.2f", onSwap = { cmd("NAV2_RADIO_SWAP") }) { enter = "NAV2" }
 
     val c = Fm.c
     val x = r.transponder
@@ -284,24 +287,25 @@ private fun RadioRow(name: String, r: Radio?, fmt: String, onSwap: () -> Unit, o
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun SystemsPanel(link: LinkClient, s: FlightState, profile: com.freemetar.app.domain.AircraftProfile? = null) {
+fun SystemsPanel(link: LinkClient, s: FlightState, profile: AircraftProfile) {
     val c = Fm.c
     fun cmd(n: String, v: Number? = null) { link.command(n, v?.toDouble()) }
     val ctl = s.controls
     val gearDown = ctl.gearDown == true
     var confirmGear by remember { mutableStateOf(false) }
 
+    // Podwozie tylko chowane; hamulec postojowy — wszystko poza szybowcem
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        ModeKey(if (gearDown) loc("PODWOZIE ▼", "GEAR ▼") else loc("PODWOZIE ▲", "GEAR ▲"), gearDown, Modifier.weight(1f)) {
+        if (profile.retractableGear) ModeKey(if (gearDown) loc("PODWOZIE ▼", "GEAR ▼") else loc("PODWOZIE ▲", "GEAR ▲"), gearDown, Modifier.weight(1f)) {
             // Chowanie podwozia na ziemi wymaga potwierdzenia
             if (gearDown && s.aircraft.onGround == true) confirmGear = true else cmd("GEAR_TOGGLE")
         }
-        ModeKey(loc("HAMULEC", "BRAKE"), ctl.parkingBrake == true, Modifier.weight(1f)) { cmd("PARKING_BRAKES") }
+        if (profile != AircraftProfile.GLIDER) ModeKey(loc("HAMULEC", "BRAKE"), ctl.parkingBrake == true, Modifier.weight(1f)) { cmd("PARKING_BRAKES") }
     }
     Spacer(Modifier.size(8.dp))
     val flaps = ctl.flapsIndex
     val positions = ctl.flapsPositions
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    if (profile.hasFlaps) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         RepeatKey("▲", loc("Klapy w górę", "Flaps up"), action = { cmd("FLAPS_DECR") })
         Column(Modifier.weight(1f).height(52.dp).clip(RoundedCornerShape(8.dp)).background(Color.Black.copy(alpha = 0.35f)),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
@@ -311,13 +315,16 @@ fun SystemsPanel(link: LinkClient, s: FlightState, profile: com.freemetar.app.do
         RepeatKey("▼", loc("Klapy w dół", "Flaps down"), action = { cmd("FLAPS_INCR") })
     }
     Spacer(Modifier.size(8.dp))
-    // Spoilery tylko w samolotach, które je mają (bez GA i turbośmigłowych)
-    if (profile?.hasSpoilers != false) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    // Spoilery tylko w samolotach, które je mają; w szybowcu to hamulce aerodynamiczne (bez uzbrajania)
+    val spoilerPct = (ctl.spoilersPct ?: 0.0).roundToInt()
+    if (profile == AircraftProfile.GLIDER) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        ModeKey(loc("HAMULCE AERO ${spoilerPct}%", "AIRBRAKES ${spoilerPct}%"), spoilerPct > 1, Modifier.weight(1f)) { cmd("SPOILERS_TOGGLE") }
+    } else if (profile.hasSpoilers) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         ModeKey(loc("SPOILERY UZBR.", "SPOILERS ARM"), ctl.spoilersArmed == true, Modifier.weight(1f)) { cmd("SPOILERS_ARM_TOGGLE") }
-        ModeKey(loc("SPOILERY ${(ctl.spoilersPct ?: 0.0).roundToInt()}%", "SPOILERS ${(ctl.spoilersPct ?: 0.0).roundToInt()}%"), (ctl.spoilersPct ?: 0.0) > 1, Modifier.weight(1f)) { cmd("SPOILERS_TOGGLE") }
+        ModeKey(loc("SPOILERY ${spoilerPct}%", "SPOILERS ${spoilerPct}%"), spoilerPct > 1, Modifier.weight(1f)) { cmd("SPOILERS_TOGGLE") }
     }
     Spacer(Modifier.size(8.dp))
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    if (profile.hasTrim) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         RepeatKey("▼", loc("Trym nosem w dół", "Trim nose down"), action = { cmd("ELEV_TRIM_DN") })
         Column(Modifier.weight(1f).height(52.dp).clip(RoundedCornerShape(8.dp)).background(Color.Black.copy(alpha = 0.35f)),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
@@ -331,11 +338,21 @@ fun SystemsPanel(link: LinkClient, s: FlightState, profile: com.freemetar.app.do
     Spacer(Modifier.size(4.dp))
     val l = s.lights
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), maxItemsInEachRow = 3) {
-        listOf(
-            Triple("BEACON", l.beacon, "TOGGLE_BEACON_LIGHTS"), Triple("STROBE", l.strobe, "STROBES_TOGGLE"), Triple("NAV", l.nav, "TOGGLE_NAV_LIGHTS"),
-            Triple("LANDING", l.landing, "LANDING_LIGHTS_TOGGLE"), Triple("TAXI", l.taxi, "TOGGLE_TAXI_LIGHTS"), Triple("LOGO", l.logo, "TOGGLE_LOGO_LIGHTS"),
-            Triple("WING", l.wing, "TOGGLE_WING_LIGHTS"), Triple("PANEL", l.panel, "PANEL_LIGHTS_TOGGLE"), Triple("CABIN", l.cabin, "TOGGLE_CABIN_LIGHTS"),
-        ).forEach { (label, on, event) -> ModeKey(label, on == true, Modifier.weight(1f)) { cmd(event) } }
+        profile.lights.map { light ->
+            when (light) {
+                Light.BEACON -> Triple("BEACON", l.beacon, "TOGGLE_BEACON_LIGHTS")
+                Light.STROBE -> Triple("STROBE", l.strobe, "STROBES_TOGGLE")
+                Light.NAV -> Triple("NAV", l.nav, "TOGGLE_NAV_LIGHTS")
+                Light.LANDING -> Triple("LANDING", l.landing, "LANDING_LIGHTS_TOGGLE")
+                Light.TAXI -> Triple("TAXI", l.taxi, "TOGGLE_TAXI_LIGHTS")
+                Light.LOGO -> Triple("LOGO", l.logo, "TOGGLE_LOGO_LIGHTS")
+                Light.WING -> Triple("WING", l.wing, "TOGGLE_WING_LIGHTS")
+                Light.PANEL -> Triple("PANEL", l.panel, "PANEL_LIGHTS_TOGGLE")
+                Light.CABIN -> Triple("CABIN", l.cabin, "TOGGLE_CABIN_LIGHTS")
+            }
+        }.forEach { (label, on, event) -> ModeKey(label, on == true, Modifier.weight(1f)) { cmd(event) } }
+        // Niepełny ostatni rząd: puste miejsca, żeby klawisze miały tę samą szerokość
+        repeat((3 - profile.lights.size % 3) % 3) { Spacer(Modifier.weight(1f)) }
     }
 
     if (confirmGear) {

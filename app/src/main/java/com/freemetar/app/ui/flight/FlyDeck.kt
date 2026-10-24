@@ -62,6 +62,7 @@ import com.freemetar.app.data.link.FlightState
 import com.freemetar.app.data.link.LinkClient
 import com.freemetar.app.data.nav.FixResult
 import com.freemetar.app.domain.AircraftProfile
+import com.freemetar.app.domain.Lever
 import com.freemetar.app.domain.loc
 import com.freemetar.app.ui.theme.Mono
 import kotlin.math.roundToInt
@@ -89,13 +90,13 @@ fun FlyDeck(
     /** Profil wybrany ręcznie (null = automatycznie) — decyduje też o stylu PFD i ND. */
     displayProfile: AircraftProfile? = null,
 ) {
-    val piston = profile == AircraftProfile.PISTON
-    val levers = if (piston) 3 else if (profile == AircraftProfile.TURBOPROP) 2 else 1
+    // Jedna wspólna dźwignia mocy dla wszystkich silników plus dźwignie profilu (szybowiec — żadnej)
+    val levers = (if (profile.hasThrottle) 1 else 0) + profile.levers.size
     BoxWithConstraints(modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
         val gap = 6.dp
         val leverW = 46.dp
-        val thrW = leverW * levers + gap * (levers - 1)
-        val instW = maxWidth - thrW - gap
+        val thrW = if (levers == 0) 0.dp else leverW * levers + gap * (levers - 1)
+        val instW = maxWidth - thrW - if (levers == 0) 0.dp else gap
         // Dwa układy, wybór tego z większym PFD: obok siebie (wysokość h) albo jeden nad drugim (szerokość colW)
         val rowH = min(availableHeight, instW / (1.12f + 1.05f) - 2.dp)
         val colW = min(instW, (availableHeight - gap) / (1f / 1.12f + 1f / 1.45f))
@@ -194,28 +195,29 @@ private fun EfisKey(label: String?, desc: String, icon: Boolean = false, on: Boo
     }
 }
 
-/** Kolumny dźwigni obok wyświetlaczy: moc zawsze, śmigło (turbośmigłowe, tłokowe), mieszanka (tłokowe). */
+/** Kolumny dźwigni obok wyświetlaczy: wspólna moc wszystkich silników i dźwignie profilu (śmigło, mieszanka, CL). */
 @Composable
 private fun Levers(link: LinkClient, s: FlightState, p: AircraftProfile, modifier: Modifier) {
+    if (!p.hasThrottle && p.levers.isEmpty()) return
     fun send(name: String, pct: Float) = link.command(name, (pct / 100f * 16383f).roundToInt().coerceIn(0, 16383).toDouble())
-    val jet = p == AircraftProfile.AIRBUS || p == AircraftProfile.BOEING || p == AircraftProfile.BIZJET
-    val thrDetents = when (p) {
-        AircraftProfile.AIRBUS -> listOf(0 to "I", 70 to "CL", 86 to "FX", 100 to "TG")
-        else -> listOf(0, 100).map { it to "" }
-    }
+    // Wąska dźwignia: zapadki bez długich podpisów, tylko pierwsza litera (Airbus: I, C, F, T)
+    val thrDetents = if (p == AircraftProfile.A320) p.detents.map { (pct, l) -> pct to l.take(1) } else p.detents.map { (pct, _) -> pct to "" }
     Row(modifier.clip(RoundedCornerShape(10.dp)).background(BEZEL).padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+        if (p.hasThrottle) Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
             CompactLever("THR", s.controls.throttlePct, Color(0xFF2A2D31), thrDetents, Modifier.weight(1f)) { send("THROTTLE_SET", it) }
-            // Szybkie przyciski pod dźwignią: jałowy i (odrzutowce) odwracacz ciągu
+            // Szybkie przyciski pod dźwignią: jałowy, odwracacz ciągu i (odrzutowce) TOGA
             MiniKey("IDLE") { link.command("THROTTLE_CUT") }
-            if (hasReverser(s, p)) MiniKey("REV", enabled = s.aircraft.onGround != false) { link.command("THROTTLE_REVERSE_THRUST_TOGGLE") }
-            if (jet) MiniKey("TOGA") { toga(link) }
+            if (p.hasReverser) MiniKey("REV", enabled = s.aircraft.onGround != false) { link.command("THROTTLE_REVERSE_THRUST_TOGGLE") }
+            if (p.jet) MiniKey("TOGA") { toga(link) }
         }
-        if (p == AircraftProfile.PISTON || p == AircraftProfile.TURBOPROP) Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
-            CompactLever("PROP", s.controls.propPct, Color(0xFF1F5FBF), listOf(0 to "", 100 to ""), Modifier.weight(1f)) { send("PROPELLER_SET", it) }
-        }
-        if (p == AircraftProfile.PISTON) Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
-            CompactLever("MIX", s.controls.mixturePct, Color(0xFFC62828), listOf(0 to "", 100 to ""), Modifier.weight(1f)) { send("MIXTURE_SET", it) }
+        p.levers.forEach { lever ->
+            Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+                when (lever) {
+                    Lever.PROP -> CompactLever("PROP", s.controls.propPct, Color(0xFF1F5FBF), listOf(0 to "", 100 to ""), Modifier.weight(1f)) { send("PROPELLER_SET", it) }
+                    Lever.CONDITION -> CompactLever("CL", s.controls.propPct, Color(0xFF1F5FBF), listOf(0 to "", 70 to "", 100 to ""), Modifier.weight(1f)) { send("PROPELLER_SET", it) }
+                    Lever.MIXTURE -> CompactLever("MIX", s.controls.mixturePct, Color(0xFFC62828), listOf(0 to "", 100 to ""), Modifier.weight(1f)) { send("MIXTURE_SET", it) }
+                }
+            }
         }
     }
 }
@@ -301,16 +303,6 @@ private fun CompactLever(label: String, actual: Double?, handle: Color, detents:
         drawLine(Color.White.copy(alpha = 0.6f), Offset(cx - hw / 2 + 5, y), Offset(cx + hw / 2 - 5, y), 2f)
         if (dragging) drawRoundRect(CYAN, Offset(cx - hw / 2 - 3, y - hh / 2 - 3), Size(hw + 6, hh + 6), CornerRadius(9f), style = Stroke(3f))
     }
-}
-
-/**
- * Czy samolot ma odwracacz ciągu: decyduje typ silnika zgłoszony przez MSFS (odrzutowy, turbośmigłowy),
- * a dopiero bez niego profil panelu. Tłokowe nie mają rewersu.
- */
-internal fun hasReverser(s: FlightState, p: AircraftProfile): Boolean = when (s.aircraft.engineType) {
-    "jet", "turboprop" -> true
-    "piston" -> false
-    else -> p != AircraftProfile.PISTON
 }
 
 /** TOGA: pełna moc na wszystkich silnikach, a przy autociągu także tryb odejścia (TO/GA). */

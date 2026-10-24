@@ -424,15 +424,16 @@ public sealed class MsfsSource : IFlightSource
         var count = Math.Clamp((int)d.EngineCount, 0, 4);
         var raw = new[]
         {
-            (d.N1_1, d.N2_1, d.Rpm1, d.Egt1, d.Ff1), (d.N1_2, d.N2_2, d.Rpm2, d.Egt2, d.Ff2),
-            (d.N1_3, d.N2_3, d.Rpm3, d.Egt3, d.Ff3), (d.N1_4, d.N2_4, d.Rpm4, d.Egt4, d.Ff4),
+            (d.N1_1, d.N2_1, d.Rpm1, d.Egt1, d.Ff1, d.Throttle1), (d.N1_2, d.N2_2, d.Rpm2, d.Egt2, d.Ff2, d.Throttle2),
+            (d.N1_3, d.N2_3, d.Rpm3, d.Egt3, d.Ff3, d.Throttle3), (d.N1_4, d.N2_4, d.Rpm4, d.Egt4, d.Ff4, d.Throttle4),
         };
         for (var i = 0; i < count; i++)
         {
-            var (n1, n2, rpm, egt, ff) = raw[i];
+            var (n1, n2, rpm, egt, ff, thr) = raw[i];
             engines.Add(new EngineData
             {
                 N1Pct = R(n1, 1), N2Pct = R(n2, 1), Rpm = R(rpm, 0), EgtC = R(egt, 0), FuelFlowKgH = R(ff * LbsToKg, 0),
+                ThrottlePct = R(thr, 0),
             });
         }
 

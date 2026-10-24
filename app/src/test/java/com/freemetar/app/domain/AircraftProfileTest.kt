@@ -7,29 +7,48 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AircraftProfileTest {
+    private fun detect(title: String?, model: String? = null, category: String? = null, engine: String? = null) =
+        AircraftProfile.detect(title, model, null, category, engine)
+
     @Test
-    fun detectsByManufacturerFirst() {
-        assertEquals(AircraftProfile.AIRBUS, AircraftProfile.detect("FENIX A320 IAE", null, "airliner", "jet"))
-        assertEquals(AircraftProfile.AIRBUS, AircraftProfile.detect("Airbus A320neo FlyByWire", null, null, null))
-        assertEquals(AircraftProfile.BOEING, AircraftProfile.detect("PMDG 737-800", null, "airliner", "jet"))
-        assertEquals(AircraftProfile.BOEING, AircraftProfile.detect(null, "B787", null, "jet"))
+    fun detectsTypeByName() {
+        assertEquals(AircraftProfile.A320, detect("FENIX A320 IAE", category = "airliner", engine = "jet"))
+        assertEquals(AircraftProfile.A320, detect("Airbus A320neo FlyByWire"))
+        assertEquals(AircraftProfile.B737, detect("PMDG 737-800", category = "airliner", engine = "jet"))
+        assertEquals(AircraftProfile.B787, detect(null, "B787", engine = "jet"))
+        assertEquals(AircraftProfile.ATR72, detect("ATR 72-600", category = "airliner", engine = "turboprop"))
+        assertEquals(AircraftProfile.E190, detect("Embraer E190", category = "airliner", engine = "jet"))
     }
 
     @Test
     fun detectsByCategoryAndEngine() {
-        assertEquals(AircraftProfile.BIZJET, AircraftProfile.detect("Cessna Citation CJ4", "C25C", "bizjet", "jet"))
-        assertEquals(AircraftProfile.TURBOPROP, AircraftProfile.detect("Beechcraft King Air 350i", "B350", "turboprop", "turboprop"))
-        assertEquals(AircraftProfile.TURBOPROP, AircraftProfile.detect("ATR 72-600", null, "airliner", "turboprop"))
-        assertEquals(AircraftProfile.PISTON, AircraftProfile.detect("Cessna Skyhawk G1000", "C172", "ga", "piston"))
-        assertEquals(AircraftProfile.PISTON, AircraftProfile.detect(null, null, null, null))
+        assertEquals(AircraftProfile.R44, detect("Robinson R44", category = "helicopter", engine = "helicopter"))
+        assertEquals(AircraftProfile.GLIDER, detect("Schleicher ASK 21", category = "ga", engine = "none"))
+        assertEquals(AircraftProfile.C172, detect("Cessna 152 Classic", category = "ga", engine = "piston"))
+        assertEquals(AircraftProfile.G1000, detect("Cessna Skyhawk G1000", "C172", "ga", "piston"))
+        assertEquals(AircraftProfile.G1000, detect("Beechcraft King Air 350i", "B350", "turboprop", "turboprop"))
+        assertEquals(AircraftProfile.G1000, detect(null))
     }
 
     @Test
-    fun capabilities() {
-        assertTrue(AircraftProfile.AIRBUS.hasAutothrottle)
-        assertFalse(AircraftProfile.PISTON.hasSpoilers)
-        assertFalse(AircraftProfile.TURBOPROP.hasSpoilers)
-        assertEquals(AircraftProfile.BOEING, AircraftProfile.fromName("BOEING"))
+    fun eachProfileHasItsOwnPanels() {
+        assertTrue(AircraftProfile.A320.hasAutothrottle)
+        assertEquals(AutopilotKind.FCU, AircraftProfile.A320.autopilot)
+        assertEquals(2, AircraftProfile.A320.engines)
+        assertFalse(AircraftProfile.ATR72.hasAutothrottle)
+        assertEquals(listOf(Lever.CONDITION), AircraftProfile.ATR72.levers)
+        assertFalse(AircraftProfile.C172.hasSpoilers)
+        assertEquals(AutopilotKind.NONE, AircraftProfile.R44.autopilot)
+        assertFalse(AircraftProfile.GLIDER.hasThrottle)
+        assertFalse(AircraftProfile.GLIDER.com2)
+    }
+
+    @Test
+    fun savedNames() {
+        assertEquals(AircraftProfile.A320, AircraftProfile.fromName("AIRBUS"))
+        assertEquals(AircraftProfile.B737, AircraftProfile.fromName("BOEING"))
+        assertEquals(AircraftProfile.ATR72, AircraftProfile.fromName("ATR72"))
+        assertNull(AircraftProfile.fromName("PISTON"))
         assertNull(AircraftProfile.fromName(null))
     }
 }

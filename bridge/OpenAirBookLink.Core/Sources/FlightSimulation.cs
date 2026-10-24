@@ -355,6 +355,11 @@ public sealed class FlightSimulation
                 break;
 
             case "THROTTLE_SET": c.ThrottlePct = Math.Round(v / 16383.0 * 100); _manualThrottle = true; break;
+            // Symulacja ma wspólny model silników: dźwignia pojedynczego silnika przestawia wszystkie
+            case "THROTTLE1_SET":
+            case "THROTTLE2_SET":
+            case "THROTTLE3_SET":
+            case "THROTTLE4_SET": c.ThrottlePct = Math.Round(v / 16383.0 * 100); _manualThrottle = true; break;
             case "THROTTLE_CUT": c.ThrottlePct = 0; _manualThrottle = true; break;
             case "THROTTLE_FULL": c.ThrottlePct = 100; _manualThrottle = true; break;
             case "THROTTLE_REVERSE_THRUST_TOGGLE": break;
@@ -481,6 +486,7 @@ public sealed class FlightSimulation
             e.EgtC = Math.Round(380 + e.N1Pct * 5.2);
             e.FuelFlowKgH = Math.Round(200 + Math.Max(0, e.N1Pct - 20) * 15);
             e.Rpm = 0;
+            e.ThrottlePct = _s.Controls.ThrottlePct;
             totalFlow += e.FuelFlowKgH;
         }
 

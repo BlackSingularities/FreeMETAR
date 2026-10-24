@@ -447,6 +447,7 @@ Wartość musi być liczbą całkowitą (lub liczbą z zerową częścią ułamk
 | name | value |
 |---|---|
 | `THROTTLE_SET` | 0 (jałowy) – 16383 (pełna moc) |
+| `THROTTLE1_SET`, `THROTTLE2_SET`, `THROTTLE3_SET`, `THROTTLE4_SET` | dźwignia jednego silnika, 0 – 16383; położenie w `engines[n].throttlePct` |
 | `MIXTURE_SET` | 0 (odcięcie) – 16383 (bogata) |
 | `PROPELLER_SET` | 0 (małe obroty) – 16383 (duże obroty) |
 | `THROTTLE_CUT`, `THROTTLE_FULL`, `THROTTLE_REVERSE_THRUST_TOGGLE`, `AUTO_THROTTLE_TO_GA` | — |

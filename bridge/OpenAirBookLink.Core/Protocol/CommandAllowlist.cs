@@ -133,6 +133,11 @@ public static class CommandAllowlist
 
         // Silniki: dźwignie wszystkich silników naraz (0 = jałowy / uboga / małe obroty, 16383 = pełne)
         new("THROTTLE_SET", CommandGroup.Engines, Min: 0, Max: 16383),
+        // Dźwignia jednego silnika (strona silników w aplikacji)
+        new("THROTTLE1_SET", CommandGroup.Engines, Min: 0, Max: 16383),
+        new("THROTTLE2_SET", CommandGroup.Engines, Min: 0, Max: 16383),
+        new("THROTTLE3_SET", CommandGroup.Engines, Min: 0, Max: 16383),
+        new("THROTTLE4_SET", CommandGroup.Engines, Min: 0, Max: 16383),
         new("THROTTLE_CUT", CommandGroup.Engines),
         new("THROTTLE_FULL", CommandGroup.Engines),
         new("THROTTLE_REVERSE_THRUST_TOGGLE", CommandGroup.Engines),

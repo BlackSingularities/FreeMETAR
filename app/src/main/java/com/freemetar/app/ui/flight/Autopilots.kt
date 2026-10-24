@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.sp
 import com.freemetar.app.data.link.FlightState
 import com.freemetar.app.data.link.LinkClient
 import com.freemetar.app.domain.AircraftProfile
+import com.freemetar.app.domain.AutopilotKind
 import com.freemetar.app.domain.ControlMath
 import com.freemetar.app.ui.theme.Fm
 import com.freemetar.app.ui.theme.Mono
@@ -306,46 +307,37 @@ private fun SelectorModule(sel: Selector, skin: PanelSkin, onEnter: (String) -> 
     }
 }
 
-/** Panel autopilota dopasowany do profilu samolotu, z wyborem profilu (automatycznie / ręcznie). */
+/** Panel autopilota w układzie kabiny profilu samolotu (FCU, MCP, FGCP, Primus, GFC 700, KAP140). */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AutopilotPanelV2(link: LinkClient, s: FlightState, override: AircraftProfile?, onOverride: (AircraftProfile?) -> Unit, compact: Boolean = false) {
+fun AutopilotPanelV2(link: LinkClient, s: FlightState, p: AircraftProfile, compact: Boolean = false) {
     val c = Fm.c
-    val detected = AircraftProfile.detect(s.aircraft.title, s.aircraft.atcModel, s.aircraft.category, s.aircraft.engineType)
-    val p = override ?: detected
     val ap = s.autopilot
     val m = ap.modes
     var enter by remember { mutableStateOf<String?>(null) }
-    var menu by remember { mutableStateOf(false) }
     fun cmd(n: String, v: Number? = null) { link.command(n, v?.toDouble()) }
     fun live() = link.state.value?.autopilot
+    val k = p.autopilot
 
-    // Nagłówek: profil i jego zmiana
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 10.dp)) {
-        Text(p.short, fontFamily = Mono, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.Black,
-            modifier = Modifier.clip(RoundedCornerShape(50)).background(c.ink).padding(horizontal = 10.dp, vertical = 3.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(p.label + if (override == null) loc(", automatycznie", ", automatic") else "", style = MaterialTheme.typography.bodySmall, color = c.ink2, modifier = Modifier.weight(1f), maxLines = 1)
-        Box {
-            Row(Modifier.clip(RoundedCornerShape(50)).clickable { menu = true }.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(loc("Profil", "Profile"), style = MaterialTheme.typography.labelMedium, color = c.ink)
-                Icon(Icons.Outlined.ExpandMore, null, tint = c.ink, modifier = Modifier.size(18.dp))
-            }
-            DropdownMenu(menu, { menu = false }) {
-                DropdownMenuItem(text = { Text(loc("Automatycznie (${detected.label})", "Automatic (${detected.label})")) }, onClick = { onOverride(null); menu = false })
-                AircraftProfile.entries.forEach { e -> DropdownMenuItem(text = { Text(e.label) }, onClick = { onOverride(e); menu = false }) }
-            }
-        }
+    if (k == AutopilotKind.NONE) {
+        Text(loc("${p.label} nie ma autopilota.", "${p.label} has no autopilot."), style = MaterialTheme.typography.bodyMedium, color = c.ink2,
+            modifier = Modifier.padding(vertical = 12.dp))
+        return
     }
 
     val skin = panelSkin(p)
-    // Klawisze główne (autopilot, dyrektor lotu, automat ciągu) — w jednym rzędzie nad pokrętłami
-    val master = when (p) {
-        AircraftProfile.AIRBUS -> listOf(Key("AP1", ap.master, "AP_MASTER"), Key("FD", ap.fd, "TOGGLE_FLIGHT_DIRECTOR"), Key("A/THR", ap.athr, "AUTO_THROTTLE_ARM"))
-        AircraftProfile.BOEING -> listOf(Key("CMD A", ap.master, "AP_MASTER"), Key("F/D", ap.fd, "TOGGLE_FLIGHT_DIRECTOR"), Key("A/T ARM", ap.athr, "AUTO_THROTTLE_ARM"))
-        AircraftProfile.BIZJET -> listOf(Key("AP", ap.master, "AP_MASTER"), Key("FD", ap.fd, "TOGGLE_FLIGHT_DIRECTOR"), Key("YD", false, "YAW_DAMPER_TOGGLE"), Key("A/T", ap.athr, "AUTO_THROTTLE_ARM"))
-        AircraftProfile.TURBOPROP -> listOf(Key("AP", ap.master, "AP_MASTER"), Key("FD", ap.fd, "TOGGLE_FLIGHT_DIRECTOR"), Key("YD", false, "YAW_DAMPER_TOGGLE"))
-        AircraftProfile.PISTON -> listOf(Key("AP", ap.master, "AP_MASTER"))
+    // Klawisze główne (autopilot, dyrektor lotu, tłumik odchyleń, automat ciągu) — w jednym rzędzie nad pokrętłami
+    val ap1 = Key("AP", ap.master, "AP_MASTER")
+    val fd = Key("FD", ap.fd, "TOGGLE_FLIGHT_DIRECTOR")
+    val yd = Key("YD", false, "YAW_DAMPER_TOGGLE")
+    val master = when (k) {
+        AutopilotKind.FCU -> listOf(Key("AP1", ap.master, "AP_MASTER"), fd, Key("A/THR", ap.athr, "AUTO_THROTTLE_ARM"))
+        AutopilotKind.MCP -> listOf(Key("CMD A", ap.master, "AP_MASTER"), Key("F/D", ap.fd, "TOGGLE_FLIGHT_DIRECTOR"), Key("A/T ARM", ap.athr, "AUTO_THROTTLE_ARM"))
+        AutopilotKind.MCP_787 -> listOf(Key("A/P", ap.master, "AP_MASTER"), Key("F/D", ap.fd, "TOGGLE_FLIGHT_DIRECTOR"), Key("A/T", ap.athr, "AUTO_THROTTLE_ARM"))
+        AutopilotKind.ATR_FGCP -> listOf(ap1, fd, yd)
+        AutopilotKind.PRIMUS -> listOf(ap1, fd, yd, Key("AT", ap.athr, "AUTO_THROTTLE_ARM"))
+        AutopilotKind.GFC700 -> listOf(ap1, fd, yd)
+        else -> listOf(ap1)
     }
     // Płyta panelu: od tego miejsca wszystko na tle i w kolorach producenta
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(skin.plate).border(1.dp, skin.plateEdge, RoundedCornerShape(14.dp)).padding(if (compact) 6.dp else 10.dp)) {
@@ -360,45 +352,52 @@ fun AutopilotPanelV2(link: LinkClient, s: FlightState, override: AircraftProfile
     Spacer(Modifier.size(10.dp))
 
     // Nastawy wysyłane jako wartości bezwzględne (*_SET) — zgubiony pakiet nie kumuluje błędu
+    val boeing = k == AutopilotKind.MCP || k == AutopilotKind.MCP_787
     val spd = Selector(
-        if (p == AircraftProfile.BOEING) "IAS/MACH" else "SPD", "kt", ap.spdKt?.let { "${it.roundToInt()}" } ?: "---",
+        when (k) { AutopilotKind.MCP -> "IAS/MACH"; AutopilotKind.ATR_FGCP -> "IAS"; else -> "SPD" }, "kt", ap.spdKt?.let { "${it.roundToInt()}" } ?: "---",
         { d -> cmd("AP_SPD_VAR_SET", ControlMath.speed(live()?.spdKt, d)) },
         { d -> cmd("AP_SPD_VAR_SET", ControlMath.speed(live()?.spdKt, d * 10)) }, "SPD",
-        when (p) {
-            AircraftProfile.BOEING -> listOf(Key("N1", false, "AP_N1_HOLD"), Key("SPEED", false, "AP_PANEL_SPEED_HOLD"), Key("LVL CHG", m.flc, "FLIGHT_LEVEL_CHANGE"))
-            AircraftProfile.AIRBUS -> emptyList()
+        when (k) {
+            AutopilotKind.MCP -> listOf(Key("N1", false, "AP_N1_HOLD"), Key("SPEED", false, "AP_PANEL_SPEED_HOLD"), Key("LVL CHG", m.flc, "FLIGHT_LEVEL_CHANGE"))
+            AutopilotKind.MCP_787 -> listOf(Key("SPD", false, "AP_PANEL_SPEED_HOLD"), Key("FLCH", m.flc, "FLIGHT_LEVEL_CHANGE"))
+            AutopilotKind.ATR_FGCP -> listOf(Key("IAS", m.flc, "FLIGHT_LEVEL_CHANGE"))
+            AutopilotKind.PRIMUS -> listOf(Key("FLCH", m.flc, "FLIGHT_LEVEL_CHANGE"))
+            AutopilotKind.FCU -> emptyList()
             else -> listOf(Key("FLC", m.flc, "FLIGHT_LEVEL_CHANGE"))
         },
     )
     val hdg = Selector(
-        if (p == AircraftProfile.BOEING) "HDG SEL" else "HDG", "°", ap.hdgDeg?.let { "%03d".format(it.roundToInt() % 360) } ?: "---",
+        if (boeing) "HDG SEL" else "HDG", "°", ap.hdgDeg?.let { "%03d".format(it.roundToInt() % 360) } ?: "---",
         { d -> cmd("HEADING_BUG_SET", ControlMath.heading(live()?.hdgDeg, d)) },
         { d -> cmd("HEADING_BUG_SET", ControlMath.heading(live()?.hdgDeg, d * 10)) }, "HDG",
-        when (p) {
-            AircraftProfile.AIRBUS -> listOf(Key("HDG", m.hdg, "AP_HDG_HOLD"), Key("NAV", m.nav, "AP_NAV1_HOLD"), Key("LOC", m.loc, "AP_LOC_HOLD"), Key("APPR", m.apr, "AP_APR_HOLD"))
-            AircraftProfile.BOEING -> listOf(Key("HDG SEL", m.hdg, "AP_HDG_HOLD"), Key("LNAV", m.nav, "AP_NAV1_HOLD"), Key("VOR/LOC", m.loc, "AP_LOC_HOLD"), Key("APP", m.apr, "AP_APR_HOLD"))
-            AircraftProfile.PISTON -> listOf(Key("HDG", m.hdg, "AP_HDG_HOLD"), Key("NAV", m.nav, "AP_NAV1_HOLD"), Key("APR", m.apr, "AP_APR_HOLD"), Key("REV", false, "AP_BC_HOLD"))
-            else -> listOf(Key("HDG", m.hdg, "AP_HDG_HOLD"), Key("NAV", m.nav, "AP_NAV1_HOLD"), Key("APR", m.apr, "AP_APR_HOLD"))
+        when (k) {
+            AutopilotKind.FCU -> listOf(Key("HDG", m.hdg, "AP_HDG_HOLD"), Key("NAV", m.nav, "AP_NAV1_HOLD"), Key("LOC", m.loc, "AP_LOC_HOLD"), Key("APPR", m.apr, "AP_APR_HOLD"))
+            AutopilotKind.MCP -> listOf(Key("HDG SEL", m.hdg, "AP_HDG_HOLD"), Key("LNAV", m.nav, "AP_NAV1_HOLD"), Key("VOR/LOC", m.loc, "AP_LOC_HOLD"), Key("APP", m.apr, "AP_APR_HOLD"))
+            AutopilotKind.MCP_787 -> listOf(Key("HDG HOLD", m.hdg, "AP_HDG_HOLD"), Key("LNAV", m.nav, "AP_NAV1_HOLD"), Key("LOC", m.loc, "AP_LOC_HOLD"), Key("APP", m.apr, "AP_APR_HOLD"))
+            AutopilotKind.ATR_FGCP, AutopilotKind.PRIMUS, AutopilotKind.GFC700 ->
+                listOf(Key("HDG", m.hdg, "AP_HDG_HOLD"), Key("NAV", m.nav, "AP_NAV1_HOLD"), Key(if (k == AutopilotKind.GFC700) "APR" else "APP", m.apr, "AP_APR_HOLD"), Key("BC", false, "AP_BC_HOLD"))
+            else -> listOf(Key("HDG", m.hdg, "AP_HDG_HOLD"), Key("NAV", m.nav, "AP_NAV1_HOLD"), Key("APR", m.apr, "AP_APR_HOLD"), Key("REV", false, "AP_BC_HOLD"))
         },
     )
     val alt = Selector(
         "ALT", "ft", ap.altFt?.let { "${it.roundToInt()}" } ?: "-----",
         { d -> cmd("AP_ALT_VAR_SET_ENGLISH", ControlMath.altitude(live()?.altFt, d * 100)) },
         { d -> cmd("AP_ALT_VAR_SET_ENGLISH", ControlMath.altitude(live()?.altFt, d * 1000)) }, "ALT",
-        when (p) {
-            AircraftProfile.AIRBUS -> listOf(Key("ALT", m.alt, "AP_ALT_HOLD"), Key("OP CLB", m.flc, "FLIGHT_LEVEL_CHANGE"))
-            AircraftProfile.BOEING -> listOf(Key("ALT HLD", m.alt, "AP_ALT_HOLD"))
+        when (k) {
+            AutopilotKind.FCU -> listOf(Key("ALT", m.alt, "AP_ALT_HOLD"), Key("OP CLB", m.flc, "FLIGHT_LEVEL_CHANGE"))
+            AutopilotKind.MCP, AutopilotKind.MCP_787 -> listOf(Key("ALT HOLD", m.alt, "AP_ALT_HOLD"))
             else -> listOf(Key("ALT", m.alt, "AP_ALT_HOLD"))
         },
     )
+    val vsName = if (k == AutopilotKind.FCU || boeing) "V/S" else "VS"
     val vs = Selector(
-        if (p == AircraftProfile.AIRBUS || p == AircraftProfile.BOEING) "V/S" else "VS", "fpm", ap.vsFpm?.let { "%+d".format(it.roundToInt()) } ?: "----",
+        vsName, "fpm", ap.vsFpm?.let { "%+d".format(it.roundToInt()) } ?: "----",
         { d -> cmd("AP_VS_VAR_SET_ENGLISH", ControlMath.verticalSpeed(live()?.vsFpm, d * 100)) },
         { d -> cmd("AP_VS_VAR_SET_ENGLISH", ControlMath.verticalSpeed(live()?.vsFpm, d * 500)) }, "VS",
-        listOf(Key(if (p == AircraftProfile.AIRBUS || p == AircraftProfile.BOEING) "V/S" else "VS", m.vs, "AP_VS_HOLD")),
+        listOf(Key(vsName, m.vs, "AP_VS_HOLD")),
     )
-    // Kolejność jak na panelu: prędkość, kurs, wysokość, prędkość pionowa (GA bez prędkości)
-    val modules = if (p == AircraftProfile.PISTON) listOf(hdg, alt, vs) else listOf(spd, hdg, alt, vs)
+    // Kolejność jak na panelu: prędkość, kurs, wysokość, prędkość pionowa (KAP140 bez prędkości)
+    val modules = if (k == AutopilotKind.KAP140) listOf(hdg, alt, vs) else listOf(spd, hdg, alt, vs)
 
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         // Moduł potrzebuje ~168 dp; trzy kolumny przy czterech modułach zostawiłyby sierotę — wtedy dwie

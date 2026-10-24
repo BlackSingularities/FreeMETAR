@@ -65,7 +65,11 @@ data class LinkServer(val name: String, val host: String, val ip: String, val po
     val taxi: Boolean? = null, val logo: Boolean? = null, val wing: Boolean? = null, val panel: Boolean? = null, val cabin: Boolean? = null,
 )
 @Serializable data class Fuel(val totalKg: Double? = null, val tanks: Map<String, Double> = emptyMap())
-@Serializable data class Engine(val n1Pct: Double? = null, val n2Pct: Double? = null, val rpm: Double? = null, val egtC: Double? = null, val fuelFlowKgH: Double? = null)
+@Serializable data class Engine(
+    val n1Pct: Double? = null, val n2Pct: Double? = null, val rpm: Double? = null, val egtC: Double? = null, val fuelFlowKgH: Double? = null,
+    /** Dźwignia mocy tego silnika (starsze wersje Link jej nie wysyłają). */
+    val throttlePct: Double? = null,
+)
 @Serializable data class Environment(val windDirDeg: Double? = null, val windSpdKt: Double? = null, val oatC: Double? = null, val qnhHpa: Double? = null)
 @Serializable data class Axes(val active: Boolean = false)
 

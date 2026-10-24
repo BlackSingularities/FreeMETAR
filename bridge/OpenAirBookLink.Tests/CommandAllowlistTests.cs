@@ -125,6 +125,9 @@ public class CommandAllowlistTests
     {
         Assert.True(CommandAllowlist.Validate("THROTTLE_SET", Num(16383)).Ok);
         Assert.False(CommandAllowlist.Validate("THROTTLE_SET", Num(16384)).Ok);
+        Assert.True(CommandAllowlist.Validate("THROTTLE2_SET", Num(8192)).Ok);
+        Assert.False(CommandAllowlist.Validate("THROTTLE4_SET", Num(-1)).Ok);
+        Assert.False(CommandAllowlist.Validate("THROTTLE5_SET", Num(0)).Ok);
         Assert.False(CommandAllowlist.Validate("MIXTURE_SET", Num(-1)).Ok);
         var cam = CommandAllowlist.Validate("CAMERA_STATE", Num(3));
         Assert.True(cam.Ok);
